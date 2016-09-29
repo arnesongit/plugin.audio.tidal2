@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<settings>
+    <setting label="30004" id="quality" type="select" lvalues="30005|30006|30007" default="1"/>
+    <setting label="30040" id="video_quality" type="select" lvalues="30041|30042|30043|30044|30045|30046|30047" default="1" />
+    <setting label="30008" id="username" type="text" default=""/>
+    <setting label="30009" id="password" type="text" option="hidden" default=""/>
+    <setting label="30011" id="country_code" type="text" default=""/>
+    <setting label="30010" id="subscription_type" type="select" lvalues="30012|30013" default="0"/>
+    <setting label="30015" id="client_unique_key" type="text" default=""/>
+    <setting label="30014" id="page_size" type="number" default="999"/>
+</settings>
