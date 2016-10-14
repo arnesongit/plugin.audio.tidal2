@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <strings>
+    <string id="30001">General</string>
     <string id="30004">Music Quality</string>
     <string id="30005">Lossless (FLAC)</string>
     <string id="30006">High (320 kBit/s)</string>
@@ -90,5 +91,16 @@
     <string id="30245">Show Album</string>
     <string id="30246">Are you sure to remove the item from this playlist ?</string>
     <string id="30247">Remove from '%s'</string>
+    <string id="30248">Move to Playlist ...</string>
+    <string id="30249">Set as Default %s Playlist</string>
+    <string id="30250">Reset Default %s Playlist</string>
+
+    <!-- Extended Settings -->
+    <string id="30500">Extended</string>
+    <string id="30501">Extended Functions and Colors</string>
+    <string id="30502">Debug Output</string>
+    <string id="30503">Read Album Data for every Track (Album Cache)</string>
+    <string id="30504">Not a FLAC Stream !</string>
+    <string id="30505">Album Cache Error !</string>
 
 </strings>

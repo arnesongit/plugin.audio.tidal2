@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <strings>
-    <!-- Session Settings -->
+    <string id="30001">Allgemein</string>
     <string id="30004">Musik-Qualität</string>
     <string id="30005">Lossless (FLAC)</string>
     <string id="30006">High (320 kBit/s)</string>
@@ -63,7 +63,7 @@
     <string id="30217">Favorisierte Titel</string>
     <string id="30218">Favorisierte Videos</string>
     <string id="30219">Hinzufügen zu TIDAL-Favoriten</string>
-    <string id="30220">Entfernen aus TIDAL-Favotiten</string>
+    <string id="30220">Entfernen aus TIDAL-Favoriten</string>
     <string id="30221">Künstler anzeigen</string>
     <string id="30222">Titel-Radio</string>
     <string id="30223">Titel-Empfehlungen</string>
@@ -91,5 +91,16 @@
     <string id="30245">Album anzeigen</string>
     <string id="30246">Soll dieser Eintrag aus der Playliste entfernt werden ?</string>
     <string id="30247">Aus '%s' entfernen</string>
+    <string id="30248">Verschieben nach Playliste ...</string>
+    <string id="30249">Als Default-%s-Playliste setzen</string>
+    <string id="30250">Default-%s-Playliste zurücksetzen</string>
+
+    <!-- Extended Settings -->
+    <string id="30500">Erweitert</string>
+    <string id="30501">Erweiterte Funktionen und Farben</string>
+    <string id="30502">Debug-Log aktivieren</string>
+    <string id="30503">Album-Daten aller Titel lesen (Album-Cache)</string>
+    <string id="30504">Kein FLAC-Stream !</string>
+    <string id="30505">Album-Cache-Fehler !</string>
 
 </strings>

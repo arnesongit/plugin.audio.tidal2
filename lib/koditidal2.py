@@ -17,9 +17,9 @@
 
 from __future__ import unicode_literals
 
-import sys
-import os
-import datetime
+import traceback
+from threading import Thread
+from Queue import Queue
 import requests
 try:
     from urlparse import urljoin
@@ -27,22 +27,19 @@ except ImportError:
     from urllib.parse import urljoin
 import xbmc
 import xbmcgui
-import xbmcvfs
 
-from lib.koditidal import AlbumItem, ArtistItem, PlaylistItem, TrackItem, VideoItem, PromotionItem, CategoryItem, FolderItem
-from lib.koditidal import plugin, addon, _T, log, TidalSession, TidalConfig
-from lib.tidalapi import Favorites, User, SubscriptionType, Quality
+from koditidal import AlbumItem, ArtistItem, PlaylistItem, TrackItem, VideoItem, PromotionItem, CategoryItem, FolderItem
+from koditidal import plugin, addon, log, _T, TidalSession, TidalUser, TidalFavorites, TidalConfig
+from tidalapi import SubscriptionType, Quality
+from metacache import MetaCache
 
+COLOR_FOLDER_MASK = '[COLOR blue]%s[/COLOR]'
+COLOR_FAVORITE_MASK = '[COLOR yellow]%s[/COLOR]'
+COLOR_STREAM_LOCKED_MASK = '[COLOR maroon]%s (%s)[/COLOR]'
+COLOR_USER_PLAYLIST_MASK = '%s [COLOR limegreen][%s][/COLOR]'
+COLOR_DEFAULT_PLAYLIST_MASK = '[COLOR limegreen]%s (%s)[/COLOR]'
 
-FOLDER_MASK = '[COLOR blue]%s[/COLOR]'
-FAVORITE_MASK = '[COLOR yellow]%s[/COLOR]'
-STREAM_LOCKED_MASK = '[COLOR maroon]%s (%s)[/COLOR]'
-USER_PLAYLIST_MASK = ' [COLOR limegreen][%s][/COLOR]'
-
-
-CACHE_DIR = xbmc.translatePath(addon.getAddonInfo('profile')).decode('utf-8')
-FAVORITES_FILE = os.path.join(CACHE_DIR, 'favorites.cfg')
-PLAYLISTS_FILE = os.path.join(CACHE_DIR, 'playlists.cfg')
+ALL_SAERCH_FIELDS = ['ARTISTS','ALBUMS','PLAYLISTS','TRACKS','VIDEOS']
 
 
 class AlbumItem2(AlbumItem):
@@ -52,43 +49,25 @@ class AlbumItem2(AlbumItem):
         self.artist = ArtistItem2(self.artist)
         self.artists = [ArtistItem2(artist) for artist in self.artists]
         self._ftArtists = [ArtistItem2(artist) for artist in self._ftArtists]
-
-    def getLabel(self):
-        label1 = self.artist.name
-        if self.artist._isFavorite:
-            label1 = FAVORITE_MASK % label1
-        label2 = self.title
-        if self.type == 'EP':
-            label2 += ' (EP)'
-        elif self.type == 'SINGLE':
-            label2 += ' (Single)'
-        if getattr(self, 'year', None):
-            label2 += ' (%s)' % self.year
-        if self._isFavorite and not '/favorites/' in sys.argv[0]:
-            label2 = FAVORITE_MASK % label2
-        return '%s - %s' % (label1, label2)
+        if addon.getSetting('color_mode') == 'true':
+            self.FAVORITE_MASK = COLOR_FAVORITE_MASK
 
 
 class ArtistItem2(ArtistItem):
 
     def __init__(self, item):
         self.__dict__.update(vars(item))
-
-    def getLabel(self):
-        if self._isFavorite and not '/favorites/' in sys.argv[0]:
-            return FAVORITE_MASK % self.name
-        return self.name
+        if addon.getSetting('color_mode') == 'true':
+            self.FAVORITE_MASK = COLOR_FAVORITE_MASK
 
 
 class PlaylistItem2(PlaylistItem):
 
     def __init__(self, item):
         self.__dict__.update(vars(item))
-
-    def getLabel(self):
-        if self._isFavorite and not '/favorites/' in sys.argv[0]:
-            return FAVORITE_MASK % self.name
-        return self.name
+        if addon.getSetting('color_mode') == 'true':
+            self.FAVORITE_MASK = COLOR_FAVORITE_MASK
+            self.DEFAULT_PLAYLIST_MASK = COLOR_DEFAULT_PLAYLIST_MASK
 
 
 class TrackItem2(TrackItem):
@@ -99,42 +78,23 @@ class TrackItem2(TrackItem):
         self.artists = [ArtistItem2(artist) for artist in self.artists]
         self._ftArtists = [ArtistItem2(artist) for artist in self._ftArtists]
         self.album = AlbumItem2(self.album)
+        self.titleForLabel = self.title
         if self.explicit and not 'Explicit' in self.title:
-            self.title += ' (Explicit)'
-        self._userplaylists = {} # Filled by parser
+            self.titleForLabel += ' (Explicit)'
+        if addon.getSetting('color_mode') == 'true':
+            self.FAVORITE_MASK = COLOR_FAVORITE_MASK
+            self.USER_PLAYLIST_MASK = COLOR_USER_PLAYLIST_MASK
+            self.STREAM_LOCKED_MASK = COLOR_STREAM_LOCKED_MASK
 
-    def getLabel(self):
-        label1 = self.artist.name
-        if self.artist._isFavorite and self.available:
-            label1 = FAVORITE_MASK % label1
-        label2 = self.title
-        if self._isFavorite and self.available and not '/favorites/' in sys.argv[0]:
-            label2 = FAVORITE_MASK % label2
-        label = '%s - %s' % (label1, label2)
-        if not self.available:
-            label = STREAM_LOCKED_MASK % (label, _T(30242))
-        txt = []
-        plids = self._userplaylists.keys()
-        for plid in plids:
-            if plid <> self._playlist_id:
-                txt.append('%s' % self._userplaylists.get(plid).get('title'))
+    def getComment(self):
+        txt = TrackItem.getComment(self)
+        comments = ['track_id=%s' % self.id]
         if txt:
-            label += USER_PLAYLIST_MASK % ', '.join(txt)
-        return label
-
-    def getContextMenuItems(self):
-        cm = TrackItem.getContextMenuItems(self)
-        plids = self._userplaylists.keys()
-        idx = 0
-        for cmitem in cm:
-            idx = idx + 1
-            if 'user_playlist' in cmitem[1]:
-                break
-        for plid in plids:
-            if plid <> self._playlist_id:
-                cm.insert(idx, ((_T(30247) % self._userplaylists[plid].get('title'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_id/%s/%s' % (plid, self.id)))))
-                idx = idx + 1
-        return cm
+            comments.append(txt)
+        userpl = self._userplaylists.keys()
+        if len(userpl) > 0:
+            comments.append('UserPlaylists: %s' % ', '.join([self._userplaylists.get(plid).get('title') for plid in userpl]))
+        return ', '.join(comments)
 
 
 class VideoItem2(VideoItem):
@@ -144,44 +104,23 @@ class VideoItem2(VideoItem):
         self.artist = ArtistItem2(self.artist)
         self.artists = [ArtistItem2(artist) for artist in self.artists]
         self._ftArtists = [ArtistItem2(artist) for artist in self._ftArtists]
+        self.titleForLabel = self.title
         if self.explicit and not 'Explicit' in self.title:
-            self.title += ' (Explicit)'
-        self._userplaylists = {} # Filled by parser
+            self.titleForLabel += ' (Explicit)'
+        if addon.getSetting('color_mode') == 'true':
+            self.FAVORITE_MASK = COLOR_FAVORITE_MASK
+            self.USER_PLAYLIST_MASK = COLOR_USER_PLAYLIST_MASK
+            self.STREAM_LOCKED_MASK = COLOR_STREAM_LOCKED_MASK
 
-    def getLabel(self):
-        label1 = self.artist.name
-        if self.artist._isFavorite and self.available:
-            label1 = FAVORITE_MASK % label1
-        label2 = self.title
-        if getattr(self, 'year', None):
-            label2 += ' (%s)' % self.year
-        if self._isFavorite and self.available and not '/favorites/' in sys.argv[0]:
-            label2 = FAVORITE_MASK % label2
-        label = '%s - %s' % (label1, label2)
-        if not self.available:
-            label = STREAM_LOCKED_MASK % (label, _T(30242))
-        txt = []
-        plids = self._userplaylists.keys()
-        for plid in plids:
-            if plid <> self._playlist_id:
-                txt.append('%s' % self._userplaylists.get(plid).get('title'))
+    def getComment(self):
+        txt = VideoItem.getComment(self)
+        comments = ['video_id=%s' % self.id]
         if txt:
-            label += USER_PLAYLIST_MASK % ', '.join(txt)
-        return label
-
-    def getContextMenuItems(self):
-        cm = VideoItem.getContextMenuItems(self)
-        plids = self._userplaylists.keys()
-        idx = 0
-        for cmitem in cm:
-            idx = idx + 1
-            if 'user_playlist' in cmitem[1]:
-                break
-        for plid in plids:
-            if plid <> self._playlist_id:
-                cm.insert(idx, ((_T(30247) % self._userplaylists[plid].get('title'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_id/%s/%s' % (plid, self.id)))))
-                idx = idx + 1
-        return cm
+            comments.append(txt)
+        userpl = self._userplaylists.keys()
+        if len(userpl) > 0:
+            comments.append('UserPlaylists: %s' % ', '.join([self._userplaylists.get(plid).get('title') for plid in userpl]))
+        return ', '.join(comments)
 
 
 class PromotionItem2(PromotionItem):
@@ -190,33 +129,24 @@ class PromotionItem2(PromotionItem):
         if item.type != 'EXTURL' and item.id.startswith('http:'):
             item.type = 'EXTURL' # Fix some defect TIDAL Promotions
         self.__dict__.update(vars(item))
-
-    def getLabel(self):
-        if self.type in ['ALBUM', 'VIDEO']:
-            label = '%s - %s' % (self.shortHeader, self.shortSubHeader)
-        else:
-            label = self.shortHeader
-        if self._isFavorite:
-            label = FAVORITE_MASK % label
-        return label
+        if addon.getSetting('color_mode') == 'true':
+            self.FAVORITE_MASK = COLOR_FAVORITE_MASK
 
 
 class CategoryItem2(CategoryItem):
 
     def __init__(self, item):
         self.__dict__.update(vars(item))
-
-    def getLabel(self):
-        return FOLDER_MASK % CategoryItem.getLabel(self)
+        if addon.getSetting('color_mode') == 'true':
+            self.FOLDER_MASK = COLOR_FOLDER_MASK
 
 
 class FolderItem2(FolderItem):
 
-    def __init__(self, folder, url, thumb=None, fanart=None, isFolder=True):
-        FolderItem.__init__(self, folder, url, thumb, fanart, isFolder)
-
-    def getLabel(self):
-        return FOLDER_MASK % FolderItem.getLabel(self)
+    def __init__(self, folder, url, thumb=None, fanart=None, isFolder=True, label=None):
+        FolderItem.__init__(self, folder, url, thumb, fanart, isFolder, label)
+        if addon.getSetting('color_mode') == 'true':
+            self.FOLDER_MASK = COLOR_FOLDER_MASK
 
 
 class LoginToken(object):
@@ -244,12 +174,19 @@ class TidalConfig2(TidalConfig):
         self.stream_session_id = addon.getSetting('stream_session_id')
         if not self.stream_session_id:
             self.stream_session_id = self.session_id
+        self.max_http_requests = 20
+        self.cache_albums = True if addon.getSetting('album_cache') == 'true' else False
 
 
 class TidalSession2(TidalSession):
 
     def __init__(self, config=TidalConfig2()):
         TidalSession.__init__(self, config=config)
+        # Album Cache
+        self.metaCache = MetaCache() if self._config.cache_albums else None
+        self.albumJsonBuffer = {}
+        self.abortAlbumThreads = True
+        self.albumQueue = Queue()
 
     def init_user(self, user_id, subscription_type):
         return User2(self, user_id, subscription_type)
@@ -355,6 +292,53 @@ class TidalSession2(TidalSession):
         addon.setSetting('stream_session_id', '')
         self._config.load()
 
+    def search(self, field, value, limit=50):
+        search_field = field
+        if isinstance(search_field, basestring) and search_field.upper() == 'ALL':
+            search_field = ALL_SAERCH_FIELDS
+        results = TidalSession.search(self, search_field, value, limit=limit)
+        self.update_albums_in_items(results.tracks)
+        return results
+
+    def get_album(self, album_id, withCache=True):
+        if withCache and self._config.cache_albums:
+            json_obj = self.metaCache.fetch('album', '%s' % album_id)
+            if json_obj and 'id' in json_obj:
+                # albumJsonBuffer is only for new Albums
+                self.albumJsonBuffer.pop('%s' % album_id, None)
+                return self._parse_album(json_obj)
+        return TidalSession.get_album(self, album_id)
+
+    def get_album_tracks(self, album_id, withAlbum=True):
+        items = TidalSession.get_album_tracks(self, album_id, withAlbum=True)
+        if self._config.cache_albums:
+            json_obj = self.albumJsonBuffer.get('%s' % album_id, None)
+            if json_obj:
+                log('Write Album %s into the MetaCache' % album_id)
+                self.metaCache.insertAlbumJson(json_obj)
+        return items
+
+    def get_playlist_items(self, playlist_id=None, playlist=None, offset=0, limit=9999, ret='playlistitems'):
+        items = TidalSession.get_playlist_items(self, playlist_id=playlist_id, playlist=playlist, offset=offset, limit=limit, ret=ret)
+        self.update_albums_in_items(items)
+        return items
+
+    def get_playlist_tracks(self, playlist_id, offset=0, limit=9999):
+        items = TidalSession.get_playlist_tracks(self, playlist_id, offset=offset, limit=limit)
+        self.update_albums_in_items(items)
+        return items
+
+    def get_category_content(self, group, path, content_type, offset=0, limit=999):
+        items = TidalSession.get_category_content(self, group, path, content_type, offset=offset, limit=limit)
+        self.update_albums_in_items(items)
+        return items
+
+    def _parse_one_item(self, json_obj, ret):
+        if self._config.cache_albums and ret.startswith('album') and json_obj and 'id' in json_obj:
+            # Update local Album Buffer
+            self.albumJsonBuffer['%s' % json_obj.get('id')] = json_obj
+        return TidalSession._parse_one_item(self, json_obj, ret=ret)
+
     def _parse_album(self, json_obj, artist=None):
         album = AlbumItem2(TidalSession._parse_album(self, json_obj, artist=artist))
         return album
@@ -369,20 +353,10 @@ class TidalSession2(TidalSession):
 
     def _parse_track(self, json_obj):
         track = TrackItem2(TidalSession._parse_track(self, json_obj))
-        if self.is_logged_in:
-            track._userplaylists = self.user.playlists_of_id(track.id)
-        elif track.duration > 30:
-            # 30 Seconds Limit in Trial Mode
-            track.duration = 30
         return track
 
     def _parse_video(self, json_obj):
         video = VideoItem2(TidalSession._parse_video(self, json_obj))
-        if self.is_logged_in:
-            video._userplaylists = self.user.playlists_of_id(video.id)
-        elif video.duration > 30:
-            # 30 Seconds Limit in Trial Mode
-            video.duration = 30
         return video
 
     def _parse_promotion(self, json_obj):
@@ -397,14 +371,14 @@ class TidalSession2(TidalSession):
         self.session_id = self.stream_session_id
         url = TidalSession.get_media_url(self, track_id, quality=quality)
         if not '.flac' in url.lower() and (quality == Quality.lossless or (quality == None and self._config.quality == Quality.lossless)):
-            xbmcgui.Dialog().notification(plugin.name, 'Only HIGH Quality !' , icon=xbmcgui.NOTIFICATION_WARNING)
+            xbmcgui.Dialog().notification(plugin.name, _T(30504) , icon=xbmcgui.NOTIFICATION_WARNING)
         self.session_id = oldSessionId
         return url
 
-    def get_video_url(self, video_id):
+    def get_video_url(self, video_id, maxHeight=-1):
         oldSessionId = self.session_id
         self.session_id = self.stream_session_id
-        url = TidalSession.get_video_url(self, video_id)
+        url = TidalSession.get_video_url(self, video_id, maxHeight)
         self.session_id = oldSessionId
         return url
 
@@ -413,203 +387,108 @@ class TidalSession2(TidalSession):
         if end:
             xbmc.executebuiltin('Container.SetViewMode(506)')
 
-    def add_directory_item(self, title, endpoint, thumb=None, fanart=None, end=False, isFolder=True):
+    def add_directory_item(self, title, endpoint, thumb=None, fanart=None, end=False, isFolder=True, label=None):
         if callable(endpoint):
             endpoint = plugin.url_for(endpoint)
-        item = FolderItem2(title, endpoint, thumb, fanart, isFolder)
+        item = FolderItem2(title, endpoint, thumb, fanart, isFolder, label)
         self.add_list_items([item], end=end)
 
+    def get_album_json_thread(self):
+        try:
+            while not xbmc.abortRequested and not self.abortAlbumThreads:
+                try:
+                    album_id = self.albumQueue.get_nowait()
+                except:
+                    break
+                try:
+                    self.get_album(album_id, withCache=False)
+                except requests.HTTPError as e:
+                    r = e.response
+                    msg = _T(30505)
+                    try:
+                        msg = r.reason
+                        msg = r.json().get('userMessage')
+                    except:
+                        pass
+                    log('Error getting Album ID %s' % album_id, xbmc.LOGERROR)
+                    if r.status_code == 429 and not self.abortAlbumThreads:
+                        self.abortAlbumThreads = True
+                        log('Too many requests. Aborting Workers ...', xbmc.LOGERROR)
+                        self.albumQueue._init(9999)
+                        xbmcgui.Dialog().notification(plugin.name, msg, xbmcgui.NOTIFICATION_ERROR)
+        except Exception, e:
+            traceback.print_exc()
 
-class Favorites2(Favorites):
+    def update_albums_in_items(self, items):
+        if self._config.cache_albums:
+            # Step 1: Read all available Albums from Cache
+            self.albumQueue = Queue()
+            missing_ids = []
+            missing_items = []
+            track_count = 0
+            self.abortAlbumThreads = False
+            for item in items:
+                if isinstance(item, TrackItem):
+                    track_count += 1
+                if isinstance(item, TrackItem) and item.available and not item.album.releaseDate and \
+                    (item.title <> item.album.title or item.trackNumber > 1):
+                    # Try to read Album from Cache
+                    json_obj = self.albumJsonBuffer.get('%s' % item.album.id, None)
+                    if json_obj == None:
+                        json_obj = self.metaCache.fetch('album', '%s' % item.album.id)
+                    if json_obj != None:
+                        item.album = self._parse_album(json_obj)
+                    else:
+                        missing_items.append(item)
+                        if not item.album.id in missing_ids:
+                            missing_ids.append(item.album.id)
+                            self.albumQueue.put('%s' % item.album.id)
+            # Step 2: Load JSon-Data from all missing Albums
+            if len(missing_ids) <= 5 or self._config.max_http_requests <= 1:
+                # Without threads
+                self.get_album_json_thread()
+            else:
+                log('Starting Threads to load Albums')
+                runningThreads = []
+                while len(runningThreads) < self._config.max_http_requests:
+                    try:
+                        worker = Thread(target=self.get_album_json_thread)
+                        worker.start()
+                        runningThreads.append(worker)
+                    except Exception, e:
+                        log(str(e), xbmc.LOGERROR)
+                log('Waiting until all Threads are terminated')
+                for worker in runningThreads:
+                    worker.join(20)
+                    if worker.isAlive():
+                        log('Worker %s is still running ...' % worker.ident, xbmc.LOGWARNING)
+            # Step 3: Save JsonData into MetaCache
+            if len(missing_items) > 0:
+                album_ids = self.albumJsonBuffer.keys()
+                log('Write %s Albums into the MetaCache' % len(album_ids))
+                for album_id in album_ids:
+                    if xbmc.abortRequested:
+                        break
+                    json_obj = self.albumJsonBuffer.get(album_id, None)
+                    if json_obj != None and 'id' in json_obj:
+                        self.metaCache.insertAlbumJson(json_obj)
+                log('Putting %s from %s missing Albums for %s TrackItems' % (len(album_ids), len(missing_items), track_count))
+                # Step 4: Fill missing Albums into the TrackItems
+                for item in missing_items:
+                    json_obj = self.albumJsonBuffer.get('%s' % item.album.id, None)
+                    if json_obj != None:
+                        item.album = self._parse_album(json_obj)
+
+
+class Favorites2(TidalFavorites):
 
     def __init__(self, session, user_id):
-        Favorites.__init__(self, session, user_id)
-
-    def load_cache(self):
-        try:
-            fd = xbmcvfs.File(FAVORITES_FILE, 'r')
-            self.ids = eval(fd.read())
-            fd.close()
-            self.ids_loaded = not (self.ids['artists'] == None or self.ids['albums'] == None or 
-                                   self.ids['playlists'] == None or self.ids['tracks'] == None or 
-                                   self.ids['videos'] == None)
-            if self.ids_loaded:
-                log('Loaded %s Favorites from disk.' % sum(len(self.ids[content]) for content in ['artists', 'albums', 'playlists', 'tracks', 'videos']))
-        except:
-            self.ids_loaded = False
-            self.reset()
-        return self.ids_loaded
-
-    def save_cache(self):
-        try:
-            if self.ids_loaded:
-                fd = xbmcvfs.File(FAVORITES_FILE, 'w')
-                fd.write(repr(self.ids))
-                fd.close()
-                log('Saved %s Favorites to disk.' % sum(len(self.ids[content]) for content in ['artists', 'albums', 'playlists', 'tracks', 'videos']))
-        except:
-            return False
-        return True
-
-    def delete_cache(self):
-        try:
-            if xbmcvfs.exists(FAVORITES_FILE):
-                xbmcvfs.delete(FAVORITES_FILE)
-                log('Deleted Favorites file.')
-        except:
-            return False
-        return True
-
-    def load_all(self, force_reload=False):
-        if not force_reload and self.ids_loaded:
-            return self.ids
-        if not force_reload:
-            self.load_cache()
-        if force_reload or not self.ids_loaded:
-            Favorites.load_all(self, force_reload=force_reload)
-            self.save_cache()
-        return self.ids
-
-    def get(self, content_type, limit=9999):
-        items = Favorites.get(self, content_type, limit=limit)
-        if items:
-            self.load_all()
-            self.ids[content_type] = ['%s' % item.id for item in items]
-            self.save_cache()
-        return items
-
-    def add(self, content_type, item_ids):
-        ok = Favorites.add(self, content_type, item_ids)
-        if ok:
-            self.get(content_type)
-        return ok
-
-    def remove(self, content_type, item_id):
-        ok = Favorites.remove(self, content_type, item_id)
-        if ok:
-            self.get(content_type)
-        return ok
-
-    def isFavoriteArtist(self, artist_id):
-        self.load_all()
-        return Favorites.isFavoriteArtist(self, artist_id)
-
-    def isFavoriteAlbum(self, album_id):
-        self.load_all()
-        return Favorites.isFavoriteAlbum(self, album_id)
-
-    def isFavoritePlaylist(self, playlist_id):
-        self.load_all()
-        return Favorites.isFavoritePlaylist(self, playlist_id)
-
-    def isFavoriteTrack(self, track_id):
-        self.load_all()
-        return Favorites.isFavoriteTrack(self, track_id)
-
-    def isFavoriteVideo(self, video_id):
-        self.load_all()
-        return Favorites.isFavoriteVideo(self, video_id)
+        TidalFavorites.__init__(self, session, user_id)
 
 
-class User2(User):
+class User2(TidalUser):
 
     def __init__(self, session, user_id, subscription_type=SubscriptionType.hifi):
-        User.__init__(self, session, user_id, subscription_type)
+        TidalUser.__init__(self, session, user_id, subscription_type)
         self.favorites = Favorites2(session, user_id)
-        self.playlists_loaded = False
-        self.playlists_cache = {}
 
-    def load_cache(self):
-        try:
-            fd = xbmcvfs.File(PLAYLISTS_FILE, 'r')
-            self.playlists_cache = eval(fd.read())
-            fd.close()
-            self.playlists_loaded = True
-            log('Loaded %s Playlists from disk.' % len(self.playlists_cache.keys()))
-        except:
-            self.playlists_loaded = False
-            self.playlists_cache = {}
-        return self.playlists_loaded
-
-    def save_cache(self):
-        try:
-            if self.playlists_loaded:
-                fd = xbmcvfs.File(PLAYLISTS_FILE, 'w')
-                fd.write(repr(self.playlists_cache))
-                fd.close()
-                log('Saved %s Playlists to disk.' % len(self.playlists_cache.keys()))
-        except:
-            return False
-        return True
-
-    def check_updated_playlist(self, playlist):
-        if self.playlists_cache.get(playlist.id, {}).get('lastUpdated', datetime.datetime.fromordinal(1)) == playlist.lastUpdated:
-            # Playlist unchanged
-            return False
-        items = self._session.get_playlist_items(playlist=playlist)
-        self.playlists_cache.update({playlist.id: {'title': playlist.title, 
-                                                   'description': playlist.description,
-                                                   'lastUpdated': playlist.lastUpdated,
-                                                   'ids': [item.id for item in items]}})
-        return True
-
-    def delete_cache(self):
-        try:
-            if xbmcvfs.exists(PLAYLISTS_FILE):
-                xbmcvfs.delete(PLAYLISTS_FILE)
-                log('Deleted Playlists file.')
-        except:
-            return False
-        return True
-
-    def playlists_of_id(self, item_id):
-        userpl = {}
-        if not self.playlists_loaded:
-            self.load_cache()
-        if not self.playlists_loaded:
-            self.playlists()
-        plids = self.playlists_cache.keys()
-        for plid in plids:
-            if item_id in self.playlists_cache.get(plid).get('ids', []):
-                userpl.update({plid: self.playlists_cache.get(plid)})
-        return userpl
-
-    def playlists(self):
-        items = User.playlists(self, offset=0, limit=9999)
-        # Refresh the Playlist Cache
-        if not self.playlists_loaded:
-            self.load_cache()
-        buffer_changed = False
-        act_ids = [item.id for item in items]
-        saved_ids = self.playlists_cache.keys()
-        # Remove Deleted Playlists from Cache
-        for plid in saved_ids:
-            if plid not in act_ids:
-                self.playlists_cache.pop(plid)
-                buffer_changed = True
-        # Update modified Playlists in Cache
-        self.playlists_loaded = True
-        for item in items:
-            if self.check_updated_playlist(item):
-                buffer_changed = True
-        if buffer_changed:
-            self.save_cache()
-        return items
-
-    def add_playlist_entries(self, playlist=None, item_ids=[]):
-        ok = User.add_playlist_entries(self, playlist=playlist, item_ids=item_ids)
-        if ok:
-            self.playlists()
-        return ok
-
-    def remove_playlist_entry(self, playlist_id, entry_no=None, item_id=None):
-        ok = User.remove_playlist_entry(self, playlist_id, entry_no=entry_no, item_id=item_id)
-        if ok:
-            self.playlists()
-        return ok
-
-    def delete_playlist(self, playlist_id):
-        ok = User.delete_playlist(self, playlist_id)
-        if ok:
-            self.playlists()
-        return ok

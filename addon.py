@@ -25,9 +25,12 @@ import xbmcplugin
 from xbmcgui import ListItem
 from requests import HTTPError
 from lib.tidalapi.models import Quality, Category, SubscriptionType
-from lib.koditidal import plugin, addon, _T, _P, log, DEBUG_LEVEL, KodiLogHandler
-#from lib.koditidal import TidalSession
-from lib.koditidal2 import TidalSession2 as TidalSession
+from lib.koditidal import plugin, addon, _addon_id, _T, _P, log, DEBUG_LEVEL, KodiLogHandler
+
+if addon.getSetting('color_mode') == 'true' or addon.getSetting('album_cache') == 'true':
+    from lib.koditidal2 import TidalSession2 as TidalSession
+else:
+    from lib.koditidal import TidalSession
 
 # Set Log Handler for tidalapi
 logger = logging.getLogger()
@@ -238,10 +241,10 @@ def user_playlist_add_item(item_type, item_id):
         items = session.get_playlist_items(item_id)
         # Sort Items by Artist, Title
         items.sort(key=lambda line: (line.artist.name, line.title) , reverse=False)
-        items = [item.id for item in items]
+        items = ['%s' % item.id for item in items]
     else:
         items = [item_id]
-    playlist = session.selectPlaylistDialog(allowNew=True, item_type=item_type)
+    playlist = session.user.selectPlaylistDialog(allowNew=True)
     if playlist:
         xbmc.executebuiltin('ActivateWindow(busydialog)')
         try:
@@ -284,6 +287,81 @@ def user_playlist_remove_id(playlist_id, item_id):
         xbmc.executebuiltin('Container.Refresh()')
 
 
+@plugin.route('/user_playlist/move/<playlist_id>/<entry_no>/<item_id>')
+def user_playlist_move_entry(playlist_id, entry_no, item_id):
+    dialog = xbmcgui.Dialog()
+    playlist = session.user.selectPlaylistDialog(headline=_T(30248), allowNew=True)
+    if playlist:
+        xbmc.executebuiltin( "ActivateWindow(busydialog)" )
+        try:
+            ok = session.user.add_playlist_entries(playlist=playlist, item_ids=[item_id])
+            if ok:
+                ok = session.user.remove_playlist_entry(playlist_id, entry_no=entry_no)
+            else:
+                dialog.notification(plugin.name, _T('API Call Failed'), xbmcgui.NOTIFICATION_ERROR)
+        except Exception, e:
+            log(str(e), level=xbmc.LOGERROR)
+            traceback.print_exc()
+        xbmc.executebuiltin( "Dialog.Close(busydialog)" )
+        xbmc.executebuiltin('Container.Refresh()')
+
+
+@plugin.route('/user_playlist_set_default/<item_type>/<playlist_id>')
+def user_playlist_set_default(item_type, playlist_id):
+    item = session.get_playlist(playlist_id)
+    if item:
+        if item_type.lower().find('track') >= 0:
+            addon.setSetting('default_trackplaylist_id', item.id)
+        elif item_type.lower().find('video') >= 0:
+            addon.setSetting('default_videoplaylist_id', item.id)
+    xbmc.executebuiltin('Container.Refresh()')
+
+
+@plugin.route('/user_playlist_reset_default/<item_type>')
+def user_playlist_reset_default(item_type):
+    if item_type.lower().find('track') >= 0:
+        addon.setSetting('default_trackplaylist_id', '')
+    elif item_type.lower().find('video') >= 0:
+        addon.setSetting('default_videoplaylist_id', '')
+    xbmc.executebuiltin('Container.Refresh()')
+
+
+@plugin.route('/user_playlist_toggle')
+def user_playlist_toggle():
+    if not session.is_logged_in:
+        return
+    url = xbmc.getInfoLabel( "ListItem.FilenameandPath" )
+    if not _addon_id in url:
+        return
+    if 'play_track/' in url:
+        item_type = 'track'
+        userpl_id = addon.getSetting('default_trackplaylist_id').decode('utf-8')
+        item_id = url.split('play_track/')[1]
+        item = session.get_track(item_id)
+    elif 'play_video/' in url:
+        item_type = 'video'
+        userpl_id = addon.getSetting('default_videoplaylist_id').decode('utf-8')
+        item_id = url.split('play_video/')[1]
+        item = session.get_video(item_id)
+    else:
+        return
+    try:
+        if not userpl_id:
+            # Dialog Mode if default Playlist not set
+            user_playlist_add_item(item_type, item_id)
+            return
+        xbmc.executebuiltin( "ActivateWindow(busydialog)" )
+        if item._userplaylists and userpl_id in item._userplaylists:
+            session.user.remove_playlist_entry(playlist_id=userpl_id, item_id=item.id)
+        else:
+            session.user.add_playlist_entries(playlist=userpl_id, item_ids=['%s' % item.id])
+    except Exception, e:
+        log(str(e), level=xbmc.LOGERROR)
+        traceback.print_exc()
+    xbmc.executebuiltin( "Dialog.Close(busydialog)" ) # Avoid GUI Lock        
+    xbmc.executebuiltin('Container.Refresh()')
+
+
 @plugin.route('/favorites/<content_type>')
 def favorites(content_type):
     CONTENT_FOR_TYPE = {'artists': 'artists', 'albums': 'albums', 'playlists': 'albums', 'tracks': 'songs', 'videos': 'musicvideos'}
@@ -308,6 +386,73 @@ def favorites_remove(content_type, item_id):
     ok = session.user.favorites.remove(content_type, item_id)
     if ok:
         xbmcgui.Dialog().notification(heading=plugin.name, message=_T(30232).format(what=_T(content_type)), icon=xbmcgui.NOTIFICATION_INFO)
+    xbmc.executebuiltin('Container.Refresh()')
+
+
+@plugin.route('/cache_reset')
+def cache_reset():
+    if not session.is_logged_in:
+        return
+    session.user.delete_cache()
+    session.user.favorites.delete_cache()
+
+
+@plugin.route('/cache_reload')
+def cache_reload():
+    if not session.is_logged_in:
+        return
+    session.user.favorites.load_all()
+    session.user.load_cache()
+    session.user.playlists()
+
+
+@plugin.route('/favorite_toggle')
+def favorite_toggle():
+    if not session.is_logged_in:
+        return
+    url = xbmc.getInfoLabel( "ListItem.FilenameandPath" )
+    if not _addon_id in url:
+        return
+    try:
+        xbmc.executebuiltin( "ActivateWindow(busydialog)" )
+        if 'artist/' in url:
+            item_id = url.split('artist/')[1]
+            if not '/' in item_id:
+                if session.user.favorites.isFavoriteArtist(item_id):
+                    session.user.favorites.remove_artist(item_id)
+                else:
+                    session.user.favorites.add_artist(item_id)
+        elif 'album/' in url:
+            item_id = url.split('album/')[1]
+            if not '/' in item_id:
+                if session.user.favorites.isFavoriteAlbum(item_id):
+                    session.user.favorites.remove_album(item_id)
+                else:
+                    session.user.favorites.add_album(item_id)
+        elif 'play_track/' in url:
+            item_id = url.split('play_track/')[1]
+            if not '/' in item_id:
+                if session.user.favorites.isFavoriteTrack(item_id):
+                    session.user.favorites.remove_track(item_id)
+                else:
+                    session.user.favorites.add_track(item_id)
+        elif 'playlist/' in url:
+            item_id = url.split('playlist/')[1]
+            if not '/' in item_id:
+                if session.user.favorites.isFavoritePlaylist(item_id):
+                    session.user.favorites.remove_playlist(item_id)
+                else:
+                    session.user.favorites.add_playlist(item_id)
+        elif 'play_video/' in url:
+            item_id = url.split('play_video/')[1]
+            if not '/' in item_id:
+                if session.user.favorites.isFavoriteVideo(item_id):
+                    session.user.favorites.remove_video(item_id)
+                else:
+                    session.user.favorites.add_video(item_id)
+    except:
+        pass
+    xbmc.executebuiltin( "Dialog.Close(busydialog)" ) # Avoid GUI Lock        
     xbmc.executebuiltin('Container.Refresh()')
 
 

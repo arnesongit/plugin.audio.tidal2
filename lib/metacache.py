@@ -27,7 +27,7 @@ try:
 except:
     from pysqlite2 import dbapi2 as database
 
-from lib.koditidal import addon
+from koditidal import addon
 import debug
 
 
