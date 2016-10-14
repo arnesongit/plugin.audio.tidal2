@@ -9,6 +9,7 @@
   b) Favorites are Yellow
   c) UserPlaylists are Green
   d) Locked Streams are Red
+- Cache for Album Data for correct year in Track items
 
 [B]1.3.0 (unreleased)[/B]
 - Using new Login-Token for all content
