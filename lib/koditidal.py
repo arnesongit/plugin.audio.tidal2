@@ -234,20 +234,6 @@ class PlaylistItem(Playlist, HasListItem):
                     cm.append((_T(30249) % _T('Video'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist_set_default/videos/%s' % self.id)))
         return cm
 
-    @property
-    def image(self):
-        if self.type == 'USER':
-            # Add Timestamp to URL to refresh Image in Kodi Thumbnail Cache
-            return super(PlaylistItem, self).image + '&dummy=%s' % self.lastUpdated
-        return super(PlaylistItem, self).image
-
-    @property
-    def fanart(self):
-        if self.type == 'USER':
-            # Add Timestamp to URL to refresh Image in Kodi Thumbnail Cache
-            return super(PlaylistItem, self).fanart + '&dummy=%s' % self.lastUpdated
-        return super(PlaylistItem, self).fanart
-
 
 class TrackItem(Track, HasListItem):
 
