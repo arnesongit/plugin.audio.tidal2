@@ -216,6 +216,7 @@ class PlaylistItem(Playlist, HasListItem):
         cm = []
         if self._is_logged_in:
             if self.type == 'USER':
+                cm.append((_T(30251), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/rename/%s' % self.id)))
                 cm.append((_T(30235), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/delete/%s' % self.id)))
             else:
                 if self._isFavorite:
@@ -921,6 +922,15 @@ class TidalUser(User):
         ok = User.delete_playlist(self, playlist_id)
         if ok:
             self.playlists()
+        return ok
+
+    def renamePlaylistDialog(self, playlist):
+        dialog = xbmcgui.Dialog()
+        title = dialog.input(_T(30233), playlist.title, type=xbmcgui.INPUT_ALPHANUM)
+        ok = False
+        if title:
+            description = dialog.input(_T(30234), playlist.description, type=xbmcgui.INPUT_ALPHANUM)
+            ok = self.rename_playlist(playlist, title, description)
         return ok
 
     def newPlaylistDialog(self):

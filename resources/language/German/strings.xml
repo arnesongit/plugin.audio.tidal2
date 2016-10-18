@@ -44,10 +44,11 @@
     <string id="30117">Genres</string>
     <string id="30118">Stimmungen</string>
     <string id="30119">Top 20</string>
+    <string id="30120">Promotionen</string>
 
     <!-- Main Menu -->
     <string id="30201">Meine Musiksammlung</string>
-    <string id="30202">Promotionen</string>
+    <string id="30202">Empfohlene Playlisten</string>
     <string id="30203">Neuheiten</string>
     <string id="30206">Suchen</string>
     <string id="30207">Abmelden</string>
@@ -76,7 +77,7 @@
     <string id="30230">Zusammenfassung</string>
     <string id="30231">{what} hinzugefügt</string>
     <string id="30232">{what} entfernt</string>
-    <string id="30233">Name der neuen Playliste</string>
+    <string id="30233">Name der Playliste</string>
     <string id="30234">Beschreibung (optional)</string>
     <string id="30235">Playliste löschen</string>
     <string id="30236">Die Playliste "{name}" enthält {count} Elemente. Soll diese Playliste wirklich gelöscht werden ?</string>
@@ -94,6 +95,7 @@
     <string id="30248">Verschieben nach Playliste ...</string>
     <string id="30249">Als Default-%s-Playliste setzen</string>
     <string id="30250">Default-%s-Playliste zurücksetzen</string>
+    <string id="30251">Playliste umbenennen</string>
 
     <!-- Extended Settings -->
     <string id="30500">Erweitert</string>

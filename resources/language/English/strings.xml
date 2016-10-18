@@ -44,6 +44,7 @@
     <string id="30117">Genres</string>
     <string id="30118">Moods</string>
     <string id="30119">Top 20</string>
+    <string id="30120">Promotions</string>
 
     <!-- Main Menu -->
     <string id="30201">My Music</string>
@@ -76,7 +77,7 @@
     <string id="30230">Summary</string>
     <string id="30231">Added {what}</string>
     <string id="30232">Removed {what}</string>
-    <string id="30233">Name of new Playlist</string>
+    <string id="30233">Name of the Playlist</string>
     <string id="30234">Description (optional)</string>
     <string id="30235">Delete Playlist</string>
     <string id="30236">Playlist "{name}" contains {count} items. Are you sure to delete this playlist ?</string>
@@ -94,6 +95,7 @@
     <string id="30248">Move to Playlist ...</string>
     <string id="30249">Set as Default %s Playlist</string>
     <string id="30250">Reset Default %s Playlist</string>
+    <string id="30251">Rename Playlist</string>
 
     <!-- Extended Settings -->
     <string id="30500">Extended</string>

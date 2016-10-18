@@ -78,7 +78,7 @@ def category(group):
     xbmcplugin.setContent(plugin.handle, 'files')
     if promoGroup and totalCount > 10:
         # Add Promotions as Folder on the Top if more than 10 Promotions available
-        add_directory(_T(30202), plugin.url_for(featured, group=promoGroup))
+        add_directory(_T(30120), plugin.url_for(featured, group=promoGroup))
     # Add Category Items as Folders
     add_items(items, content=None, end=not(promoGroup and totalCount <= 10))
     if promoGroup and totalCount <= 10:
@@ -217,6 +217,14 @@ def playlist_view(playlist_id):
 @plugin.route('/user_playlists')
 def user_playlists():
     add_items(session.user.playlists(), content='songs')
+
+
+@plugin.route('/user_playlist/rename/<playlist_id>')
+def user_playlist_rename(playlist_id):
+    playlist = session.get_playlist(playlist_id)
+    ok = session.user.renamePlaylistDialog(playlist)
+    if ok:
+        xbmc.executebuiltin('Container.Refresh()')
 
 
 @plugin.route('/user_playlist/delete/<playlist_id>')
