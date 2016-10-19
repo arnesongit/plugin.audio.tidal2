@@ -33,7 +33,7 @@ from tidalapi.models import Quality, SubscriptionType, BrowsableMedia, Artist, A
 from m3u8 import load as m3u8_load
 
 
-_addon_id = 'plugin.audio.tidal-master'
+_addon_id = 'plugin.audio.tidal2'
 addon = xbmcaddon.Addon(id=_addon_id)
 plugin = Plugin(base_url = "plugin://" + _addon_id)
 plugin.name = addon.getAddonInfo('name')
@@ -54,7 +54,7 @@ def log(msg, level=DEBUG_LEVEL):
 def _T(txtid):
     if isinstance(txtid, basestring):
         # Map TIDAL texts to Text IDs
-        newid = {'artist':  30101, 'album':  30102, 'playlist':  30103, 'track':  30104, 'video':  30105, 
+        newid = {'artist':  30101, 'album':  30102, 'playlist':  30103, 'track':  30104, 'video':  30105,
                  'artists': 30101, 'albums': 30102, 'playlists': 30103, 'tracks': 30104, 'videos': 30105,
                  'featured': 30203, 'rising': 30211, 'discovery': 30212, 'movies': 30115, 'shows': 30116, 'genres': 30117, 'moods': 30118
                  }.get(txtid.lower(), None)
@@ -137,8 +137,8 @@ class AlbumItem(Album, HasListItem):
         li = HasListItem.getListItem(self)
         url = plugin.url_for_path('/album/%s' % self.id)
         li.setInfo('music', {
-            'title': self.title, 
-            'album': self.title, 
+            'title': self.title,
+            'album': self.title,
             'artist': self.artist.name,
             'year': getattr(self, 'year', None),
             'tracknumber': self._itemPosition + 1 if self._itemPosition >= 0 else 0
@@ -589,7 +589,7 @@ class TidalSession(Session):
         if not self._config.country_code:
             self._config.country_code = self.local_country_code()
             addon.setSetting('country_code', self._config.country_code)
-        Session.load_session(self, self._config.session_id, self._config.country_code, self._config.user_id, 
+        Session.load_session(self, self._config.session_id, self._config.country_code, self._config.user_id,
                              self._config.subscription_type, self._config.client_unique_key)
 
     def generate_client_unique_key(self):
@@ -740,8 +740,8 @@ class TidalFavorites(Favorites):
             fd = xbmcvfs.File(FAVORITES_FILE, 'r')
             self.ids = eval(fd.read())
             fd.close()
-            self.ids_loaded = not (self.ids['artists'] == None or self.ids['albums'] == None or 
-                                   self.ids['playlists'] == None or self.ids['tracks'] == None or 
+            self.ids_loaded = not (self.ids['artists'] == None or self.ids['albums'] == None or
+                                   self.ids['playlists'] == None or self.ids['tracks'] == None or
                                    self.ids['videos'] == None)
             if self.ids_loaded:
                 log('Loaded %s Favorites from disk.' % sum(len(self.ids[content]) for content in ['artists', 'albums', 'playlists', 'tracks', 'videos']))
@@ -857,7 +857,7 @@ class TidalUser(User):
             # Playlist unchanged
             return False
         items = self._session.get_playlist_items(playlist=playlist)
-        self.playlists_cache.update({playlist.id: {'title': playlist.title, 
+        self.playlists_cache.update({playlist.id: {'title': playlist.title,
                                                    'description': playlist.description,
                                                    'lastUpdated': playlist.lastUpdated,
                                                    'ids': [item.id for item in items]}})
@@ -980,7 +980,7 @@ class KodiLogHandler(logging.StreamHandler):
     def emit(self, record):
         if record.levelno < logging.WARNING and self._modules and not record.name in self._modules:
             # Log INFO and DEBUG only with enabled modules
-            return 
+            return
         levels = {
             logging.CRITICAL: xbmc.LOGFATAL,
             logging.ERROR: xbmc.LOGERROR,

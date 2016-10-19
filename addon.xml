@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.audio.tidal-master" name="TIDAL2" version="2.0.0-beta3" provider-name="arneson">
+<addon id="plugin.audio.tidal2" name="TIDAL2" version="2.0.0-beta4" provider-name="arneson">
     <requires>
         <import addon="xbmc.python" version="2.14.0"/>
         <import addon="script.module.requests" version="2.3.0"/>
         <import addon="script.module.routing" version="0.1.0"/>
-        <import addon="script.module.unidecode" version="0.4.16"/> 
+        <import addon="script.module.unidecode" version="0.4.16"/>
     </requires>
     <extension point="xbmc.python.pluginsource" library="addon.py">
         <provides>audio</provides>
@@ -19,6 +19,6 @@ Requires subscription. Visit tidal.com for details.</description>
         <license>GNU GENERAL PUBLIC LICENSE. Version 3, 29 June 2007</license>
         <platform>all</platform>
         <forum>http://forum.xbmc.org/showthread.php?tid=200555</forum>
-        <source>https://github.com/arnesongit/plugin.audio.tidal</source>
+        <source>https://github.com/arnesongit/plugin.audio.tidal2</source>
     </extension>
 </addon>
