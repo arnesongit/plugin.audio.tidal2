@@ -96,13 +96,17 @@
     <string id="30249">Als Default-%s-Playliste setzen</string>
     <string id="30250">Default-%s-Playliste zurücksetzen</string>
     <string id="30251">Playliste umbenennen</string>
+    <string id="30252">Playliste öffnen (nur Audio)</string>
 
     <!-- Extended Settings -->
     <string id="30500">Erweitert</string>
-    <string id="30501">Erweiterte Funktionen und Farben</string>
+    <string id="30501">Farben in Label verwenden</string>
     <string id="30502">Debug-Log aktivieren</string>
     <string id="30503">Album-Daten aller Titel lesen (Album-Cache)</string>
     <string id="30504">Kein FLAC-Stream !</string>
     <string id="30505">Album-Cache-Fehler !</string>
+    <string id="30506">Max. Anzahl paralleler HTTP-Requests</string>
+    <string id="30507">Favoriten in Label markieren</string>
+    <string id="30508">User-Paylist-Namen zum Label hinzufügen</string>
 
 </strings>

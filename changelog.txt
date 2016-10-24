@@ -1,17 +1,29 @@
-[B]2.0.0[/B]
-- Create/Edit/Delete UserPlaylist
+v2.0.0-beta5 (2016-10-22)
+- Fixed GetDirectory() error for Search functions and other Folders
+  which don't show a list (Artist bio).
+- Settings to enable/disable colors and marked favorites in labels
+- Mark Favorites as <label text> instead of Bold if color mode is disabled
+  because the Kodi Remote Apps don't support Kodi format tags in labels.
+- Show User Playlists in labels of Promotion Video items.
+- Setting to enable/disable User Playlist names in labels
+- Context Menu "Open Playlist (Audio only)" to play only audio for videos in playlists.
+- Preparations for Kodi Krypton
+
+v2.0.0-beta4
+- Renamed to TIDAL2 (from plugin.audio.wimp to plugin.audio.tidal2)
+- Create/Edit/Delete User Playlist
 - Add/Remove Items from Favorites
 - Cache files for UserPlaylists and Favorites
-- Name of UserPlaylists in Labels if Track/Video is a playlist item
+- Name of User Playlists in Labels if Track/Video is a playlist item
 - Favorites are marked in Labels
 - Colored Labels:
   a) Folders are Blue
   b) Favorites are Yellow
-  c) UserPlaylists are Green
+  c) User Playlists are Green
   d) Locked Streams are Red
 - Cache for Album Data for correct year in Track items
 
-[B]1.3.0 (unreleased)[/B]
+v1.3.0 (unreleased)
 - Using new Login-Token for all content
 - Added Video playback
 - Seperate settings for Subscription Type, Music Quality and Video Quality
@@ -22,20 +34,20 @@
 - Added German translation
 - Added Trial Mode (30 seconds playback without login)
 
-[B]1.2.2[/B]
+v1.2.2
 - Fixed album listing due to site changes
 
-[B]1.2.0[/B]
+v1.2.0
 - WiMP is now TIDAL: changed name and branding
 - Added album year info
 - Fixed featured albums view
 
-[B]1.1.1[/B]
+v1.1.1
 - Fixed playback of streams served from tidal
 - Improved login functionality
 - Changed search dialog to a directory
 
-[B]1.1.0[/B]
+v1.1.0
 - Added TIDAL support
 - Added Lossless support
 - Added "What's New", "Moods" and genre browsing

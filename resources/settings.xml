@@ -11,8 +11,11 @@
     <setting label="30014" id="page_size" type="number" default="999"/>
   </category>
   <category label="30500">
-    <setting label="30501" id="color_mode" type="bool" default="true" />
-    <setting label="30503" id="album_cache" type="bool" default="false" />
+    <setting label="30501" id="color_mode" type="bool" default="true"/>
+    <setting label="30507" id="favorites_in_labels" type="bool" default="true"/>
+    <setting label="30508" id="user_playlists_in_labels" type="bool" default="true"/>
+    <setting label="30503" id="album_cache" type="bool" default="false"/>
+    <setting label="30506" id="max_http_requests" type="slider" default="10" range="1,1,20" option="int"  visible="eq(-1,true)"/>
     <setting label="30502" id="debug_log" type="bool" default="false" />
   </category>
 </settings>

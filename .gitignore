@@ -45,4 +45,6 @@ docs/_build
 
 # Eclipse-Settings
 .settings
+.externalTool*
 *.prefs
+*strings.po

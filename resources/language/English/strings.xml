@@ -96,13 +96,17 @@
     <string id="30249">Set as Default %s Playlist</string>
     <string id="30250">Reset Default %s Playlist</string>
     <string id="30251">Rename Playlist</string>
+    <string id="30252">Open Playlist (Audio only)"</string>
 
     <!-- Extended Settings -->
     <string id="30500">Extended</string>
-    <string id="30501">Extended Functions and Colors</string>
+    <string id="30501">Use Colors in Labels</string>
     <string id="30502">Debug Output</string>
     <string id="30503">Read Album Data for every Track (Album Cache)</string>
     <string id="30504">Not a FLAC Stream !</string>
     <string id="30505">Album Cache Error !</string>
+    <string id="30506">Max. number of parallel HTTP requests</string>
+    <string id="30507">Mark Favorites in Labels</string>
+    <string id="30508">Append User Paylist Names to Labels</string>
 
 </strings>

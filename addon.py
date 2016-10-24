@@ -25,12 +25,8 @@ import xbmcplugin
 from xbmcgui import ListItem
 from requests import HTTPError
 from lib.tidalapi.models import Quality, Category, SubscriptionType
-from lib.koditidal import plugin, addon, _addon_id, _T, _P, log, DEBUG_LEVEL, KodiLogHandler
-
-if addon.getSetting('color_mode') == 'true' or addon.getSetting('album_cache') == 'true':
-    from lib.koditidal2 import TidalSession2 as TidalSession
-else:
-    from lib.koditidal import TidalSession
+from lib.koditidal import plugin, addon, _addon_id, _T, log, DEBUG_LEVEL, KodiLogHandler
+from lib.koditidal2 import TidalSession2 as TidalSession
 
 # Set Log Handler for tidalapi
 logger = logging.getLogger()
@@ -154,17 +150,17 @@ def artist_view(artist_id):
         session.user.favorites.load_all()
     artist = session.get_artist(artist_id)
     xbmcplugin.setContent(plugin.handle, 'albums')
-    add_directory(_T(30225), plugin.url_for(artist_bio, artist_id), thumb=artist.image, fanart=artist.fanart)
+    add_directory(_T(30225), plugin.url_for(artist_bio, artist_id), thumb=artist.image, fanart=artist.fanart, isFolder=False)
     add_directory(_T(30226), plugin.url_for(top_tracks, artist_id), thumb=artist.image, fanart=artist.fanart)
-    add_directory(_P('videos'), plugin.url_for(artist_videos, artist_id), thumb=artist.image, fanart=artist.fanart)
+    add_directory(_T(30110), plugin.url_for(artist_videos, artist_id), thumb=artist.image, fanart=artist.fanart)
     add_directory(_T(30227), plugin.url_for(artist_radio, artist_id), thumb=artist.image, fanart=artist.fanart)
     add_directory(_T(30228), plugin.url_for(artist_playlists, artist_id), thumb=artist.image, fanart=artist.fanart)
     add_directory(_T(30229), plugin.url_for(similar_artists, artist_id), thumb=artist.image, fanart=artist.fanart)
     if session.is_logged_in:
         if session.user.favorites.isFavoriteArtist(artist_id):
-            add_directory(_T(30220), plugin.url_for(favorites_remove, content_type='artists', item_id=artist_id), thumb=artist.image, fanart=artist.fanart)
+            add_directory(_T(30220), plugin.url_for(favorites_remove, content_type='artists', item_id=artist_id), thumb=artist.image, fanart=artist.fanart, isFolder=False)
         else:
-            add_directory(_T(30219), plugin.url_for(favorites_add, content_type='artists', item_id=artist_id), thumb=artist.image, fanart=artist.fanart)
+            add_directory(_T(30219), plugin.url_for(favorites_add, content_type='artists', item_id=artist_id), thumb=artist.image, fanart=artist.fanart, isFolder=False)
     albums = session.get_artist_albums(artist_id) + \
              session.get_artist_albums_ep_singles(artist_id) + \
              session.get_artist_albums_other(artist_id)
@@ -212,6 +208,11 @@ def similar_artists(artist_id):
 @plugin.route('/playlist/<playlist_id>')
 def playlist_view(playlist_id):
     add_items(session.get_playlist_items(playlist_id), content='songs')
+
+
+@plugin.route('/playlist/tracks/<playlist_id>')
+def playlist_tracks(playlist_id):
+    add_items(session.get_playlist_tracks(playlist_id), content='songs')
 
 
 @plugin.route('/user_playlists')
@@ -409,7 +410,7 @@ def cache_reset():
 def cache_reload():
     if not session.is_logged_in:
         return
-    session.user.favorites.load_all()
+    session.user.favorites.load_all(force_reload=True)
     session.user.load_cache()
     session.user.playlists()
 
@@ -479,13 +480,18 @@ def search_type(field):
     keyboard.doModal()
     if keyboard.isConfirmed():
         keyboardinput = keyboard.getText()
-        if keyboardinput:
-            searchresults = session.search(field, keyboardinput)
-            add_items(searchresults.artists, content='files', end=False)
-            add_items(searchresults.albums, end=False)
-            add_items(searchresults.playlists, end=False)
-            add_items(searchresults.tracks, end=False)
-            add_items(searchresults.videos, end=True)
+    else:
+        keyboardinput = ''
+    if keyboardinput:
+        searchresults = session.search(field, keyboardinput)
+        add_items(searchresults.artists, content='files', end=False)
+        add_items(searchresults.albums, end=False)
+        add_items(searchresults.playlists, end=False)
+        add_items(searchresults.tracks, end=False)
+        add_items(searchresults.videos, end=True)
+    else:
+        xbmcplugin.setContent(plugin.handle, content='files')
+        xbmcplugin.endOfDirectory(plugin.handle)
 
 
 @plugin.route('/login')

@@ -81,12 +81,21 @@ def _P(key, default_txt=None):
 
 class HasListItem(object):
 
-    _is_logged_in = False
-    FOLDER_MASK = '%s'
-    FAVORITE_MASK = '[B]%s[/B]'
-    STREAM_LOCKED_MASK = '%s (%s)'
-    USER_PLAYLIST_MASK = '%s [%s]'
-    DEFAULT_PLAYLIST_MASK = '%s (%s)'
+    def setLabelFormat(self):
+        self._is_logged_in = False
+        self._favorites_in_labels = True if addon.getSetting('favorites_in_labels') == 'true' else False
+        self._user_playlists_in_labels = True if addon.getSetting('user_playlists_in_labels') == 'true' else False
+        self.FOLDER_MASK = '{label}'
+        if self._favorites_in_labels:
+            self.FAVORITE_MASK = '<{label}>'
+        else:
+            self.FAVORITE_MASK = '{label}'
+        self.STREAM_LOCKED_MASK = '{label} ({info})'
+        if self._user_playlists_in_labels:
+            self.USER_PLAYLIST_MASK = '{label} [{userpl}]'
+        else:
+            self.USER_PLAYLIST_MASK = '{label}'
+        self.DEFAULT_PLAYLIST_MASK = '{label} ({mediatype})'
 
     def getLabel(self, extended=True):
         return self.name
@@ -101,7 +110,7 @@ class HasListItem(object):
         if getattr(self, 'fanart', None):
             artwork['fanart'] = self.fanart
         li.setArt(artwork)
-        # In Favorites View everything is a Favorite
+        # In Favorites View everything as a Favorite
         if self._is_logged_in and hasattr(self, '_isFavorite') and '/favorites/' in sys.argv[0]:
             self._isFavorite = True
         cm = self.getContextMenuItems()
@@ -122,6 +131,7 @@ class AlbumItem(Album, HasListItem):
         self._ftArtists = [ArtistItem(artist) for artist in self._ftArtists]
 
     def getLabel(self, extended=True):
+        self.setLabelFormat()
         label = self.title
         if self.type == 'EP':
             label += ' (EP)'
@@ -130,7 +140,7 @@ class AlbumItem(Album, HasListItem):
         if getattr(self, 'year', None):
             label += ' (%s)' % self.year
         if extended and self._isFavorite and not '/favorites/' in sys.argv[0]:
-            label = self.FAVORITE_MASK % label
+            label = self.FAVORITE_MASK.format(label=label)
         return '%s - %s' % (self.artist.getLabel(extended), label)
 
     def getListItem(self):
@@ -162,8 +172,9 @@ class ArtistItem(Artist, HasListItem):
         self.__dict__.update(vars(item))
 
     def getLabel(self, extended=True):
+        self.setLabelFormat()
         if extended and self._isFavorite and not '/favorites/' in sys.argv[0]:
-            return self.FAVORITE_MASK % self.name
+            return self.FAVORITE_MASK.format(label=self.name)
         return self.name
 
     def getListItem(self):
@@ -188,9 +199,10 @@ class PlaylistItem(Playlist, HasListItem):
         self.__dict__.update(vars(item))
 
     def getLabel(self, extended=True):
+        self.setLabelFormat()
         label = self.name
         if extended and self._isFavorite and not '/favorites/' in sys.argv[0]:
-            label = self.FAVORITE_MASK % label
+            label = self.FAVORITE_MASK.format(label=label)
         if self.type == 'USER' and sys.argv[0].lower().find('user_playlists') >= 0:
             defaultpl = []
             if str(self.id) == addon.getSetting('default_trackplaylist_id'):
@@ -198,7 +210,7 @@ class PlaylistItem(Playlist, HasListItem):
             if str(self.id) == addon.getSetting('default_videoplaylist_id'):
                 defaultpl.append(_P('videos'))
             if len(defaultpl) > 0:
-                return self.DEFAULT_PLAYLIST_MASK % (label, ', '.join(defaultpl))
+                return self.DEFAULT_PLAYLIST_MASK.format(label=label, mediatype=', '.join(defaultpl))
         return label
 
     def getListItem(self):
@@ -214,6 +226,8 @@ class PlaylistItem(Playlist, HasListItem):
 
     def getContextMenuItems(self):
         cm = []
+        if self.numberOfVideos > 0:
+            cm.append((_T(30252), 'Container.Update(%s)' % plugin.url_for_path('/playlist/tracks/%s' % self.id)))
         if self._is_logged_in:
             if self.type == 'USER':
                 cm.append((_T(30251), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/rename/%s' % self.id)))
@@ -250,20 +264,21 @@ class TrackItem(Track, HasListItem):
         self._userplaylists = {} # Filled by parser
 
     def getLabel(self, extended=True):
+        self.setLabelFormat()
         label1 = self.artist.getLabel(extended=extended if self.available else False)
         label2 = self.titleForLabel
         if extended and self._isFavorite and self.available and not '/favorites/' in sys.argv[0]:
-            label2 = self.FAVORITE_MASK % label2
+            label2 = self.FAVORITE_MASK.format(label=label2)
         label = '%s - %s' % (label1, label2)
         if extended and not self.available:
-            label = self.STREAM_LOCKED_MASK % (label, _T(30242))
+            label = self.STREAM_LOCKED_MASK.format(label=label, info=_T(30242))
         txt = []
         plids = self._userplaylists.keys()
         for plid in plids:
             if plid <> self._playlist_id:
                 txt.append('%s' % self._userplaylists.get(plid).get('title'))
         if extended and txt:
-            label = self.USER_PLAYLIST_MASK % (label, ', '.join(txt))
+            label = self.USER_PLAYLIST_MASK.format(label=label, userpl=', '.join(txt))
         return label
 
     def getFtArtistsText(self):
@@ -336,24 +351,25 @@ class VideoItem(Video, HasListItem):
         self._userplaylists = {} # Filled by parser
 
     def getLabel(self, extended=True):
+        self.setLabelFormat()
         label1 = self.artist.name
         if extended and self.artist._isFavorite and self.available:
-            label1 = self.FAVORITE_MASK % label1
+            label1 = self.FAVORITE_MASK.format(label=label1)
         label2 = self.titleForLabel
         if getattr(self, 'year', None):
             label2 += ' (%s)' % self.year
         if extended and self._isFavorite and self.available and not '/favorites/' in sys.argv[0]:
-            label2 = self.FAVORITE_MASK % label2
+            label2 = self.FAVORITE_MASK.format(label=label2)
         label = '%s - %s' % (label1, label2)
         if extended and not self.available:
-            label = self.STREAM_LOCKED_MASK % (label, _T(30242))
+            label = self.STREAM_LOCKED_MASK.format(label=label, info=_T(30242))
         txt = []
         plids = self._userplaylists.keys()
         for plid in plids:
             if plid <> self._playlist_id:
                 txt.append('%s' % self._userplaylists.get(plid).get('title'))
         if extended and txt:
-            label = self.USER_PLAYLIST_MASK % (label, ', '.join(txt))
+            label = self.USER_PLAYLIST_MASK.format(label=label, userpl=', '.join(txt))
         return label
 
     def getFtArtistsText(self):
@@ -416,14 +432,22 @@ class PromotionItem(Promotion, HasListItem):
         if item.type != 'EXTURL' and item.id.startswith('http:'):
             item.type = 'EXTURL' # Fix some defect TIDAL Promotions
         self.__dict__.update(vars(item))
+        self._userplaylists = {} # Filled by parser
 
     def getLabel(self, extended=True):
+        self.setLabelFormat()
         if self.type in ['ALBUM', 'VIDEO']:
             label = '%s - %s' % (self.shortHeader, self.shortSubHeader)
         else:
             label = self.shortHeader
         if extended and self._isFavorite:
-            label = self.FAVORITE_MASK % label
+            label = self.FAVORITE_MASK.format(label=label)
+        txt = []
+        plids = self._userplaylists.keys()
+        for plid in plids:
+            txt.append('%s' % self._userplaylists.get(plid).get('title'))
+        if extended and txt:
+            label = self.USER_PLAYLIST_MASK.format(label=label, userpl=', '.join(txt))
         return label
 
     def getListItem(self):
@@ -431,17 +455,23 @@ class PromotionItem(Promotion, HasListItem):
         isFolder = True
         if self.type == 'PLAYLIST':
             url = plugin.url_for_path('/playlist/%s' % self.id)
+            li.setInfo('music', {
+                'artist': self.shortHeader,
+                'album': self.text,
+                'title': self.shortSubHeader
+            })
         elif self.type == 'ALBUM':
             url = plugin.url_for_path('/album/%s' % self.id)
             li.setInfo('music', {
                 'artist': self.shortHeader,
-                'album': self.shortSubHeader,
+                'album': self.text,
                 'title': self.shortSubHeader
             })
         elif self.type == 'VIDEO':
             url = plugin.url_for_path('/play_video/%s' % self.id)
             li.setInfo('video', {
                 'artist': [self.shortHeader],
+                'album': self.text,
                 'title': self.shortSubHeader
             })
             li.setProperty('isplayable', 'true')
@@ -473,6 +503,10 @@ class PromotionItem(Promotion, HasListItem):
                     cm.append((_T(30220), 'RunPlugin(%s)' % plugin.url_for_path('/favorites/remove/videos/%s' % self.id)))
                 else:
                     cm.append((_T(30219), 'RunPlugin(%s)' % plugin.url_for_path('/favorites/add/videos/%s' % self.id)))
+                cm.append((_T(30239), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/add/video/%s' % self.id)))
+            plids = self._userplaylists.keys()
+            for plid in plids:
+                cm.append(((_T(30247) % self._userplaylists[plid].get('title'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_id/%s/%s' % (plid, self.id)))))
             cm.append((_T(30224), 'Container.Update(%s)' % plugin.url_for_path('/recommended/videos/%s' % self.id)))
         return cm
 
@@ -486,8 +520,9 @@ class CategoryItem(Category, HasListItem):
         self.__dict__.update(vars(item))
 
     def getLabel(self, extended=True):
+        self.setLabelFormat()
         if extended:
-            return self.FOLDER_MASK % self._label
+            return self.FOLDER_MASK.format(label=self._label)
         return self._label
 
     def getListItems(self):
@@ -535,9 +570,10 @@ class FolderItem(BrowsableMedia, HasListItem):
         self._otherLabel = otherLabel
 
     def getLabel(self, extended=True):
+        self.setLabelFormat()
         label = self._otherLabel if self._otherLabel else self.name
         if extended:
-            label = self.FOLDER_MASK % label
+            label = self.FOLDER_MASK.format(label=label)
         return label
 
     def getListItem(self):
@@ -662,6 +698,8 @@ class TidalSession(Session):
     def _parse_promotion(self, json_obj):
         promotion = PromotionItem(Session._parse_promotion(self, json_obj))
         promotion._is_logged_in = self.is_logged_in
+        if self.is_logged_in and promotion.type == 'VIDEO':
+            promotion._userplaylists = self.user.playlists_of_id(promotion.id)
         return promotion
 
     def _parse_category(self, json_obj):
@@ -860,7 +898,7 @@ class TidalUser(User):
         self.playlists_cache.update({playlist.id: {'title': playlist.title,
                                                    'description': playlist.description,
                                                    'lastUpdated': playlist.lastUpdated,
-                                                   'ids': [item.id for item in items]}})
+                                                   'ids': ['%s' % item.id for item in items]}})
         return True
 
     def delete_cache(self):
@@ -880,7 +918,7 @@ class TidalUser(User):
             self.playlists()
         plids = self.playlists_cache.keys()
         for plid in plids:
-            if item_id in self.playlists_cache.get(plid).get('ids', []):
+            if '%s' % item_id in self.playlists_cache.get(plid).get('ids', []):
                 userpl.update({plid: self.playlists_cache.get(plid)})
         return userpl
 

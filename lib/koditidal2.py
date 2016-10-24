@@ -28,49 +28,54 @@ except ImportError:
 import xbmc
 import xbmcgui
 
-from koditidal import AlbumItem, ArtistItem, PlaylistItem, TrackItem, VideoItem, PromotionItem, CategoryItem, FolderItem
+from koditidal import HasListItem, AlbumItem, ArtistItem, PlaylistItem, TrackItem, VideoItem, PromotionItem, CategoryItem, FolderItem
 from koditidal import plugin, addon, log, _T, TidalSession, TidalUser, TidalFavorites, TidalConfig
 from tidalapi import SubscriptionType, Quality
 from metacache import MetaCache
 
-COLOR_FOLDER_MASK = '[COLOR blue]%s[/COLOR]'
-COLOR_FAVORITE_MASK = '[COLOR yellow]%s[/COLOR]'
-COLOR_STREAM_LOCKED_MASK = '[COLOR maroon]%s (%s)[/COLOR]'
-COLOR_USER_PLAYLIST_MASK = '%s [COLOR limegreen][%s][/COLOR]'
-COLOR_DEFAULT_PLAYLIST_MASK = '[COLOR limegreen]%s (%s)[/COLOR]'
-
 ALL_SAERCH_FIELDS = ['ARTISTS','ALBUMS','PLAYLISTS','TRACKS','VIDEOS']
 
 
-class AlbumItem2(AlbumItem):
+class ColoredListItem(HasListItem):
+
+    def setLabelFormat(self):
+        HasListItem.setLabelFormat(self)
+        if addon.getSetting('color_mode') == 'true':
+            self.FOLDER_MASK = '[COLOR blue]{label}[/COLOR]'
+            if self._favorites_in_labels:
+                self.FAVORITE_MASK = '[COLOR yellow]{label}[/COLOR]'
+            else:
+                self.FAVORITE_MASK = '{label}'
+            self.STREAM_LOCKED_MASK = '[COLOR maroon]{label} ({info})[/COLOR]'
+            if self._user_playlists_in_labels:
+                self.USER_PLAYLIST_MASK = '{label} [COLOR limegreen][{userpl}][/COLOR]'
+            else:
+                self.USER_PLAYLIST_MASK = '{label}'
+            self.DEFAULT_PLAYLIST_MASK = '[COLOR limegreen]{label} ({mediatype})[/COLOR]'
+
+
+class AlbumItem2(AlbumItem, ColoredListItem):
 
     def __init__(self, item):
         self.__dict__.update(vars(item))
         self.artist = ArtistItem2(self.artist)
         self.artists = [ArtistItem2(artist) for artist in self.artists]
         self._ftArtists = [ArtistItem2(artist) for artist in self._ftArtists]
-        if addon.getSetting('color_mode') == 'true':
-            self.FAVORITE_MASK = COLOR_FAVORITE_MASK
 
 
-class ArtistItem2(ArtistItem):
+class ArtistItem2(ArtistItem, ColoredListItem):
 
     def __init__(self, item):
         self.__dict__.update(vars(item))
-        if addon.getSetting('color_mode') == 'true':
-            self.FAVORITE_MASK = COLOR_FAVORITE_MASK
 
 
-class PlaylistItem2(PlaylistItem):
+class PlaylistItem2(PlaylistItem, ColoredListItem):
 
     def __init__(self, item):
         self.__dict__.update(vars(item))
-        if addon.getSetting('color_mode') == 'true':
-            self.FAVORITE_MASK = COLOR_FAVORITE_MASK
-            self.DEFAULT_PLAYLIST_MASK = COLOR_DEFAULT_PLAYLIST_MASK
 
 
-class TrackItem2(TrackItem):
+class TrackItem2(TrackItem, ColoredListItem):
 
     def __init__(self, item):
         self.__dict__.update(vars(item))
@@ -81,10 +86,6 @@ class TrackItem2(TrackItem):
         self.titleForLabel = self.title
         if self.explicit and not 'Explicit' in self.title:
             self.titleForLabel += ' (Explicit)'
-        if addon.getSetting('color_mode') == 'true':
-            self.FAVORITE_MASK = COLOR_FAVORITE_MASK
-            self.USER_PLAYLIST_MASK = COLOR_USER_PLAYLIST_MASK
-            self.STREAM_LOCKED_MASK = COLOR_STREAM_LOCKED_MASK
 
     def getComment(self):
         txt = TrackItem.getComment(self)
@@ -97,7 +98,7 @@ class TrackItem2(TrackItem):
         return ', '.join(comments)
 
 
-class VideoItem2(VideoItem):
+class VideoItem2(VideoItem, ColoredListItem):
 
     def __init__(self, item):
         self.__dict__.update(vars(item))
@@ -107,10 +108,6 @@ class VideoItem2(VideoItem):
         self.titleForLabel = self.title
         if self.explicit and not 'Explicit' in self.title:
             self.titleForLabel += ' (Explicit)'
-        if addon.getSetting('color_mode') == 'true':
-            self.FAVORITE_MASK = COLOR_FAVORITE_MASK
-            self.USER_PLAYLIST_MASK = COLOR_USER_PLAYLIST_MASK
-            self.STREAM_LOCKED_MASK = COLOR_STREAM_LOCKED_MASK
 
     def getComment(self):
         txt = VideoItem.getComment(self)
@@ -123,30 +120,24 @@ class VideoItem2(VideoItem):
         return ', '.join(comments)
 
 
-class PromotionItem2(PromotionItem):
+class PromotionItem2(PromotionItem, ColoredListItem):
 
     def __init__(self, item):
         if item.type != 'EXTURL' and item.id.startswith('http:'):
             item.type = 'EXTURL' # Fix some defect TIDAL Promotions
         self.__dict__.update(vars(item))
-        if addon.getSetting('color_mode') == 'true':
-            self.FAVORITE_MASK = COLOR_FAVORITE_MASK
 
 
-class CategoryItem2(CategoryItem):
+class CategoryItem2(CategoryItem, ColoredListItem):
 
     def __init__(self, item):
         self.__dict__.update(vars(item))
-        if addon.getSetting('color_mode') == 'true':
-            self.FOLDER_MASK = COLOR_FOLDER_MASK
 
 
-class FolderItem2(FolderItem):
+class FolderItem2(FolderItem, ColoredListItem):
 
     def __init__(self, folder, url, thumb=None, fanart=None, isFolder=True, label=None):
         FolderItem.__init__(self, folder, url, thumb, fanart, isFolder, label)
-        if addon.getSetting('color_mode') == 'true':
-            self.FOLDER_MASK = COLOR_FOLDER_MASK
 
 
 class LoginToken(object):
@@ -174,7 +165,7 @@ class TidalConfig2(TidalConfig):
         self.stream_session_id = addon.getSetting('stream_session_id')
         if not self.stream_session_id:
             self.stream_session_id = self.session_id
-        self.max_http_requests = 20
+        self.max_http_requests = int('0%s' % addon.getSetting('max_http_requests'))
         self.cache_albums = True if addon.getSetting('album_cache') == 'true' else False
 
 
@@ -385,7 +376,19 @@ class TidalSession2(TidalSession):
     def add_list_items(self, items, content=None, end=True, withNextPage=False):
         TidalSession.add_list_items(self, items, content=content, end=end, withNextPage=withNextPage)
         if end:
-            xbmc.executebuiltin('Container.SetViewMode(506)')
+            try:
+                kodiVersion = xbmc.getInfoLabel('System.BuildVersion').split()[0]
+                kodiVersion = kodiVersion.split('.')[0]
+                skinTheme = xbmc.getSkinDir().lower()
+                if 'onfluence' in skinTheme:
+                    if kodiVersion <= '16' or content <> 'musicvideos':
+                        xbmc.executebuiltin('Container.SetViewMode(506)')
+                    else:
+                        xbmc.executebuiltin('Container.SetViewMode(511)')
+                elif 'estuary' in skinTheme:
+                    xbmc.executebuiltin('Container.SetViewMode(55)')
+            except:
+                pass
 
     def add_directory_item(self, title, endpoint, thumb=None, fanart=None, end=False, isFolder=True, label=None):
         if callable(endpoint):
