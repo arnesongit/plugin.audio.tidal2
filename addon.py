@@ -467,6 +467,8 @@ def favorite_toggle():
 
 @plugin.route('/search')
 def search():
+    addon.setSetting('last_search_field', '')
+    addon.setSetting('last_search_text', '')
     add_directory(_T(30106), plugin.url_for(search_type, field='artist'))
     add_directory(_T(30107), plugin.url_for(search_type, field='album'))
     add_directory(_T(30108), plugin.url_for(search_type, field='playlist'))
@@ -476,22 +478,27 @@ def search():
 
 @plugin.route('/search_type/<field>')
 def search_type(field):
-    keyboard = xbmc.Keyboard('', _T(30206))
-    keyboard.doModal()
-    if keyboard.isConfirmed():
-        keyboardinput = keyboard.getText()
-    else:
-        keyboardinput = ''
-    if keyboardinput:
-        searchresults = session.search(field, keyboardinput)
+    last_field = addon.getSetting('last_search_field').decode('utf-8')
+    search_text = addon.getSetting('last_search_text').decode('utf-8')
+    if last_field <> field or not search_text:
+        addon.setSetting('last_search_field', field)
+        keyboard = xbmc.Keyboard('', _T(30206))
+        keyboard.doModal()
+        if keyboard.isConfirmed():
+            search_text = keyboard.getText()
+        else:
+            search_text = ''
+    addon.setSetting('last_search_text', search_text)
+    if search_text:
+        searchresults = session.search(field, search_text)
         add_items(searchresults.artists, content='files', end=False)
         add_items(searchresults.albums, end=False)
         add_items(searchresults.playlists, end=False)
         add_items(searchresults.tracks, end=False)
         add_items(searchresults.videos, end=True)
     else:
-        xbmcplugin.setContent(plugin.handle, content='files')
-        xbmcplugin.endOfDirectory(plugin.handle)
+        #xbmcplugin.setContent(plugin.handle, content='files')
+        xbmcplugin.endOfDirectory(plugin.handle, succeeded=False, updateListing=False)
 
 
 @plugin.route('/login')

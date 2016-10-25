@@ -1,3 +1,6 @@
+v2.0.0-beta6 (2016-10-25)
+- Fixed Search functions to work with Krypton
+
 v2.0.0-beta5 (2016-10-22)
 - Fixed GetDirectory() error for Search functions and other Folders
   which don't show a list (Artist bio).
