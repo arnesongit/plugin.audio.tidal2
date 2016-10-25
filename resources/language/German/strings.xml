@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <strings>
     <string id="30001">Allgemein</string>
+    <string id="30002">Erweitert</string>
     <string id="30004">Musik-Qualität</string>
     <string id="30005">Lossless (FLAC)</string>
     <string id="30006">High (320 kBit/s)</string>
@@ -13,6 +14,8 @@
     <string id="30013">Premium</string>
     <string id="30014">Max. Anzahl Einträge pro Seite</string>
     <string id="30015">Eindeutige Geräte-ID</string>
+    <string id="30016">Favoriten in Label markieren</string>
+    <string id="30017">User-Paylist-Namen zum Label hinzufügen</string>
 
     <!-- Video Settings -->
     <string id="30040">Video-Qualität</string>
@@ -99,14 +102,11 @@
     <string id="30252">Playliste öffnen (nur Audio)</string>
 
     <!-- Extended Settings -->
-    <string id="30500">Erweitert</string>
     <string id="30501">Farben in Label verwenden</string>
     <string id="30502">Debug-Log aktivieren</string>
     <string id="30503">Album-Daten aller Titel lesen (Album-Cache)</string>
     <string id="30504">Kein FLAC-Stream !</string>
     <string id="30505">Album-Cache-Fehler !</string>
     <string id="30506">Max. Anzahl paralleler HTTP-Requests</string>
-    <string id="30507">Favoriten in Label markieren</string>
-    <string id="30508">User-Paylist-Namen zum Label hinzufügen</string>
 
 </strings>

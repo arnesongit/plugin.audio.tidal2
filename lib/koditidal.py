@@ -81,8 +81,9 @@ def _P(key, default_txt=None):
 
 class HasListItem(object):
 
+    _is_logged_in = False
+
     def setLabelFormat(self):
-        self._is_logged_in = False
         self._favorites_in_labels = True if addon.getSetting('favorites_in_labels') == 'true' else False
         self._user_playlists_in_labels = True if addon.getSetting('user_playlists_in_labels') == 'true' else False
         self.FOLDER_MASK = '{label}'
