@@ -15,7 +15,8 @@
     <setting label="30016" id="favorites_in_labels" type="bool" default="true"/>
     <setting label="30017" id="user_playlists_in_labels" type="bool" default="true"/>
     <setting label="30503" id="album_cache" type="bool" default="false"/>
-    <setting label="30506" id="max_http_requests" type="slider" default="10" range="1,1,20" option="int"  visible="eq(-1,true)"/>
+    <setting label="30507" id="reset_album_cache" type="action" action="RunPlugin(plugin://plugin.audio.tidal2/cache_reset_confirmed)" visible="eq(-1,true)"/>
+    <setting label="30506" id="max_http_requests" type="slider" default="10" range="1,1,20" option="int"  visible="eq(-2,true)"/>
     <setting label="30502" id="debug_log" type="bool" default="false" />
   </category>
 </settings>

@@ -174,7 +174,7 @@ class TidalSession2(TidalSession):
     def __init__(self, config=TidalConfig2()):
         TidalSession.__init__(self, config=config)
         # Album Cache
-        self.metaCache = MetaCache() if self._config.cache_albums else None
+        self.metaCache = MetaCache()
         self.albumJsonBuffer = {}
         self.abortAlbumThreads = True
         self.albumQueue = Queue()
@@ -293,20 +293,23 @@ class TidalSession2(TidalSession):
 
     def get_album(self, album_id, withCache=True):
         if withCache and self._config.cache_albums:
-            json_obj = self.metaCache.fetch('album', '%s' % album_id)
-            if json_obj and 'id' in json_obj:
-                # albumJsonBuffer is only for new Albums
-                self.albumJsonBuffer.pop('%s' % album_id, None)
+            # Try internal buffer first
+            json_obj = self.albumJsonBuffer.get('%s' % album_id, None)
+            if json_obj == None:
+                # Now read from Cache Database
+                json_obj = self.metaCache.getAlbumJson(album_id)
+                if json_obj != None and 'id' in json_obj:
+                    # Transfer into the local buffer
+                    self.albumJsonBuffer['%s' % json_obj.get('id')] = json_obj
+            if json_obj:
                 return self._parse_album(json_obj)
         return TidalSession.get_album(self, album_id)
 
-    def get_album_tracks(self, album_id, withAlbum=True):
-        items = TidalSession.get_album_tracks(self, album_id, withAlbum=True)
-        if self._config.cache_albums:
-            json_obj = self.albumJsonBuffer.get('%s' % album_id, None)
-            if json_obj:
-                log('Write Album %s into the MetaCache' % album_id)
-                self.metaCache.insertAlbumJson(json_obj)
+    def get_album_items(self, album_id, ret='playlistitems'):
+        items = TidalSession.get_album_items(self, album_id, ret=ret)
+        videos = [item for item in items if isinstance(item, VideoItem)]
+        if len(videos) == 0 and self._config.cache_albums and not ret.startswith('track'):
+            self.metaCache.delete('album_with_videos', album_id)
         return items
 
     def get_playlist_items(self, playlist_id=None, playlist=None, offset=0, limit=9999, ret='playlistitems'):
@@ -321,7 +324,10 @@ class TidalSession2(TidalSession):
 
     def get_category_content(self, group, path, content_type, offset=0, limit=999):
         items = TidalSession.get_category_content(self, group, path, content_type, offset=offset, limit=limit)
-        self.update_albums_in_items(items)
+        if content_type.startswith('track'):
+            self.update_albums_in_items(items)
+        elif content_type.startswith('album'):
+            self.save_album_cache()
         return items
 
     def _parse_one_item(self, json_obj, ret):
@@ -377,6 +383,7 @@ class TidalSession2(TidalSession):
         TidalSession.add_list_items(self, items, content=content, end=end, withNextPage=withNextPage)
         if end:
             try:
+                self.save_album_cache()
                 kodiVersion = xbmc.getInfoLabel('System.BuildVersion').split()[0]
                 kodiVersion = kodiVersion.split('.')[0]
                 skinTheme = xbmc.getSkinDir().lower()
@@ -433,19 +440,23 @@ class TidalSession2(TidalSession):
             for item in items:
                 if isinstance(item, TrackItem):
                     track_count += 1
-                if isinstance(item, TrackItem) and item.available and not item.album.releaseDate and \
-                    (item.title <> item.album.title or item.trackNumber > 1):
-                    # Try to read Album from Cache
-                    json_obj = self.albumJsonBuffer.get('%s' % item.album.id, None)
-                    if json_obj == None:
-                        json_obj = self.metaCache.fetch('album', '%s' % item.album.id)
-                    if json_obj != None:
-                        item.album = self._parse_album(json_obj)
-                    else:
-                        missing_items.append(item)
-                        if not item.album.id in missing_ids:
-                            missing_ids.append(item.album.id)
-                            self.albumQueue.put('%s' % item.album.id)
+                    try:
+                        isAlbum = abs(int('%s' % item.id) - int('%s' % item.album.id)) > 1
+                    except:
+                        isAlbum = True
+                    if item.available and not item.album.releaseDate and isAlbum:
+                        #(item.title <> item.album.title or item.trackNumber > 1):
+                        # Try to read Album from Cache
+                        json_obj = self.albumJsonBuffer.get('%s' % item.album.id, None)
+                        if json_obj == None:
+                            json_obj = self.metaCache.getAlbumJson(item.album.id)
+                        if json_obj != None:
+                            item.album = self._parse_album(json_obj)
+                        else:
+                            missing_items.append(item)
+                            if not item.album.id in missing_ids:
+                                missing_ids.append(item.album.id)
+                                self.albumQueue.put('%s' % item.album.id)
             # Step 2: Load JSon-Data from all missing Albums
             if len(missing_ids) <= 5 or self._config.max_http_requests <= 1:
                 # Without threads
@@ -467,20 +478,36 @@ class TidalSession2(TidalSession):
                         log('Worker %s is still running ...' % worker.ident, xbmc.LOGWARNING)
             # Step 3: Save JsonData into MetaCache
             if len(missing_items) > 0:
-                album_ids = self.albumJsonBuffer.keys()
-                log('Write %s Albums into the MetaCache' % len(album_ids))
-                for album_id in album_ids:
-                    if xbmc.abortRequested:
-                        break
-                    json_obj = self.albumJsonBuffer.get(album_id, None)
-                    if json_obj != None and 'id' in json_obj:
-                        self.metaCache.insertAlbumJson(json_obj)
-                log('Putting %s from %s missing Albums for %s TrackItems' % (len(album_ids), len(missing_items), track_count))
+                numAlbums = self.save_album_cache()
+                log('Cached %s from %s missing Albums for %s TrackItems' % (numAlbums, len(missing_items), track_count))
                 # Step 4: Fill missing Albums into the TrackItems
                 for item in missing_items:
                     json_obj = self.albumJsonBuffer.get('%s' % item.album.id, None)
                     if json_obj != None:
                         item.album = self._parse_album(json_obj)
+
+    def save_album_cache(self):
+        numAlbums = 0
+        if self._config.cache_albums:
+            album_ids = self.albumJsonBuffer.keys()
+            for album_id in album_ids:
+                if xbmc.abortRequested:
+                    break
+                json_obj = self.albumJsonBuffer.get(album_id, None)
+                if json_obj != None and 'id' in json_obj and not json_obj.get('_cached', False):
+                    numAlbums += 1
+                    self.metaCache.insertAlbumJson(json_obj)
+            if numAlbums > 0:
+                log('Wrote %s from %s Albums into the MetaCache' % (numAlbums, len(album_ids)))
+        return numAlbums
+
+    def albums_with_videos(self):
+        items = []
+        if self.metaCache:
+            jsonList = self.metaCache.fetchAllData('album_with_videos')
+            for json in jsonList:
+                items.append(self._parse_one_item(json, ret='album'))
+        return items
 
 
 class Favorites2(TidalFavorites):
@@ -495,3 +522,11 @@ class User2(TidalUser):
         TidalUser.__init__(self, session, user_id, subscription_type)
         self.favorites = Favorites2(session, user_id)
 
+    def delete_cache(self):
+        ok = TidalUser.delete_cache(self)
+        try:
+            if getattr(self._session, 'metaCache'):
+                ok = self._session.metaCache.deleteDatabase()
+        except:
+            return False
+        return ok 

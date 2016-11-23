@@ -1,3 +1,7 @@
+v2.0.0-beta7 (2016-11-23)
+- Support for Videos in Albums
+- Optimized Album Buffer Cache
+
 v2.0.0-beta6 (2016-10-25)
 - Fixed Search functions to work with Krypton
 

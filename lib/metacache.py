@@ -19,8 +19,9 @@
 
 import os
 import xbmc
-import xbmcaddon
+import xbmcvfs
 import threading
+from types import DictionaryType
 
 try:
     from sqlite3 import dbapi2 as database
@@ -124,15 +125,24 @@ class MetaCache(object):
                 ok = False
             except:
                 debug.log('Failed: INSERT INTO meta Values type="%s", id="%s", data="%s"' % (item_type, item_id, i), level=xbmc.LOGERROR)
-                ok = False    
+                ok = False
             self.dbcon.commit()
         except Exception, e:
             debug.logException(e, txt='Error in insert(%s,%s)' % (item_type, item_id))
         return ok
 
+    def getAlbumJson(self, album_id):
+        json_obj = self.fetch('album', '%s' % album_id)
+        if isinstance(json_obj, DictionaryType):
+            json_obj.update({'_cached': True})
+        return json_obj
+
     def insertAlbumJson(self, json_obj):
         if CACHE_ALBUMS and json_obj.get('id') and json_obj.get('releaseDate'):
             self.insert('album', '%s' % json_obj.get('id'), json_obj, overwrite=True)
+            if json_obj.get('numberOfVideos', 0) > 0:
+                self.insert('album_with_videos', '%s' % json_obj.get('id'), json_obj, overwrite=True)
+            json_obj.update({'_cached': True})
 
     def insertUserPlaylist(self, playlist_id, title='Unknown', items=[], overwrite=True):
         if CACHE_PLAYLISTS:
@@ -180,5 +190,15 @@ class MetaCache(object):
         except:
             pass
         return ok
+
+    def deleteDatabase(self):
+        try:
+            filename = os.path.join(METACACHE_DIR, METACACHE_FILE)
+            if xbmcvfs.exists(filename):
+                xbmcvfs.delete(filename)
+                debug.log('Deleted Database file %s' % METACACHE_FILE)
+        except:
+            return False
+        return True
 
 # End of File

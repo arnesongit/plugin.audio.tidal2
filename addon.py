@@ -30,7 +30,7 @@ from lib.koditidal2 import TidalSession2 as TidalSession
 
 # Set Log Handler for tidalapi
 logger = logging.getLogger()
-logger.addHandler(KodiLogHandler(modules=['lib.tidalapi']))
+logger.addHandler(KodiLogHandler(modules=['lib.tidalapi', 'tidalapi']))
 if DEBUG_LEVEL == xbmc.LOGSEVERE:
     logger.setLevel(logging.DEBUG)
 
@@ -40,6 +40,7 @@ session.load_session()
 
 add_items = session.add_list_items
 add_directory = session.add_directory_item
+CONTENT_FOR_TYPE = {'artists': 'artists', 'albums': 'albums', 'playlists': 'albums', 'tracks': 'songs', 'videos': 'musicvideos'}
 
 
 @plugin.route('/')
@@ -47,6 +48,8 @@ def root():
     if session.is_logged_in:
         add_directory(_T(30201), my_music)
     add_directory(_T(30202), featured_playlists)
+    if getattr(session._config, 'cache_albums', False):
+        add_directory(_T(30509), plugin.url_for(albums_with_videos))
     categories = Category.groups()
     for item in categories:
         add_directory(_T(item), plugin.url_for(category, group=item))
@@ -55,6 +58,11 @@ def root():
         add_directory(_T(30207), logout, end=True, isFolder=False)
     else:
         add_directory(_T(30208), login, end=True, isFolder=False)
+
+
+@plugin.route('/albums_with_videos')
+def albums_with_videos():
+    add_items(session.albums_with_videos(), content='albums')
 
 
 @plugin.route('/category/<group>')
@@ -98,7 +106,7 @@ def category_item(group, path):
 @plugin.route('/category/<group>/<path>/<content_type>/<offset>')
 def category_content(group, path, content_type, offset):
     items = session.get_category_content(group, path, content_type, offset=int('0%s' % offset), limit=session._config.pageSize)
-    add_items(items, content='musicvideos' if content_type == 'videos' else 'songs', withNextPage=True)
+    add_items(items, content=CONTENT_FOR_TYPE.get(content_type, 'songs'), withNextPage=True)
 
 
 @plugin.route('/track_radio/<track_id>')
@@ -125,7 +133,7 @@ def featured(group):
 @plugin.route('/featured_playlists')
 def featured_playlists():
     items = session.get_featured()
-    add_items(items, content='files')
+    add_items(items, content='albums')
 
 
 @plugin.route('/my_music')
@@ -141,7 +149,16 @@ def my_music():
 @plugin.route('/album/<album_id>')
 def album_view(album_id):
     xbmcplugin.addSortMethod(plugin.handle, xbmcplugin.SORT_METHOD_TRACKNUM)
-    add_items(session.get_album_tracks(album_id), content='albums')
+    album = session.get_album(album_id)
+    if album and album.numberOfVideos > 0:
+        add_directory(_T(30110), plugin.url_for(album_videos, album_id=album_id))
+    add_items(session.get_album_tracks(album_id), content='songs')
+
+
+@plugin.route('/album_videos/<album_id>')
+def album_videos(album_id):
+    xbmcplugin.addSortMethod(plugin.handle, xbmcplugin.SORT_METHOD_TRACKNUM)
+    add_items(session.get_album_items(album_id, ret='videos'), content='musicvideos')
 
 
 @plugin.route('/artist/<artist_id>')
@@ -197,7 +214,7 @@ def artist_videos(artist_id):
 
 @plugin.route('/artist/<artist_id>/playlists')
 def artist_playlists(artist_id):
-    add_items(session.get_artist_playlists(artist_id), content='songs')
+    add_items(session.get_artist_playlists(artist_id), content='albums')
 
 
 @plugin.route('/artist/<artist_id>/similar')
@@ -217,7 +234,7 @@ def playlist_tracks(playlist_id):
 
 @plugin.route('/user_playlists')
 def user_playlists():
-    add_items(session.user.playlists(), content='songs')
+    add_items(session.user.playlists(), content='albums')
 
 
 @plugin.route('/user_playlist/rename/<playlist_id>')
@@ -373,7 +390,6 @@ def user_playlist_toggle():
 
 @plugin.route('/favorites/<content_type>')
 def favorites(content_type):
-    CONTENT_FOR_TYPE = {'artists': 'artists', 'albums': 'albums', 'playlists': 'albums', 'tracks': 'songs', 'videos': 'musicvideos'}
     items = session.user.favorites.get(content_type, limit=100 if content_type == 'videos' else 9999)
     if content_type in ['playlists', 'artists']:
         items.sort(key=lambda line: line.name, reverse=False)
@@ -405,6 +421,10 @@ def cache_reset():
     session.user.delete_cache()
     session.user.favorites.delete_cache()
 
+@plugin.route('/cache_reset_confirmed')
+def cache_reset_confirmed():
+    if xbmcgui.Dialog().yesno(_T(30507), _T(30508)):
+        cache_reset()
 
 @plugin.route('/cache_reload')
 def cache_reload():

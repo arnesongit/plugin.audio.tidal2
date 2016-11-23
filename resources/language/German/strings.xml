@@ -108,5 +108,8 @@
     <string id="30504">Kein FLAC-Stream !</string>
     <string id="30505">Album-Cache-Fehler !</string>
     <string id="30506">Max. Anzahl paralleler HTTP-Requests</string>
+    <string id="30507">Album-Cache löschen</string>
+    <string id="30508">Soll der Album-Cache wirklich gelöscht werden ?</string>
+    <string id="30509">Alben mit Videos (im Album-Cache)</string>
 
 </strings>
