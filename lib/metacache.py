@@ -142,7 +142,16 @@ class MetaCache(object):
             self.insert('album', '%s' % json_obj.get('id'), json_obj, overwrite=True)
             if json_obj.get('numberOfVideos', 0) > 0:
                 self.insert('album_with_videos', '%s' % json_obj.get('id'), json_obj, overwrite=True)
+            if json_obj.get('_mqa', False):
+                self.insertMasterAlbumId(json_obj.get('id'))
             json_obj.update({'_cached': True})
+
+    def insertMasterAlbumId(self, album_id):
+        self.insert('master_album', '%s' % album_id, '%s' % album_id, overwrite=True)
+
+    def isMasterAlbum(self, album_id):
+        master_album_id = self.fetch('master_album', '%s' % album_id)
+        return True if master_album_id and '%s' % master_album_id == '%s' % album_id else False 
 
     def insertUserPlaylist(self, playlist_id, title='Unknown', items=[], overwrite=True):
         if CACHE_PLAYLISTS:

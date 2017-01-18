@@ -1,3 +1,11 @@
+v2.0.0-beta8 (2017-01-18)
+- Support for Master Quality Audio (MQA)
+- Support for Apple Lossless Audio (ALAC)
+- Added RTMP Streaming for HIGH/LOW Quality
+- Added "Master Albums" folder to the "What's New" folder
+- Add "(MQA)" to Labels of Master Albums
+- Playing Edited Tracks (new in TIDAL iOS App)
+
 v2.0.0-beta7 (2016-11-23)
 - Support for Videos in Albums
 - Optimized Album Buffer Cache

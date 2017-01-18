@@ -3,7 +3,7 @@
     <string id="30001">General</string>
     <string id="30002">Extended</string>
     <string id="30004">Music Quality</string>
-    <string id="30005">Lossless (FLAC)</string>
+    <string id="30005">Lossless (FLAC,ALAC,MQA)</string>
     <string id="30006">High (320 kBit/s)</string>
     <string id="30007">Low (96 kBit/s)</string>
     <string id="30008">Username</string>
@@ -16,6 +16,13 @@
     <string id="30015">Unique Client Key</string>
     <string id="30016">Mark Favorites in Labels</string>
     <string id="30017">Append User Paylist Names to Labels</string>
+    <string id="30018">Music Streaming Option</string>
+    <string id="30019">FLAC 16-Bit</string>
+    <string id="30020">ALAC 16-Bit (Apple Lossless)</string>
+    <string id="30021">FLAC/MQA 24-Bit (Master Audio)</string>
+    <string id="30022">RTMP-Protocol for High/Low Quality</string>
+    <string id="30023">Show Album Year in Labels</string>
+    <string id="30024">Add (MQA) to Master Album Labels</string>
 
     <!-- Video Settings -->
     <string id="30040">Video Quality</string>

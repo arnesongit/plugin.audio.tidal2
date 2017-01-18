@@ -65,6 +65,12 @@ def albums_with_videos():
     add_items(session.albums_with_videos(), content='albums')
 
 
+@plugin.route('/master_albums')
+def master_albums():
+    items = session.master_albums()
+    add_items(items, content='albums')
+
+
 @plugin.route('/category/<group>')
 def category(group):
     promoGroup = {'rising': 'RISING', 'discovery': 'DISCOVERY', 'featured': 'NEWS'}.get(group, None)
@@ -83,6 +89,7 @@ def category(group):
     if promoGroup and totalCount > 10:
         # Add Promotions as Folder on the Top if more than 10 Promotions available
         add_directory(_T(30120), plugin.url_for(featured, group=promoGroup))
+        add_directory('Master %s (MQA)' % _T(30107), master_albums)
     # Add Category Items as Folders
     add_items(items, content=None, end=not(promoGroup and totalCount <= 10))
     if promoGroup and totalCount <= 10:
@@ -363,6 +370,7 @@ def user_playlist_toggle():
         item_type = 'track'
         userpl_id = addon.getSetting('default_trackplaylist_id').decode('utf-8')
         item_id = url.split('play_track/')[1]
+        item_id = item_id.split('/')[0]
         item = session.get_track(item_id)
     elif 'play_video/' in url:
         item_type = 'video'
@@ -460,6 +468,7 @@ def favorite_toggle():
                     session.user.favorites.add_album(item_id)
         elif 'play_track/' in url:
             item_id = url.split('play_track/')[1]
+            item_id = item_id.split('/')[0]
             if not '/' in item_id:
                 if session.user.favorites.isFavoriteTrack(item_id):
                     session.user.favorites.remove_track(item_id)
@@ -557,10 +566,26 @@ def logout():
     xbmc.executebuiltin('Container.update(plugin://%s/, True)' % addon.getAddonInfo('id'))
 
 
-@plugin.route('/play_track/<track_id>')
-def play_track(track_id):
-    media_url = session.get_media_url(track_id)
+@plugin.route('/play_track/<track_id>/<album_id>')
+def play_track(track_id, album_id):
+    media_url = session.get_media_url(track_id, album_id=album_id)
     log("Playing: %s" % media_url)
+    if not media_url.startswith('http://') and not media_url.startswith('https://') and \
+        not 'app=' in media_url.lower() and not 'playpath=' in media_url.lower():
+        # Rebuild RTMP URL
+        host, tail = media_url.split('/', 1)
+        app, playpath = tail.split('/mp4:', 1)
+        media_url = 'rtmp://%s app=%s playpath=mp4:%s' % (host, app, playpath)
+    li = ListItem(path=media_url)
+    mimetype = 'audio/flac' if session._config.quality == Quality.lossless and session.is_logged_in else 'audio/mpeg'
+    li.setProperty('mimetype', mimetype)
+    xbmcplugin.setResolvedUrl(plugin.handle, True, li)
+
+
+@plugin.route('/play_track_cut/<track_id>/<cut_id>/<album_id>')
+def play_track_cut(track_id, cut_id, album_id):
+    media_url = session.get_media_url(track_id, cut_id=cut_id, album_id=album_id)
+    log("Playing Cut %s: %s" % (cut_id, media_url))
     if not media_url.startswith('http://') and not media_url.startswith('https://') and \
         not 'app=' in media_url.lower() and not 'playpath=' in media_url.lower():
         # Rebuild RTMP URL
@@ -575,11 +600,12 @@ def play_track(track_id):
 
 @plugin.route('/play_video/<video_id>')
 def play_video(video_id):
-    media_url = session.get_video_url(video_id)
-    log("Playing: %s" % media_url)
-    li = ListItem(path=media_url)
-    li.setProperty('mimetype', 'video/mp4')
-    xbmcplugin.setResolvedUrl(plugin.handle, True, li)
+    media = session.get_video_url(video_id)
+    if media:
+        log("Playing: %s" % media.url)
+        li = ListItem(path=media.url)
+        li.setProperty('mimetype', 'video/mp4')
+        xbmcplugin.setResolvedUrl(plugin.handle, True, li)
 
 
 @plugin.route('/stream_locked')

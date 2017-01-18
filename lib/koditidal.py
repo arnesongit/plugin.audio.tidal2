@@ -20,6 +20,7 @@ from __future__ import unicode_literals
 import os, sys, re
 import datetime
 import logging
+from types import DictionaryType
 from urlparse import urlsplit
 import xbmc
 import xbmcvfs
@@ -29,7 +30,7 @@ import xbmcplugin
 from xbmcgui import ListItem
 from routing import Plugin
 from tidalapi import Config, Session, User, Favorites
-from tidalapi.models import Quality, SubscriptionType, BrowsableMedia, Artist, Album, PlayableMedia, Track, Video, Playlist, Promotion, Category
+from tidalapi.models import Quality, SubscriptionType, BrowsableMedia, Artist, Album, PlayableMedia, Track, Video, Playlist, Promotion, Category, CutInfo
 from m3u8 import load as m3u8_load
 
 
@@ -133,16 +134,20 @@ class AlbumItem(Album, HasListItem):
 
     def getLabel(self, extended=True):
         self.setLabelFormat()
-        label = self.title
-        if self.type == 'EP':
-            label += ' (EP)'
-        elif self.type == 'SINGLE':
-            label += ' (Single)'
-        if getattr(self, 'year', None):
-            label += ' (%s)' % self.year
+        label = self.getLongTitle()
         if extended and self._isFavorite and not '/favorites/' in sys.argv[0]:
             label = self.FAVORITE_MASK.format(label=label)
         return '%s - %s' % (self.artist.getLabel(extended), label)
+
+    def getLongTitle(self):
+        longTitle = self.title
+        if self.type == 'EP':
+            longTitle += ' (EP)'
+        elif self.type == 'SINGLE':
+            longTitle += ' (Single)'
+        if getattr(self, 'year', None) and addon.getSetting('album_year_in_labels') == 'true':
+            longTitle += ' (%s)' % self.year
+        return longTitle
 
     def getListItem(self):
         li = HasListItem.getListItem(self)
@@ -259,15 +264,12 @@ class TrackItem(Track, HasListItem):
         self.artists = [ArtistItem(artist) for artist in self.artists]
         self._ftArtists = [ArtistItem(artist) for artist in self._ftArtists]
         self.album = AlbumItem(self.album)
-        self.titleForLabel = self.title
-        if self.explicit and not 'Explicit' in self.title:
-            self.titleForLabel += ' (Explicit)'
         self._userplaylists = {} # Filled by parser
 
     def getLabel(self, extended=True):
         self.setLabelFormat()
         label1 = self.artist.getLabel(extended=extended if self.available else False)
-        label2 = self.titleForLabel
+        label2 = self.getLongTitle()
         if extended and self._isFavorite and self.available and not '/favorites/' in sys.argv[0]:
             label2 = self.FAVORITE_MASK.format(label=label2)
         label = '%s - %s' % (label1, label2)
@@ -281,6 +283,15 @@ class TrackItem(Track, HasListItem):
         if extended and txt:
             label = self.USER_PLAYLIST_MASK.format(label=label, userpl=', '.join(txt))
         return label
+
+    def getLongTitle(self):
+        longTitle = self.title
+        if self.explicit and not 'Explicit' in self.title:
+            longTitle += ' (Explicit)'
+        if self.editable and isinstance(self._cut, CutInfo):
+            if self._cut.name:
+                longTitle += ' (%s)' % self._cut.name
+        return longTitle
 
     def getFtArtistsText(self):
         text = ''
@@ -298,7 +309,10 @@ class TrackItem(Track, HasListItem):
     def getListItem(self):
         li = HasListItem.getListItem(self)
         if self.available:
-            url = plugin.url_for_path('/play_track/%s' % self.id)
+            if isinstance(self._cut, CutInfo):
+                url = plugin.url_for_path('/play_track_cut/%s/%s/%s' % (self.id, self._cut.id, self.album.id))
+            else:
+                url = plugin.url_for_path('/play_track/%s/%s' % (self.id, self.album.id))
             isFolder = False
         else:
             url = plugin.url_for_path('/stream_locked')
@@ -346,9 +360,6 @@ class VideoItem(Video, HasListItem):
         self.artist = ArtistItem(self.artist)
         self.artists = [ArtistItem(artist) for artist in self.artists]
         self._ftArtists = [ArtistItem(artist) for artist in self._ftArtists]
-        self.titleForLabel = self.title
-        if self.explicit and not 'Explicit' in self.title:
-            self.titleForLabel += ' (Explicit)'
         self._userplaylists = {} # Filled by parser
 
     def getLabel(self, extended=True):
@@ -356,9 +367,7 @@ class VideoItem(Video, HasListItem):
         label1 = self.artist.name
         if extended and self.artist._isFavorite and self.available:
             label1 = self.FAVORITE_MASK.format(label=label1)
-        label2 = self.titleForLabel
-        if getattr(self, 'year', None):
-            label2 += ' (%s)' % self.year
+        label2 = self.getLongTitle()
         if extended and self._isFavorite and self.available and not '/favorites/' in sys.argv[0]:
             label2 = self.FAVORITE_MASK.format(label=label2)
         label = '%s - %s' % (label1, label2)
@@ -372,6 +381,14 @@ class VideoItem(Video, HasListItem):
         if extended and txt:
             label = self.USER_PLAYLIST_MASK.format(label=label, userpl=', '.join(txt))
         return label
+
+    def getLongTitle(self):
+        longTitle = self.title
+        if self.explicit and not 'Explicit' in self.title:
+            longTitle += ' (Explicit)'
+        if getattr(self, 'year', None):
+            longTitle += ' (%s)' % self.year
+        return longTitle
 
     def getFtArtistsText(self):
         text = ''
@@ -593,6 +610,59 @@ class FolderItem(BrowsableMedia, HasListItem):
         return self._fanart if self._fanart else HasListItem.fanart
 
 
+class LoginToken(object):
+
+    browser =   'wdgaB1CilGA-S_s2' # Streams HIGH/LOW Quality over RTMP, FLAC and Videos over HTTP, but many Lossless Streams are encrypted.
+    android =   'kgsOOmYk3zShYrNP' # All Streams are HTTP Streams. Correct numberOfVideos in Playlists (best Token to use)
+    ios =       '_DSTon1kC8pABnTw' # Same as Android Token, but uses ALAC instead of FLAC
+    native =    '4zx46pyr9o8qZNRw' # Same as Android Token, but FLAC streams are encrypted
+    audirvana = 'BI218mwp9ERZ3PFI' # Like Android Token, supports MQA, but returns 'numberOfVideos = 0' in Playlists
+    amarra =    'wc8j_yBJd20zOmx0' # Like Android Token, but returns 'numberOfVideos = 0' in Playlists
+    # Unkown working Tokens
+    token1 =    'P5Xbeo5LFvESeDy6' # Like Android Token, but returns 'numberOfVideos = 0' in Playlists
+    token2 =    'oIaGpqT_vQPnTr0Q' # Like token1, nut uses RTMP for HIGH/LOW Quality
+    token3 =    '_KM2HixcUBZtmktH' # Same as token1
+
+    features = {
+        # token: Login-Token to get a Session-ID
+        # codecs: Supported Audio Codecs without encryption
+        # rtmp: Uses RTMP Protocol for HIGH/LOW Quality Audio Streams
+        # videosInPlaylists: True: numberOfVideos in Playlists is correct, False: returns 'numberOfVideos = 0' in Playlists
+        # user-agent: Special User-Agent in HTTP-Request-Header
+        'browser':   { 'token': browser,   'codecs': ['AAC'],                'rtmp': True,  'videosInPlaylists': True,  'user-agent': None },
+        'android':   { 'token': android,   'codecs': ['AAC', 'FLAC'],        'rtmp': False, 'videosInPlaylists': True,  'user-agent': 'TIDAL_ANDROID/686 okhttp/3.3.1' },
+        'ios':       { 'token': ios,       'codecs': ['AAC', 'ALAC'],        'rtmp': False, 'videosInPlaylists': True,  'user-agent': 'TIDAL/546 CFNetwork/808.2.16 Darwin/16.3.0' },
+        'native':    { 'token': native,    'codecs': ['AAC'],                'rtmp': False, 'videosInPlaylists': True,  'user-agent': 'TIDAL_NATIVE_PLAYER/OSX/2.3.20' },
+        'audirvana': { 'token': audirvana, 'codecs': ['AAC', 'FLAC', 'MQA'], 'rtmp': False, 'videosInPlaylists': False, 'user-agent': 'Audirvana Plus/2.6.4 CFNetwork/807.2.14 Darwin/16.3.0 (x86_64)' },
+        'amarra':    { 'token': amarra,    'codecs': ['AAC', 'FLAC'],        'rtmp': False, 'videosInPlaylists': False, 'user-agent': 'Amarra for TIDAL/2.2.1261 CFNetwork/807.2.14 Darwin/16.3.0 (x86_64)' },
+        # Unknown working Tokens
+        'token1':    { 'token': token1,    'codecs': ['AAC', 'FLAC'],        'rtmp': False, 'videosInPlaylists': False, 'user-agent': None },
+        'token2':    { 'token': token2,    'codecs': ['AAC', 'FLAC'],        'rtmp': True,  'videosInPlaylists': False, 'user-agent': None },
+        'token3':    { 'token': token3,    'codecs': ['AAC', 'FLAC'],        'rtmp': False, 'videosInPlaylists': False, 'user-agent': None }
+    }
+
+    priority = ['android', 'ios', 'audirvana', 'browser', 'native', 'amarra', 'token1', 'token2', 'token3']
+
+    @staticmethod
+    def getFeatures(tokenName='android'):
+        return LoginToken.features.get(tokenName)
+
+    @staticmethod
+    def getToken(tokenName='android'):
+        return LoginToken.getFeatures(tokenName).get('token')
+
+    @staticmethod
+    def select(codec, rtmp=False, api=True):
+        tokens = []
+        lossless = codec in ['FLAC', 'ALAC', 'MQA']
+        rtmp_relevant = False if lossless else True
+        for tokenName in LoginToken.priority:
+            token = LoginToken.getFeatures(tokenName)
+            if codec in token.get('codecs') and (not rtmp_relevant or token.get('rtmp') == rtmp) and (not api or token.get('videosInPlaylists') == api):
+                tokens.append(tokenName)
+        return tokens
+
+
 # Session from the TIDAL-API to parse Items into Kodi List Items
 
 class TidalConfig(Config):
@@ -603,12 +673,21 @@ class TidalConfig(Config):
 
     def load(self):
         self.session_id = addon.getSetting('session_id')
+        self.stream_session_id = addon.getSetting('stream_session_id')
+        if not self.stream_session_id:
+            self.stream_session_id = self.session_id
         self.country_code = addon.getSetting('country_code')
         self.user_id = addon.getSetting('user_id')
-        self.subscription_type = [SubscriptionType.hifi, SubscriptionType.premium][int('0' + addon.getSetting('subscription_type'))]
+        self.subscription_type = [SubscriptionType.hifi, SubscriptionType.premium][min(1, int('0' + addon.getSetting('subscription_type')))]
         self.client_unique_key = addon.getSetting('client_unique_key')
-        self.quality = [Quality.lossless, Quality.high, Quality.low][int('0' + addon.getSetting('quality'))]
-        self.maxVideoHeight = [9999, 1080, 720, 540, 480, 360, 240][int('0%s' % addon.getSetting('video_quality'))]
+        self.quality = [Quality.lossless, Quality.high, Quality.low][min(2, int('0' + addon.getSetting('quality')))]
+        self.use_rtmp = True if addon.getSetting('music_option') == '3' and self.quality <> Quality.lossless else False
+        self.codec = ['FLAC', 'AAC', 'AAC'][min([2, int('0' + addon.getSetting('quality'))])]
+        if addon.getSetting('music_option') == '1' and self.quality == Quality.lossless:
+            self.codec = 'ALAC'
+        elif addon.getSetting('music_option') == '2' and self.quality == Quality.lossless:
+            self.codec = 'MQA'
+        self.maxVideoHeight = [9999, 1080, 720, 540, 480, 360, 240][min(6, int('0%s' % addon.getSetting('video_quality')))]
         self.pageSize = max(10, min(999, int('0%s' % addon.getSetting('page_size'))))
 
 
@@ -628,6 +707,7 @@ class TidalSession(Session):
             addon.setSetting('country_code', self._config.country_code)
         Session.load_session(self, self._config.session_id, self._config.country_code, self._config.user_id,
                              self._config.subscription_type, self._config.client_unique_key)
+        self.stream_session_id = self._config.stream_session_id
 
     def generate_client_unique_key(self):
         unique_key = addon.getSetting('client_unique_key')
@@ -635,22 +715,67 @@ class TidalSession(Session):
             unique_key = Session.generate_client_unique_key(self)
         return unique_key
 
+    def login_with_token(self, username, password, subscription_type, tokenName, api=True):
+        old_token = self._config.api_token
+        old_session_id = self.session_id
+        self._config.api_token = LoginToken.getToken(tokenName)
+        self.session_id = None
+        Session.login(self, username, password, subscription_type)
+        success = True if self.session_id else False
+        if not api:
+            self.stream_session_id = self.session_id
+            if old_session_id:
+                self.session_id = old_session_id
+        self._config.api_token = old_token
+        return success
+
     def login(self, username, password, subscription_type=None):
-        if addon.getSetting('client_unique_key') == '' and subscription_type == SubscriptionType.hifi:
-            addon.setSetting('quality', '0') # Switch to Lossless Quality
-        ok = Session.login(self, username, password, subscription_type=subscription_type)
-        if ok:
+        if not username or not password:
+            return False
+        if not subscription_type:
+            # Set Subscription Type corresponding to the given playback quality
+            subscription_type = SubscriptionType.hifi if self._config.quality == Quality.lossless else SubscriptionType.premium
+        if not self.client_unique_key:
+            # Generate a random client key if no key is given
+            self.client_unique_key = self.generate_client_unique_key()
+        api_token = ''
+        # Get working Tokens with correct numberOfVideos in Playlists which can be used for API calls and for Streaming
+        tokenNames = LoginToken.select(codec=self._config.codec, rtmp=self._config.use_rtmp, api=True)
+        if not tokenNames:
+            # Get a default API Token
+            tokenNames = LoginToken.select(codec='AAC', rtmp=self._config.use_rtmp, api=True)
+        for tokenName in tokenNames:
+            loginOk = self.login_with_token(username, password, subscription_type, tokenName, api=True)
+            if loginOk:
+                self.stream_session_id = self.session_id
+                api_token = tokenName
+                break
+        # Get Tokens which are necessary for Streaming
+        tokenNames = LoginToken.select(codec=self._config.codec, rtmp=self._config.use_rtmp, api=False)
+        if api_token not in tokenNames:
+            # Get Session-ID for Streaming
+            for tokenName in tokenNames:
+                loginOk = self.login_with_token(username, password, subscription_type, tokenName, api=False)
+                if loginOk:
+                    break
+        # Save Session Data into Addon-Settings
+        if self.is_logged_in:
             addon.setSetting('session_id', self.session_id)
+            addon.setSetting('stream_session_id', self.stream_session_id)
             addon.setSetting('country_code', self.country_code)
             addon.setSetting('user_id', unicode(self.user.id))
             addon.setSetting('subscription_type', '0' if self.user.subscription.type == SubscriptionType.hifi else '1')
             addon.setSetting('client_unique_key', self.client_unique_key)
-        return ok
+            self._config.load()
+        return self.is_logged_in
 
     def logout(self):
         Session.logout(self)
+        self.stream_session_id = None
         addon.setSetting('session_id', '')
+        addon.setSetting('stream_session_id', '')
         addon.setSetting('user_id', '')
+        self._config.load()
 
     def get_album_tracks(self, album_id, withAlbum=True):
         items = Session.get_album_tracks(self, album_id)
@@ -706,12 +831,36 @@ class TidalSession(Session):
     def _parse_category(self, json_obj):
         return CategoryItem(Session._parse_category(self, json_obj))
 
+    def get_media_url(self, track_id, quality=None, cut_id=None, fallback=False):
+        return Session.get_media_url(self, track_id, quality=quality, cut_id=cut_id, fallback=fallback)
+
+    def get_track_url(self, track_id, quality=None, cut_id=None):
+        oldSessionId = self.session_id
+        self.session_id = self.stream_session_id
+        soundQuality = quality if quality else self._config.quality
+        media = Session.get_track_url(self, track_id, quality=soundQuality, cut_id=cut_id)
+        if soundQuality == Quality.lossless and (media == None or media.isEncrypted):
+            log(media.url, level=xbmc.LOGWARNING)
+            if media:
+                log('Got encryptionKey "%s" for track %s, trying HIGH Quality ...' % (media.encryptionKey, track_id), level=xbmc.LOGWARNING)
+            else:
+                log('No Lossless stream for track %s, trying HIGH Quality ...' % track_id, level=xbmc.LOGWARNING)
+            media = self.get_track_url(track_id, quality=Quality.high, cut_id=cut_id)
+        if media:
+            if quality == Quality.lossless and media.codec not in ['FLAC', 'ALAC', 'MQA']:
+                xbmcgui.Dialog().notification(plugin.name, _T(30504) , icon=xbmcgui.NOTIFICATION_WARNING)
+            log('Got stream with soundQuality:%s, codec:%s' % (media.soundQuality, media.codec))
+        self.session_id = oldSessionId
+        return media
+
     def get_video_url(self, video_id, maxHeight=-1):
-        url = Session.get_video_url(self, video_id)
+        oldSessionId = self.session_id
+        self.session_id = self.stream_session_id
+        media = Session.get_video_url(self, video_id)
         maxVideoHeight = maxHeight if maxHeight > 0 else self._config.maxVideoHeight
-        if maxVideoHeight <> 9999 and url.lower().find('.m3u8') > 0:
-            log('Parsing M3U8 Playlist: %s' % url)
-            m3u8obj = m3u8_load(url)
+        if maxVideoHeight <> 9999 and media.url.lower().find('.m3u8') > 0:
+            log('Parsing M3U8 Playlist: %s' % media.url)
+            m3u8obj = m3u8_load(media.url)
             if m3u8obj.is_variant and not m3u8obj.cookies:
                 # Variant Streams with Cookies have to be played without stream selection.
                 # You can change the Bandwidth Limit in Kodi Settings to select other streams !
@@ -722,13 +871,16 @@ class TidalSession(Session):
                         width, height = playlist.stream_info.resolution
                         if height > selected_height and height <= maxVideoHeight:
                             if re.match(r'https?://', playlist.uri):
-                                url = playlist.uri
+                                media.url = playlist.uri
                             else:
-                                url = m3u8obj.base_uri + playlist.uri
+                                media.url = m3u8obj.base_uri + playlist.uri
                             selected_height = height
+                            media.width = width
+                            media.height = height
                     except:
                         pass
-        return url
+        self.session_id = oldSessionId
+        return media
 
     def add_list_items(self, items, content=None, end=True, withNextPage=False):
         if content:

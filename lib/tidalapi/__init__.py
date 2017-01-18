@@ -25,7 +25,7 @@ import logging
 import requests
 from requests.packages import urllib3
 from collections import Iterable
-from .models import UserInfo, Subscription, SubscriptionType, Quality
+from .models import UserInfo, Subscription, SubscriptionType, Quality, TrackUrl, VideoUrl, CutInfo
 from .models import Artist, Album, Track, Video, Playlist, BrowsableMedia, PlayableMedia, Promotion, SearchResult, Category
 try:
     from urlparse import urljoin
@@ -75,7 +75,6 @@ class Session(object):
         return format(random.getrandbits(64), '02x')
 
     def login(self, username, password, subscription_type=None):
-        self.logout()
         if not username or not password:
             return False
         if not subscription_type:
@@ -107,7 +106,6 @@ class Session(object):
                 self.user = self.init_user(user_id=body['userId'], subscription_type=subscription_type)
             except:
                 log.error('Login failed.')
-                self.logout()
 
         return self.is_logged_in
 
@@ -376,7 +374,9 @@ class Session(object):
                 retType = ret
                 if 'type' in item and ret.startswith('playlistitem'):
                     retType = item['type']
+                cutData = None
                 if 'item' in item:
+                    cutData = item.get('cut', None)
                     item = item['item']
                 elif 'track' in item and ret.startswith('track'):
                     item = item['track']
@@ -387,6 +387,8 @@ class Session(object):
                     nextItem._itemPosition = itemPosition
                     nextItem._offset = offset
                     nextItem._totalNumberOfItems = numberOfItems
+                if isinstance(nextItem, Track) and cutData:
+                    nextItem._cut = self._parse_one_item(cutData, ret='cut')
                 result.append(nextItem)
                 itemPosition = itemPosition + 1
         else:
@@ -400,34 +402,39 @@ class Session(object):
                     log.error('No ETag in response header for playlist "%s" (%s)' % (json_obj.get('title'), json_obj.get('id')))
         return result
 
-    def get_media_url(self, track_id, quality=None):
+    def get_media_url(self, track_id, quality=None, cut_id=None, fallback=True):
+        soundQuality = quality if quality else self._config.quality
+        media = self.get_track_url(track_id, quality=soundQuality, cut_id=cut_id)
+        if fallback and soundQuality == Quality.lossless and (media == None or media.isEncrypted):
+            log.warning(media.url)
+            if media:
+                # Got Encrypted Stream. Retry with HIGH Quality
+                log.warning('Got encryptionKey "%s" for track %s, trying HIGH Quality ...' % (media.encryptionKey, track_id))
+            else:
+                log.warning('No Lossless stream for track %s, trying HIGH Quality ...' % track_id)
+            media = self.get_track_url(track_id, quality=Quality.high, cut_id=cut_id)
+        if not media:
+            return None
+        return media.url
+
+    def get_track_url(self, track_id, quality=None, cut_id=None):
+        params = {}
         if self.is_logged_in:
-            params = {'soundQuality': quality if quality else self._config.quality}
-            # Request with second SessionId because FLAC Streaming needs a different Login Token
-            r = self.request('GET', 'tracks/%s/streamUrl' % track_id, params)
-            if r.ok:
-                json_obj = r.json()
-                url = json_obj.get('url', None)
-                if params.get('soundQuality') == Quality.lossless and json_obj.get('encryptionKey', False) and not '.flac' in url:
-                    # Got Encrypted Stream. Retry with HIGH Quality
-                    log.warning(url)
-                    log.warning('Got encryptionKey "%s" for track %s, trying HIGH Quality ...' % (json_obj.get('encryptionKey', ''), track_id))
-                    return self.get_media_url(track_id, quality=Quality.high)
+            params.update({'soundQuality': quality if quality else self._config.quality})
+            if cut_id:
+                url = 'cuts/%s/streamUrl' % cut_id
+            else:
+                url = 'tracks/%s/streamUrl' % track_id
         else:
-            r = self.request('GET', 'tracks/%s/previewurl' % track_id)
-            url = r.json().get('url', None)
-        if not r.ok:
-            r.raise_for_status()
-        return url
+            url = 'tracks/%s/previewurl' % track_id
+        return self._map_request(url,  params=params, ret='track_url')
 
     def get_video_url(self, video_id):
         if self.is_logged_in:
-            r = self.request('GET', 'videos/%s/streamUrl' % video_id)
+            url = 'videos/%s/streamUrl' % video_id
         else:
-            r = self.request('GET', 'videos/%s/previewurl' % video_id)
-        if not r.ok:
-            r.raise_for_status()
-        return r.json().get('url', None)
+            url = 'videos/%s/previewurl' % video_id
+        return self._map_request(url,  ret='video_url')
 
     def search(self, field, value, limit=50):
         params = {
@@ -455,8 +462,12 @@ class Session(object):
             parse = self._parse_artist
         elif ret.startswith('album'):
             parse = self._parse_album
+        elif ret.startswith('track_url'):
+            parse = self._parse_track_url
         elif ret.startswith('track'):
             parse = self._parse_track
+        elif ret.startswith('video_url'):
+            parse = self._parse_video_url
         elif ret.startswith('video'):
             parse = self._parse_video
         elif ret.startswith('playlist'):
@@ -465,6 +476,8 @@ class Session(object):
             parse = self._parse_category
         elif ret.startswith('search'):
             parse = self._parse_search
+        elif ret.startswith('cut'):
+            parse = self._parse_cut_info
         else:
             raise NotImplementedError()
         oneItem = parse(json_obj)
@@ -526,6 +539,9 @@ class Session(object):
                 item._isFavorite = self.user.favorites.isFavoriteVideo(item.id)
         return item
 
+    def _parse_track_url(self, json_obj):
+        return TrackUrl(**json_obj)
+
     def _parse_track(self, json_obj):
         track = Track(**json_obj)
         if 'artist' in json_obj:
@@ -541,6 +557,9 @@ class Session(object):
         if self.is_logged_in and self.user.favorites:
             track._isFavorite = self.user.favorites.isFavoriteTrack(track.id)
         return track
+
+    def _parse_video_url(self, json_obj):
+        return VideoUrl(**json_obj)
 
     def _parse_video(self, json_obj):
         video = Video(**json_obj)
@@ -575,6 +594,9 @@ class Session(object):
         if 'videos' in json_obj:
             result.videos = [self._parse_video(json) for json in json_obj['videos']['items']]
         return result
+
+    def _parse_cut_info(self, json_obj):
+        return CutInfo(**json_obj)
 
 #------------------------------------------------------------------------------
 # Class to work with user favorites

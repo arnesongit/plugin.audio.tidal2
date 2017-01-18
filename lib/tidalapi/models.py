@@ -258,9 +258,11 @@ class Track(PlayableMedia):
     premiumStreamingOnly = False
     replayGain = 0.0
     peak = 1.0
+    editable = False
 
     # Internal Properties
     _ftArtists = []  # All artists except main (Filled by parser)
+    _cut = None
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -496,3 +498,44 @@ class Subscription(Model):
     @property
     def isValis(self):
         return self.validUntil >= datetime.datetime.now()
+
+
+class StreamUrl(object):
+    url = None
+
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
+
+class TrackUrl(StreamUrl):
+    codec = None            # MP3, AAC, FLAC, ALAC, MQA
+    cutId = None
+    soundQuality = None     # LOW, HIGH, LOSSLESS
+    encryptionKey = None
+    trackId = None
+
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+        super(TrackUrl, self).__init__()
+
+    @property
+    def isEncrypted(self):
+        return True if self.encryptionKey else False
+
+
+class VideoUrl(StreamUrl):
+    videoQuality = None     # HIGH
+
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+        super(VideoUrl, self).__init__()
+
+
+class CutInfo(Model):
+    duration = 0
+    userId = None
+
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+        super(CutInfo, self).__init__()
+

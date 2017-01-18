@@ -2,6 +2,7 @@
 <settings>
   <category label="30001">
     <setting label="30004" id="quality" type="select" lvalues="30005|30006|30007" default="1"/>
+    <setting label="30018" id="music_option" type="select" lvalues="30019|30020|30021|30022" default="0"/>
     <setting label="30040" id="video_quality" type="select" lvalues="30041|30042|30043|30044|30045|30046|30047" default="1" />
     <setting label="30008" id="username" type="text" default=""/>
     <setting label="30009" id="password" type="text" option="hidden" default=""/>
@@ -14,6 +15,8 @@
     <setting label="30501" id="color_mode" type="bool" default="true"/>
     <setting label="30016" id="favorites_in_labels" type="bool" default="true"/>
     <setting label="30017" id="user_playlists_in_labels" type="bool" default="true"/>
+    <setting label="30023" id="album_year_in_labels" type="bool" default="true"/>
+    <setting label="30024" id="mqa_in_labels" type="bool" default="true"/>
     <setting label="30503" id="album_cache" type="bool" default="false"/>
     <setting label="30507" id="reset_album_cache" type="action" action="RunPlugin(plugin://plugin.audio.tidal2/cache_reset_confirmed)" visible="eq(-1,true)"/>
     <setting label="30506" id="max_http_requests" type="slider" default="10" range="1,1,20" option="int"  visible="eq(-2,true)"/>

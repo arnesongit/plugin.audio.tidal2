@@ -21,16 +21,12 @@ import traceback
 from threading import Thread
 from Queue import Queue
 import requests
-try:
-    from urlparse import urljoin
-except ImportError:
-    from urllib.parse import urljoin
 import xbmc
 import xbmcgui
 
 from koditidal import HasListItem, AlbumItem, ArtistItem, PlaylistItem, TrackItem, VideoItem, PromotionItem, CategoryItem, FolderItem
 from koditidal import plugin, addon, log, _T, TidalSession, TidalUser, TidalFavorites, TidalConfig
-from tidalapi import SubscriptionType, Quality
+from tidalapi import SubscriptionType
 from metacache import MetaCache
 
 ALL_SAERCH_FIELDS = ['ARTISTS','ALBUMS','PLAYLISTS','TRACKS','VIDEOS']
@@ -56,11 +52,23 @@ class ColoredListItem(HasListItem):
 
 class AlbumItem2(AlbumItem, ColoredListItem):
 
+    _mqa = False
+
     def __init__(self, item):
         self.__dict__.update(vars(item))
         self.artist = ArtistItem2(self.artist)
         self.artists = [ArtistItem2(artist) for artist in self.artists]
         self._ftArtists = [ArtistItem2(artist) for artist in self._ftArtists]
+
+    def getLongTitle(self):
+        label = AlbumItem.getLongTitle(self)
+        if self.isMasterAlbum and addon.getSetting('mqa_in_labels') == 'true':
+            label += ' (MQA)'
+        return label
+
+    @property
+    def isMasterAlbum(self):
+        return True if self._mqa else False
 
 
 class ArtistItem2(ArtistItem, ColoredListItem):
@@ -83,9 +91,6 @@ class TrackItem2(TrackItem, ColoredListItem):
         self.artists = [ArtistItem2(artist) for artist in self.artists]
         self._ftArtists = [ArtistItem2(artist) for artist in self._ftArtists]
         self.album = AlbumItem2(self.album)
-        self.titleForLabel = self.title
-        if self.explicit and not 'Explicit' in self.title:
-            self.titleForLabel += ' (Explicit)'
 
     def getComment(self):
         txt = TrackItem.getComment(self)
@@ -105,9 +110,6 @@ class VideoItem2(VideoItem, ColoredListItem):
         self.artist = ArtistItem2(self.artist)
         self.artists = [ArtistItem2(artist) for artist in self.artists]
         self._ftArtists = [ArtistItem2(artist) for artist in self._ftArtists]
-        self.titleForLabel = self.title
-        if self.explicit and not 'Explicit' in self.title:
-            self.titleForLabel += ' (Explicit)'
 
     def getComment(self):
         txt = VideoItem.getComment(self)
@@ -140,21 +142,6 @@ class FolderItem2(FolderItem, ColoredListItem):
         FolderItem.__init__(self, folder, url, thumb, fanart, isFolder, label)
 
 
-class LoginToken(object):
-    browser = 'wdgaB1CilGA-S_s2' # Streams HIGH/LOW Quality over RTMP, FLAC and Videos over HTTP, but many Lossless Streams are encrypted.
-    token1 = 'kgsOOmYk3zShYrNP'  # All Streams are HTTP Streams. Correct numberOfVideos in Playlists (best Token to use)
-    token2 = 'P5Xbeo5LFvESeDy6'  # Same function as token1, but Playlist Headers returns only numberOfTracks (numberOfVideos = 0)
-    token3 = 'oIaGpqT_vQPnTr0Q'  # Old WIMP-Token, same as token2, but HIGH/LOW Audio Quality uses RTMP protocol
-    token4 = '_KM2HixcUBZtmktH'  # Old WIMP-Token which still works.
-    token5 = '4zx46pyr9o8qZNRw'  # Other old Token that still works, but many FLAC streams are encrypted.
-    # Tokens which return correct numberOfVideos in Playlists
-    api_tokens = [token1, browser]
-    # Tokens which streams all FLAC content (no encryped streams)
-    hifi_tokens = [token1, token2, token3, token4]
-    # All Tokens to play HIGH/LOW quality
-    premium_tokens = [token1, browser, token2, token3, token4, token5]
-
-
 class TidalConfig2(TidalConfig):
 
     def __init__(self):
@@ -162,11 +149,9 @@ class TidalConfig2(TidalConfig):
 
     def load(self):
         TidalConfig.load(self)
-        self.stream_session_id = addon.getSetting('stream_session_id')
-        if not self.stream_session_id:
-            self.stream_session_id = self.session_id
         self.max_http_requests = int('0%s' % addon.getSetting('max_http_requests'))
         self.cache_albums = True if addon.getSetting('album_cache') == 'true' else False
+        self.mqa_in_labels = True if addon.getSetting('mqa_in_labels') == 'true' and self.codec == 'MQA' else False
 
 
 class TidalSession2(TidalSession):
@@ -181,107 +166,6 @@ class TidalSession2(TidalSession):
 
     def init_user(self, user_id, subscription_type):
         return User2(self, user_id, subscription_type)
-
-    def load_session(self):
-        TidalSession.load_session(self)
-        self.stream_session_id = self._config.stream_session_id
-
-    def login(self, username, password, subscription_type=None, loginToken=None):
-        if loginToken == None:
-            ok = TidalSession.login(self, username, password, subscription_type=subscription_type)
-            if ok:
-                self.stream_session_id = self.session_id
-                addon.setSetting('stream_session_id', self.stream_session_id)
-                self._config.load()
-                return ok
-        if not username or not password:
-            return False
-        if not subscription_type:
-            # Set Subscription Type corresponding to the given playback quality
-            subscription_type = SubscriptionType.hifi if self._config.quality == Quality.lossless else SubscriptionType.premium
-        if loginToken:
-            tokens = [loginToken]  # Using only the given token
-        elif subscription_type == SubscriptionType.hifi:
-            tokens = LoginToken.hifi_tokens  # Using tokens with correct FLAC Streaming
-        else:
-            tokens = LoginToken.premium_tokens  # Using universal tokens for HIGH/LOW Quality
-        if not self.client_unique_key:
-            # Generate a random client key if no key is given
-            self.client_unique_key = self.generate_client_unique_key()
-        url = urljoin(self._config.api_location, 'login/username')
-        payload = {
-            'username': username,
-            'password': password,
-            'clientUniqueKey': self.client_unique_key
-        }
-        log('Using clientUniqueKey "%s"' % self.client_unique_key)
-        working_token = ''
-        for token in tokens:
-            headers = { "X-Tidal-Token": token }
-            r = requests.post(url, data=payload, headers=headers)
-            if not r.ok:
-                try:
-                    msg = r.json().get('userMessage')
-                except:
-                    msg = r.reason
-                log(msg, level=xbmc.LOGERROR)
-                log('Login-Token "%s" didn\'t work' % token, level=xbmc.LOGERROR)
-            else:
-                try:
-                    body = r.json()
-                    self.session_id = body['sessionId']
-                    self.stream_session_id = self.session_id
-                    self.country_code = body['countryCode']
-                    self.user = self.init_user(user_id=body['userId'], subscription_type=subscription_type)
-                    working_token = token
-                    log('Using Login-Token "%s"' % working_token)
-                    break
-                except:
-                    log('Login-Token "%s" failed.' % token, level=xbmc.LOGERROR)
-
-        if working_token not in LoginToken.api_tokens:
-            # Try to get a valid API Token for Videos in Playlists
-            for token in LoginToken.api_tokens:
-                headers = { "X-Tidal-Token": token }
-                r = requests.post(url, data=payload, headers=headers)
-                if not r.ok:
-                    try:
-                        msg = r.json().get('userMessage')
-                    except:
-                        msg = r.reason
-                    log(msg, level=xbmc.LOGERROR)
-                    log('API-Token "%s" failed.' % token, level=xbmc.LOGERROR)
-                else:
-                    try:
-                        body = r.json()
-                        self.session_id = body['sessionId']
-                        if not self.user:
-                            # Previous login token(s) failed
-                            log('All Login-Tokens failed. Normal API-Key will be used for streaming.', level=xbmc.LOGERROR)
-                            self.stream_session_id = self.api_session_id
-                            self.country_code = body['countryCode']
-                            self.user = self.init_user(user_id=body['userId'], subscription_type=subscription_type)
-                        log('Using API-Token "%s"' % token)
-                        break
-                    except:
-                        log('API-Token "%s" failed.' % token, level=xbmc.LOGERROR)
-
-        if self.is_logged_in:
-            addon.setSetting('session_id', self.session_id)
-            addon.setSetting('stream_session_id', self.stream_session_id)
-            addon.setSetting('country_code', self.country_code)
-            addon.setSetting('user_id', unicode(self.user.id))
-            addon.setSetting('subscription_type', '0' if self.user.subscription.type == SubscriptionType.hifi else '1')
-            addon.setSetting('client_unique_key', self.client_unique_key)
-            self._config.load()
-
-        return self.is_logged_in
-
-    def logout(self):
-        TidalSession.logout(self)
-        self.stream_session_id = None
-        addon.setSetting('stream_session_id', '')
-        self._config.load()
 
     def search(self, field, value, limit=50):
         search_field = field
@@ -363,23 +247,21 @@ class TidalSession2(TidalSession):
     def _parse_category(self, json_obj):
         return CategoryItem2(TidalSession._parse_category(self, json_obj))
 
-    def get_media_url(self, track_id, quality=None):
-        oldSessionId = self.session_id
-        self.session_id = self.stream_session_id
-        url = TidalSession.get_media_url(self, track_id, quality=quality)
-        if not '.flac' in url.lower() and (quality == Quality.lossless or (quality == None and self._config.quality == Quality.lossless)):
-            xbmcgui.Dialog().notification(plugin.name, _T(30504) , icon=xbmcgui.NOTIFICATION_WARNING)
-        self.session_id = oldSessionId
-        return url
-
-    def get_video_url(self, video_id, maxHeight=-1):
-        oldSessionId = self.session_id
-        self.session_id = self.stream_session_id
-        url = TidalSession.get_video_url(self, video_id, maxHeight)
-        self.session_id = oldSessionId
-        return url
+    def get_media_url(self, track_id, quality=None, cut_id=None, fallback=True, album_id=None):
+        soundQuality = quality if quality else self._config.quality
+        media = self.get_track_url(track_id, quality=soundQuality, cut_id=cut_id)
+        if not media:
+            return None
+        if album_id and media.codec == 'MQA' and self._config.mqa_in_labels:
+            self.metaCache.insertMasterAlbumId(album_id)
+        return media.url
 
     def add_list_items(self, items, content=None, end=True, withNextPage=False):
+        for item in items:
+            if self._config.mqa_in_labels and isinstance(item, AlbumItem2):
+                if not item.isMasterAlbum:
+                    # Check if Album-ID is saved as Master-Album
+                    item._mqa = self.metaCache.isMasterAlbum(item.id)
         TidalSession.add_list_items(self, items, content=content, end=end, withNextPage=withNextPage)
         if end:
             try:
@@ -440,10 +322,13 @@ class TidalSession2(TidalSession):
             for item in items:
                 if isinstance(item, TrackItem):
                     track_count += 1
+                    isAlbum = True
                     try:
-                        isAlbum = abs(int('%s' % item.id) - int('%s' % item.album.id)) > 1
+                        # In Single Tracks the Album-ID is Track-ID - 1
+                        if item.name == item.album.name and item.trackNumber == 1 and (int('%s' % item.id) - int('%s' % item.album.id)) == 1:
+                            isAlbum = False
                     except:
-                        isAlbum = True
+                        pass
                     if item.available and not item.album.releaseDate and isAlbum:
                         #(item.title <> item.album.title or item.trackNumber > 1):
                         # Try to read Album from Cache
@@ -503,10 +388,19 @@ class TidalSession2(TidalSession):
 
     def albums_with_videos(self):
         items = []
-        if self.metaCache:
+        if self._config.cache_albums:
             jsonList = self.metaCache.fetchAllData('album_with_videos')
             for json in jsonList:
                 items.append(self._parse_one_item(json, ret='album'))
+        return items
+
+    def master_albums(self):
+        items = self.get_category_content('master', 'recommended', 'albums')
+        if self._config.codec == 'MQA' and self._config.mqa_in_labels:
+            for item in items:
+                item._mqa = True
+                self.metaCache.insertMasterAlbumId(item.id)
+            self.save_album_cache()
         return items
 
 
@@ -529,4 +423,16 @@ class User2(TidalUser):
                 ok = self._session.metaCache.deleteDatabase()
         except:
             return False
-        return ok 
+        return ok
+
+    def check_updated_playlist(self, playlist):
+        old_cache_albums = self._session._config.cache_albums
+        ok = False
+        try:
+            # Build Playlist Cache without Album Cache
+            self._session._config.cache_albums = False
+            ok = TidalUser.check_updated_playlist(self, playlist)
+        except:
+            pass
+        self._session._config.cache_albums = old_cache_albums
+        return ok
