@@ -65,12 +65,6 @@ def albums_with_videos():
     add_items(session.albums_with_videos(), content='albums')
 
 
-@plugin.route('/master_albums')
-def master_albums():
-    items = session.master_albums()
-    add_items(items, content='albums')
-
-
 @plugin.route('/category/<group>')
 def category(group):
     promoGroup = {'rising': 'RISING', 'discovery': 'DISCOVERY', 'featured': 'NEWS'}.get(group, None)
@@ -89,7 +83,7 @@ def category(group):
     if promoGroup and totalCount > 10:
         # Add Promotions as Folder on the Top if more than 10 Promotions available
         add_directory(_T(30120), plugin.url_for(featured, group=promoGroup))
-        add_directory('Master %s (MQA)' % _T(30107), master_albums)
+        add_directory('Master %s (MQA)' % _T(30107), plugin.url_for(master_albums, offset=0))
     # Add Category Items as Folders
     add_items(items, content=None, end=not(promoGroup and totalCount <= 10))
     if promoGroup and totalCount <= 10:
@@ -114,6 +108,12 @@ def category_item(group, path):
 def category_content(group, path, content_type, offset):
     items = session.get_category_content(group, path, content_type, offset=int('0%s' % offset), limit=session._config.pageSize)
     add_items(items, content=CONTENT_FOR_TYPE.get(content_type, 'songs'), withNextPage=True)
+
+
+@plugin.route('/master_albums/<offset>')
+def master_albums(offset):
+    items = session.master_albums(offset=int('0%s' % offset), limit=session._config.pageSize)
+    add_items(items, content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True)
 
 
 @plugin.route('/track_radio/<track_id>')
@@ -539,7 +539,7 @@ def login():
     if not username or not password:
         # Ask for username/password
         dialog = xbmcgui.Dialog()
-        username = dialog.input(_T(30008))
+        username = dialog.input(_T(30008), username)
         if not username:
             return
         password = dialog.input(_T(30009), option=xbmcgui.ALPHANUM_HIDE_INPUT)
@@ -557,6 +557,8 @@ def login():
         if dialog.yesno(plugin.name, _T(30209)):
             addon.setSetting('username', username)
             addon.setSetting('password', password)
+        else:
+            addon.setSetting('password', '')
     xbmc.executebuiltin('Container.update(plugin://%s/, True)' % addon.getAddonInfo('id'))
 
 

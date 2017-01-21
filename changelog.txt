@@ -1,3 +1,8 @@
+v2.0.0-beta9 (2017-01-21)
+- Page mode for Master Albums folder
+- Set MQA in blue color into Labels of Master Albums and Tracks
+- Keep Username for next login if password is not saved into settings
+
 v2.0.0-beta8 (2017-01-18)
 - Support for Master Quality Audio (MQA)
 - Support for Apple Lossless Audio (ALAC)

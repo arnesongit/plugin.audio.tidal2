@@ -34,9 +34,11 @@ ALL_SAERCH_FIELDS = ['ARTISTS','ALBUMS','PLAYLISTS','TRACKS','VIDEOS']
 
 class ColoredListItem(HasListItem):
 
+    _colored_labels = True if addon.getSetting('color_mode') == 'true' else False
+
     def setLabelFormat(self):
         HasListItem.setLabelFormat(self)
-        if addon.getSetting('color_mode') == 'true':
+        if self._colored_labels:
             self.FOLDER_MASK = '[COLOR blue]{label}[/COLOR]'
             if self._favorites_in_labels:
                 self.FAVORITE_MASK = '[COLOR yellow]{label}[/COLOR]'
@@ -63,7 +65,7 @@ class AlbumItem2(AlbumItem, ColoredListItem):
     def getLongTitle(self):
         label = AlbumItem.getLongTitle(self)
         if self.isMasterAlbum and addon.getSetting('mqa_in_labels') == 'true':
-            label += ' (MQA)'
+            label += ' [COLOR blue]MQA[/COLOR]' if self._colored_labels else ' (MQA)'
         return label
 
     @property
@@ -91,6 +93,12 @@ class TrackItem2(TrackItem, ColoredListItem):
         self.artists = [ArtistItem2(artist) for artist in self.artists]
         self._ftArtists = [ArtistItem2(artist) for artist in self._ftArtists]
         self.album = AlbumItem2(self.album)
+
+    def getLongTitle(self):
+        label = TrackItem.getLongTitle(self)
+        if self.album.isMasterAlbum and addon.getSetting('mqa_in_labels') == 'true':
+            label += ' [COLOR blue]MQA[/COLOR]' if self._colored_labels else ' (MQA)'
+        return label
 
     def getComment(self):
         txt = TrackItem.getComment(self)
@@ -181,7 +189,7 @@ class TidalSession2(TidalSession):
             json_obj = self.albumJsonBuffer.get('%s' % album_id, None)
             if json_obj == None:
                 # Now read from Cache Database
-                json_obj = self.metaCache.getAlbumJson(album_id)
+                json_obj = self.metaCache.getAlbumJson(album_id, checkMasterAlbum=self._config.codec == 'MQA')
                 if json_obj != None and 'id' in json_obj:
                     # Transfer into the local buffer
                     self.albumJsonBuffer['%s' % json_obj.get('id')] = json_obj
@@ -257,11 +265,14 @@ class TidalSession2(TidalSession):
         return media.url
 
     def add_list_items(self, items, content=None, end=True, withNextPage=False):
+        noMQA = True if not self._config.mqa_in_labels or self._config.codec <> 'MQA' else False
         for item in items:
-            if self._config.mqa_in_labels and isinstance(item, AlbumItem2):
-                if not item.isMasterAlbum:
-                    # Check if Album-ID is saved as Master-Album
-                    item._mqa = self.metaCache.isMasterAlbum(item.id)
+            if isinstance(item, AlbumItem2) and not item.isMasterAlbum:
+                # Check if Album-ID is saved as Master-Album
+                item._mqa = False if noMQA else self.metaCache.isMasterAlbum(item.id)
+            elif not self._config.cache_albums and isinstance(item, TrackItem2) and not item.album.isMasterAlbum:
+                # Check if Album-ID is saved as Master-Album
+                item.album._mqa = False if noMQA else self.metaCache.isMasterAlbum(item.album.id)
         TidalSession.add_list_items(self, items, content=content, end=end, withNextPage=withNextPage)
         if end:
             try:
@@ -334,7 +345,7 @@ class TidalSession2(TidalSession):
                         # Try to read Album from Cache
                         json_obj = self.albumJsonBuffer.get('%s' % item.album.id, None)
                         if json_obj == None:
-                            json_obj = self.metaCache.getAlbumJson(item.album.id)
+                            json_obj = self.metaCache.getAlbumJson(item.album.id, checkMasterAlbum=self._config.codec == 'MQA')
                         if json_obj != None:
                             item.album = self._parse_album(json_obj)
                         else:
@@ -394,8 +405,8 @@ class TidalSession2(TidalSession):
                 items.append(self._parse_one_item(json, ret='album'))
         return items
 
-    def master_albums(self):
-        items = self.get_category_content('master', 'recommended', 'albums')
+    def master_albums(self, offset=0, limit=999):
+        items = self.get_category_content('master', 'recommended', 'albums', offset=offset, limit=limit)
         if self._config.codec == 'MQA' and self._config.mqa_in_labels:
             for item in items:
                 item._mqa = True

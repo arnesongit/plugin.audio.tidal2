@@ -20,7 +20,6 @@ from __future__ import unicode_literals
 import os, sys, re
 import datetime
 import logging
-from types import DictionaryType
 from urlparse import urlsplit
 import xbmc
 import xbmcvfs
@@ -834,18 +833,18 @@ class TidalSession(Session):
     def get_media_url(self, track_id, quality=None, cut_id=None, fallback=False):
         return Session.get_media_url(self, track_id, quality=quality, cut_id=cut_id, fallback=fallback)
 
-    def get_track_url(self, track_id, quality=None, cut_id=None):
+    def get_track_url(self, track_id, quality=None, cut_id=None, fallback=True):
         oldSessionId = self.session_id
         self.session_id = self.stream_session_id
         soundQuality = quality if quality else self._config.quality
         media = Session.get_track_url(self, track_id, quality=soundQuality, cut_id=cut_id)
-        if soundQuality == Quality.lossless and (media == None or media.isEncrypted):
+        if fallback and soundQuality == Quality.lossless and (media == None or media.isEncrypted):
             log(media.url, level=xbmc.LOGWARNING)
             if media:
                 log('Got encryptionKey "%s" for track %s, trying HIGH Quality ...' % (media.encryptionKey, track_id), level=xbmc.LOGWARNING)
             else:
                 log('No Lossless stream for track %s, trying HIGH Quality ...' % track_id, level=xbmc.LOGWARNING)
-            media = self.get_track_url(track_id, quality=Quality.high, cut_id=cut_id)
+            media = self.get_track_url(track_id, quality=Quality.high, cut_id=cut_id, fallback=False)
         if media:
             if quality == Quality.lossless and media.codec not in ['FLAC', 'ALAC', 'MQA']:
                 xbmcgui.Dialog().notification(plugin.name, _T(30504) , icon=xbmcgui.NOTIFICATION_WARNING)

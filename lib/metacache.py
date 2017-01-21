@@ -131,10 +131,10 @@ class MetaCache(object):
             debug.logException(e, txt='Error in insert(%s,%s)' % (item_type, item_id))
         return ok
 
-    def getAlbumJson(self, album_id):
+    def getAlbumJson(self, album_id, checkMasterAlbum=False):
         json_obj = self.fetch('album', '%s' % album_id)
         if isinstance(json_obj, DictionaryType):
-            json_obj.update({'_cached': True})
+            json_obj.update({'_cached': True, '_mqa': False if not checkMasterAlbum else self.isMasterAlbum(album_id)})
         return json_obj
 
     def insertAlbumJson(self, json_obj):
@@ -147,11 +147,15 @@ class MetaCache(object):
             json_obj.update({'_cached': True})
 
     def insertMasterAlbumId(self, album_id):
-        self.insert('master_album', '%s' % album_id, '%s' % album_id, overwrite=True)
+        success = self.insert('master_album', '%s' % album_id, '%s' % album_id, overwrite=False)
+        # debug.log('Inserting Master Album ID %s: %s' % (album_id, success))
+        return success
 
     def isMasterAlbum(self, album_id):
         master_album_id = self.fetch('master_album', '%s' % album_id)
-        return True if master_album_id and '%s' % master_album_id == '%s' % album_id else False 
+        isMaster = True if master_album_id and '%s' % master_album_id == '%s' % album_id else False 
+        # debug.log('Checking Master Album ID %s: %s' % (album_id, isMaster))
+        return isMaster
 
     def insertUserPlaylist(self, playlist_id, title='Unknown', items=[], overwrite=True):
         if CACHE_PLAYLISTS:
