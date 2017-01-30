@@ -1,3 +1,15 @@
+v2.0.0-beta10 (2017-01-30)
+- Now shows an Error Message if login fails
+- Added Page-Mode for Playlist-Item View
+- Increased max. page size from 999 to 9999
+- Bugfix: MQA Label extension was missing in Favorite Tracks
+- Emulation of "User Album Playlists":
+  a) Shows Album List instead of Tracks if Playlist description contains the keyword ALBUM
+  b) "Default Album Playlist" can be set for Plugin function "user_playlist_toggle"
+  c) Shows User Album Playlist Name in Album Label
+  d) New Context Menu Entries for Album Items to Add/Remove Albums to/from Album Playlists
+  e) Every Playlist can be opend as "Album Playlist" with a new Context Menu Entry
+
 v2.0.0-beta9 (2017-01-21)
 - Page mode for Master Albums folder
 - Set MQA in blue color into Labels of Master Albums and Tracks

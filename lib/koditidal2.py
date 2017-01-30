@@ -50,10 +50,12 @@ class ColoredListItem(HasListItem):
             else:
                 self.USER_PLAYLIST_MASK = '{label}'
             self.DEFAULT_PLAYLIST_MASK = '[COLOR limegreen]{label} ({mediatype})[/COLOR]'
+            self.MASTER_AUDIO_MASK = '{label} [COLOR blue]MQA[/COLOR]'
 
 
 class AlbumItem2(AlbumItem, ColoredListItem):
 
+    _cached = False
     _mqa = False
 
     def __init__(self, item):
@@ -61,12 +63,6 @@ class AlbumItem2(AlbumItem, ColoredListItem):
         self.artist = ArtistItem2(self.artist)
         self.artists = [ArtistItem2(artist) for artist in self.artists]
         self._ftArtists = [ArtistItem2(artist) for artist in self._ftArtists]
-
-    def getLongTitle(self):
-        label = AlbumItem.getLongTitle(self)
-        if self.isMasterAlbum and addon.getSetting('mqa_in_labels') == 'true':
-            label += ' [COLOR blue]MQA[/COLOR]' if self._colored_labels else ' (MQA)'
-        return label
 
     @property
     def isMasterAlbum(self):
@@ -93,12 +89,6 @@ class TrackItem2(TrackItem, ColoredListItem):
         self.artists = [ArtistItem2(artist) for artist in self.artists]
         self._ftArtists = [ArtistItem2(artist) for artist in self._ftArtists]
         self.album = AlbumItem2(self.album)
-
-    def getLongTitle(self):
-        label = TrackItem.getLongTitle(self)
-        if self.album.isMasterAlbum and addon.getSetting('mqa_in_labels') == 'true':
-            label += ' [COLOR blue]MQA[/COLOR]' if self._colored_labels else ' (MQA)'
-        return label
 
     def getComment(self):
         txt = TrackItem.getComment(self)
@@ -204,8 +194,8 @@ class TidalSession2(TidalSession):
             self.metaCache.delete('album_with_videos', album_id)
         return items
 
-    def get_playlist_items(self, playlist_id=None, playlist=None, offset=0, limit=9999, ret='playlistitems'):
-        items = TidalSession.get_playlist_items(self, playlist_id=playlist_id, playlist=playlist, offset=offset, limit=limit, ret=ret)
+    def get_playlist_items(self, playlist, offset=0, limit=9999, ret='playlistitems'):
+        items = TidalSession.get_playlist_items(self, playlist, offset=offset, limit=limit, ret=ret)
         self.update_albums_in_items(items)
         return items
 
@@ -419,6 +409,11 @@ class Favorites2(TidalFavorites):
 
     def __init__(self, session, user_id):
         TidalFavorites.__init__(self, session, user_id)
+
+    def get(self, content_type, limit=9999):
+        items = TidalFavorites.get(self, content_type, limit=limit)
+        self._session.update_albums_in_items(items)
+        return items
 
 
 class User2(TidalUser):

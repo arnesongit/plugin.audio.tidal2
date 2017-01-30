@@ -45,7 +45,7 @@ DEBUG_LEVEL = xbmc.LOGSEVERE if addon.getSetting('debug_log') == 'true' else xbm
 CACHE_DIR = xbmc.translatePath(addon.getAddonInfo('profile')).decode('utf-8')
 FAVORITES_FILE = os.path.join(CACHE_DIR, 'favorites.cfg')
 PLAYLISTS_FILE = os.path.join(CACHE_DIR, 'playlists.cfg')
-
+ALBUM_PLAYLIST_TAG = 'ALBUM'
 
 def log(msg, level=DEBUG_LEVEL):
     xbmc.log(("[%s] %s" % (plugin.name, msg)).encode('utf-8'), level=level)
@@ -97,6 +97,7 @@ class HasListItem(object):
         else:
             self.USER_PLAYLIST_MASK = '{label}'
         self.DEFAULT_PLAYLIST_MASK = '{label} ({mediatype})'
+        self.MASTER_AUDIO_MASK = '{label} (MQA)'
 
     def getLabel(self, extended=True):
         return self.name
@@ -130,13 +131,28 @@ class AlbumItem(Album, HasListItem):
         self.artist = ArtistItem(self.artist)
         self.artists = [ArtistItem(artist) for artist in self.artists]
         self._ftArtists = [ArtistItem(artist) for artist in self._ftArtists]
+        self._userplaylists = {}    # Filled by parser
+        self._playlist_id = None    # ID of the Playlist
+        self._playlist_pos = -1     # Item position in playlist
+        self._etag = None           # ETag for User Playlists
+        self._playlist_name = None  # Name of Playlist
+        self._playlist_type = ''    # Playlist Type
+        self._playlist_track_id = 0 # Track-ID of item which is shown as Album Item
 
     def getLabel(self, extended=True):
         self.setLabelFormat()
         label = self.getLongTitle()
         if extended and self._isFavorite and not '/favorites/' in sys.argv[0]:
             label = self.FAVORITE_MASK.format(label=label)
-        return '%s - %s' % (self.artist.getLabel(extended), label)
+        label = '%s - %s' % (self.artist.getLabel(extended), label)
+        txt = []
+        plids = self._userplaylists.keys()
+        for plid in plids:
+            if plid <> self._playlist_id:
+                txt.append('%s' % self._userplaylists.get(plid).get('title'))
+        if extended and txt:
+            label = self.USER_PLAYLIST_MASK.format(label=label, userpl=', '.join(txt))
+        return label
 
     def getLongTitle(self):
         longTitle = self.title
@@ -146,6 +162,8 @@ class AlbumItem(Album, HasListItem):
             longTitle += ' (Single)'
         if getattr(self, 'year', None) and addon.getSetting('album_year_in_labels') == 'true':
             longTitle += ' (%s)' % self.year
+        if self.isMasterAlbum and addon.getSetting('mqa_in_labels') == 'true':
+            longTitle = self.MASTER_AUDIO_MASK.format(label=longTitle)
         return longTitle
 
     def getListItem(self):
@@ -167,7 +185,16 @@ class AlbumItem(Album, HasListItem):
                 cm.append((_T(30220), 'RunPlugin(%s)' % plugin.url_for_path('/favorites/remove/albums/%s' % self.id)))
             else:
                 cm.append((_T(30219), 'RunPlugin(%s)' % plugin.url_for_path('/favorites/add/albums/%s' % self.id)))
-        cm.append((_T(30221), 'Container.Update(%s)' % plugin.url_for_path('/artist/%s' % self.artist.id)))
+            if self._playlist_type == 'USER':
+                cm.append((_T(30240), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove/%s/%s' % (self._playlist_id, self._playlist_pos))))
+                cm.append((_T(30248), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/move/%s/%s/%s' % (self._playlist_id, self._playlist_pos, self._playlist_track_id))))
+            else:
+                cm.append((_T(30239), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/add/album/%s' % self.id)))
+            plids = self._userplaylists.keys()
+            for plid in plids:
+                if plid <> self._playlist_id:
+                    cm.append(((_T(30247) % self._userplaylists[plid].get('title'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_album/%s/%s' % (plid, self.id)))))
+            cm.append((_T(30221), 'Container.Update(%s)' % plugin.url_for_path('/artist/%s' % self.artist.id)))
         return cm
 
 
@@ -214,13 +241,18 @@ class PlaylistItem(Playlist, HasListItem):
                 defaultpl.append(_P('tracks'))
             if str(self.id) == addon.getSetting('default_videoplaylist_id'):
                 defaultpl.append(_P('videos'))
+            if str(self.id) == addon.getSetting('default_albumplaylist_id'):
+                defaultpl.append(_P('albums'))
             if len(defaultpl) > 0:
                 return self.DEFAULT_PLAYLIST_MASK.format(label=label, mediatype=', '.join(defaultpl))
         return label
 
     def getListItem(self):
         li = HasListItem.getListItem(self)
-        url = plugin.url_for_path('/playlist/%s' % self.id)
+        path = '/playlist/%s/0'
+        if self.type == 'USER' and self.description.find(ALBUM_PLAYLIST_TAG) <> -1:
+            path = '/playlist/albums/%s/0'
+        url = plugin.url_for_path(path % self.id)
         li.setInfo('music', {
             'artist': self.title,
             'album': self.description,
@@ -232,7 +264,11 @@ class PlaylistItem(Playlist, HasListItem):
     def getContextMenuItems(self):
         cm = []
         if self.numberOfVideos > 0:
-            cm.append((_T(30252), 'Container.Update(%s)' % plugin.url_for_path('/playlist/tracks/%s' % self.id)))
+            cm.append((_T(30252), 'Container.Update(%s)' % plugin.url_for_path('/playlist/tracks/%s/0' % self.id)))
+        if self.type == 'USER' and self.description.find(ALBUM_PLAYLIST_TAG) <> -1:
+            cm.append((_T(30254), 'Container.Update(%s)' % plugin.url_for_path('/playlist/%s/0' % self.id)))
+        else:
+            cm.append((_T(30255), 'Container.Update(%s)' % plugin.url_for_path('/playlist/albums/%s/0' % self.id)))
         if self._is_logged_in:
             if self.type == 'USER':
                 cm.append((_T(30251), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/rename/%s' % self.id)))
@@ -252,6 +288,10 @@ class PlaylistItem(Playlist, HasListItem):
                     cm.append((_T(30250) % _T('Video'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist_reset_default/videos')))
                 else:
                     cm.append((_T(30249) % _T('Video'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist_set_default/videos/%s' % self.id)))
+                if str(self.id) == addon.getSetting('default_albumplaylist_id'):
+                    cm.append((_T(30250) % _T('Album'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist_reset_default/albums')))
+                else:
+                    cm.append((_T(30249) % _T('Album'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist_set_default/albums/%s' % self.id)))
         return cm
 
 
@@ -290,6 +330,8 @@ class TrackItem(Track, HasListItem):
         if self.editable and isinstance(self._cut, CutInfo):
             if self._cut.name:
                 longTitle += ' (%s)' % self._cut.name
+        if self.album.isMasterAlbum and addon.getSetting('mqa_in_labels') == 'true':
+            longTitle = self.MASTER_AUDIO_MASK.format(label=longTitle)
         return longTitle
 
     def getFtArtistsText(self):
@@ -338,13 +380,18 @@ class TrackItem(Track, HasListItem):
                 cm.append((_T(30219), 'RunPlugin(%s)' % plugin.url_for_path('/favorites/add/tracks/%s' % self.id)))
             if self._playlist_type == 'USER':
                 cm.append((_T(30240), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove/%s/%s' % (self._playlist_id, self._playlist_pos))))
-                cm.append((_T(30248), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/move/%s/%s/%s' % (self._playlist_id, self._playlist_pos, self.id))))
+                item_id = self.id if not isinstance(self._cut, CutInfo) else self._cut.id
+                cm.append((_T(30248), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/move/%s/%s/%s' % (self._playlist_id, self._playlist_pos, item_id))))
             else:
                 cm.append((_T(30239), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/add/track/%s' % self.id)))
-        plids = self._userplaylists.keys()
-        for plid in plids:
-            if plid <> self._playlist_id:
-                cm.append(((_T(30247) % self._userplaylists[plid].get('title'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_id/%s/%s' % (plid, self.id)))))
+            plids = self._userplaylists.keys()
+            for plid in plids:
+                if plid <> self._playlist_id:
+                    playlist = self._userplaylists[plid]
+                    if '%s' % self.album.id in playlist.get('album_ids', []):
+                        cm.append(((_T(30247) % playlist.get('title'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_album/%s/%s' % (plid, self.album.id)))))
+                    else:
+                        cm.append(((_T(30247) % playlist.get('title'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_id/%s/%s' % (plid, self.id)))))
         cm.append((_T(30221), 'Container.Update(%s)' % plugin.url_for_path('/artist/%s' % self.artist.id)))
         cm.append((_T(30245), 'Container.Update(%s)' % plugin.url_for_path('/album/%s' % self.album.id)))
         cm.append((_T(30222), 'Container.Update(%s)' % plugin.url_for_path('/track_radio/%s' % self.id)))
@@ -434,10 +481,10 @@ class VideoItem(Video, HasListItem):
                 cm.append((_T(30248), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/move/%s/%s/%s' % (self._playlist_id, self._playlist_pos, self.id))))
             else:
                 cm.append((_T(30239), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/add/video/%s' % self.id)))
-        plids = self._userplaylists.keys()
-        for plid in plids:
-            if plid <> self._playlist_id:
-                cm.append(((_T(30247) % self._userplaylists[plid].get('title'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_id/%s/%s' % (plid, self.id)))))
+            plids = self._userplaylists.keys()
+            for plid in plids:
+                if plid <> self._playlist_id:
+                    cm.append(((_T(30247) % self._userplaylists[plid].get('title'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_id/%s/%s' % (plid, self.id)))))
         cm.append((_T(30221), 'Container.Update(%s)' % plugin.url_for_path('/artist/%s' % self.artist.id)))
         cm.append((_T(30224), 'Container.Update(%s)' % plugin.url_for_path('/recommended/videos/%s' % self.id)))
         return cm
@@ -471,7 +518,7 @@ class PromotionItem(Promotion, HasListItem):
         li = HasListItem.getListItem(self)
         isFolder = True
         if self.type == 'PLAYLIST':
-            url = plugin.url_for_path('/playlist/%s' % self.id)
+            url = plugin.url_for_path('/playlist/%s/0' % self.id)
             li.setInfo('music', {
                 'artist': self.shortHeader,
                 'album': self.text,
@@ -687,7 +734,7 @@ class TidalConfig(Config):
         elif addon.getSetting('music_option') == '2' and self.quality == Quality.lossless:
             self.codec = 'MQA'
         self.maxVideoHeight = [9999, 1080, 720, 540, 480, 360, 240][min(6, int('0%s' % addon.getSetting('video_quality')))]
-        self.pageSize = max(10, min(999, int('0%s' % addon.getSetting('page_size'))))
+        self.pageSize = max(10, min(9999, int('0%s' % addon.getSetting('page_size'))))
 
 
 class TidalSession(Session):
@@ -785,9 +832,52 @@ class TidalSession(Session):
                     item.album = album
         return items
 
+    def get_playlist_tracks(self, playlist_id, offset=0, limit=9999):
+        # keeping 1st parameter as playlist_id for backward compatibility 
+        if isinstance(playlist_id, Playlist):
+            playlist = playlist_id
+            playlist_id = playlist.id
+        else:
+            playlist = self.get_playlist(playlist_id)
+        # Don't read empty playlists
+        if not playlist or playlist.numberOfItems == 0:
+            return []
+        items = Session.get_playlist_tracks(self, playlist.id, offset=offset, limit=limit)
+        if items:
+            for item in items:
+                item._etag = playlist._etag
+                item._playlist_name = playlist.title
+                item._playlist_type = playlist.type
+        return items
+
+    def get_playlist_albums(self, playlist, offset=0, limit=9999):
+        items = self.get_playlist_tracks(playlist, offset=offset, limit=limit)
+        albums = []
+        for item in items:
+            if getattr(item.album, '_cached', False):
+                album = self.get_album(item.album.id)
+            else:
+                album = item.album
+            # Item-Position in the Kodi-List (filled by _map_request)
+            album._itemPosition = item._itemPosition
+            album._offset = item._offset
+            album._totalNumberOfItems = item._totalNumberOfItems
+            # Infos for Playlist-Item-Position (filled by get_playlist_tracks, get_playlist_items)
+            album._playlist_id = item._playlist_id
+            album._playlist_pos = item._playlist_pos
+            album._etag = item._etag
+            album._playlist_name = item._playlist_name
+            album._playlist_type = item._playlist_type
+            # Track-ID in TIDAL-Playlist
+            album._playlist_track_id = item.id
+            albums.append(album)
+        return albums
+
     def _parse_album(self, json_obj, artist=None):
         album = AlbumItem(Session._parse_album(self, json_obj, artist=artist))
         album._is_logged_in = self.is_logged_in
+        if self.is_logged_in:
+            album._userplaylists = self.user.playlists_of_id(None, album.id)
         return album
 
     def _parse_artist(self, json_obj):
@@ -804,7 +894,7 @@ class TidalSession(Session):
         track = TrackItem(Session._parse_track(self, json_obj))
         track._is_logged_in = self.is_logged_in
         if self.is_logged_in:
-            track._userplaylists = self.user.playlists_of_id(track.id)
+            track._userplaylists = self.user.playlists_of_id(track.id, track.album.id)
         elif track.duration > 30:
             # 30 Seconds Limit in Trial Mode
             track.duration = 30
@@ -1046,11 +1136,19 @@ class TidalUser(User):
         if self.playlists_cache.get(playlist.id, {}).get('lastUpdated', datetime.datetime.fromordinal(1)) == playlist.lastUpdated:
             # Playlist unchanged
             return False
-        items = self._session.get_playlist_items(playlist=playlist)
+        if playlist.numberOfVideos == 0:
+            items = self._session.get_playlist_tracks(playlist)
+        else:
+            items = self._session.get_playlist_items(playlist)
+        album_ids = []
+        if playlist.description.find(ALBUM_PLAYLIST_TAG) >= 0:
+            album_ids = ['%s' % item.album.id for item in items if isinstance(item, TrackItem)]
+        # Save Track-IDs into Buffer
         self.playlists_cache.update({playlist.id: {'title': playlist.title,
                                                    'description': playlist.description,
                                                    'lastUpdated': playlist.lastUpdated,
-                                                   'ids': ['%s' % item.id for item in items]}})
+                                                   'ids': ['%s' % item.id for item in items],
+                                                   'album_ids': album_ids}})
         return True
 
     def delete_cache(self):
@@ -1062,7 +1160,7 @@ class TidalUser(User):
             return False
         return True
 
-    def playlists_of_id(self, item_id):
+    def playlists_of_id(self, item_id, album_id=None):
         userpl = {}
         if not self.playlists_loaded:
             self.load_cache()
@@ -1070,7 +1168,9 @@ class TidalUser(User):
             self.playlists()
         plids = self.playlists_cache.keys()
         for plid in plids:
-            if '%s' % item_id in self.playlists_cache.get(plid).get('ids', []):
+            if item_id and '%s' % item_id in self.playlists_cache.get(plid).get('ids', []):
+                userpl.update({plid: self.playlists_cache.get(plid)})
+            if album_id and '%s' % album_id in self.playlists_cache.get(plid).get('album_ids', []):
                 userpl.update({plid: self.playlists_cache.get(plid)})
         return userpl
 
@@ -1102,8 +1202,8 @@ class TidalUser(User):
             self.playlists()
         return ok
 
-    def remove_playlist_entry(self, playlist_id, entry_no=None, item_id=None):
-        ok = User.remove_playlist_entry(self, playlist_id, entry_no=entry_no, item_id=item_id)
+    def remove_playlist_entry(self, playlist, entry_no=None, item_id=None):
+        ok = User.remove_playlist_entry(self, playlist, entry_no=entry_no, item_id=item_id)
         if ok:
             self.playlists()
         return ok

@@ -229,14 +229,19 @@ def similar_artists(artist_id):
     add_items(session.get_artist_similar(artist_id), content='artists')
 
 
-@plugin.route('/playlist/<playlist_id>')
-def playlist_view(playlist_id):
-    add_items(session.get_playlist_items(playlist_id), content='songs')
+@plugin.route('/playlist/<playlist_id>/<offset>')
+def playlist_view(playlist_id, offset):
+    add_items(session.get_playlist_items(playlist_id, offset=int('0%s' % offset), limit=session._config.pageSize), content='songs', withNextPage=True)
 
 
-@plugin.route('/playlist/tracks/<playlist_id>')
-def playlist_tracks(playlist_id):
-    add_items(session.get_playlist_tracks(playlist_id), content='songs')
+@plugin.route('/playlist/tracks/<playlist_id>/<offset>')
+def playlist_tracks(playlist_id, offset):
+    add_items(session.get_playlist_tracks(playlist_id, offset=int('0%s' % offset), limit=session._config.pageSize), content='songs', withNextPage=True)
+
+
+@plugin.route('/playlist/albums/<playlist_id>/<offset>')
+def playlist_albums(playlist_id, offset):
+    add_items(session.get_playlist_albums(playlist_id, offset=int('0%s' % offset), limit=session._config.pageSize), content='albums', withNextPage=True)
 
 
 @plugin.route('/user_playlists')
@@ -275,6 +280,9 @@ def user_playlist_add_item(item_type, item_id):
         # Sort Items by Artist, Title
         items.sort(key=lambda line: (line.artist.name, line.title) , reverse=False)
         items = ['%s' % item.id for item in items]
+    elif item_type.startswith('album'):
+        # Add First Track of the Album
+        items = [str(int('0%s' % item_id) + 1)]
     else:
         items = [item_id]
     playlist = session.user.selectPlaylistDialog(allowNew=True)
@@ -297,7 +305,7 @@ def user_playlist_remove_item(playlist_id, entry_no):
     if ok:
         xbmc.executebuiltin('ActivateWindow(busydialog)')
         try:
-            session.user.remove_playlist_entry(playlist_id, entry_no=entry_no)
+            session.user.remove_playlist_entry(playlist, entry_no=entry_no)
         except Exception, e:
             log(str(e), level=xbmc.LOGERROR)
             traceback.print_exc()
@@ -312,7 +320,28 @@ def user_playlist_remove_id(playlist_id, item_id):
     if ok:
         xbmc.executebuiltin('ActivateWindow(busydialog)')
         try:
-            session.user.remove_playlist_entry(playlist_id, item_id=item_id)
+            session.user.remove_playlist_entry(playlist, item_id=item_id)
+        except Exception, e:
+            log(str(e), level=xbmc.LOGERROR)
+            traceback.print_exc()
+        xbmc.executebuiltin('Dialog.Close(busydialog)')
+        xbmc.executebuiltin('Container.Refresh()')
+
+
+@plugin.route('/user_playlist/remove_album/<playlist_id>/<item_id>')
+def user_playlist_remove_album(playlist_id, item_id, dialog=True):
+    playlist = session.get_playlist(playlist_id)
+    ok = True
+    if dialog:
+        ok = xbmcgui.Dialog().yesno(_T(30247) % playlist.title, _T(30246))
+    if ok:
+        xbmc.executebuiltin('ActivateWindow(busydialog)')
+        try:
+            items = session.get_playlist_tracks(playlist)
+            for item in items:
+                if '%s' % item.album.id == '%s' % item_id:
+                    session.user.remove_playlist_entry(playlist, entry_no=item._playlist_pos)
+                    break # Remove only one Item
         except Exception, e:
             log(str(e), level=xbmc.LOGERROR)
             traceback.print_exc()
@@ -324,7 +353,7 @@ def user_playlist_remove_id(playlist_id, item_id):
 def user_playlist_move_entry(playlist_id, entry_no, item_id):
     dialog = xbmcgui.Dialog()
     playlist = session.user.selectPlaylistDialog(headline=_T(30248), allowNew=True)
-    if playlist:
+    if playlist and playlist.id <> playlist_id:
         xbmc.executebuiltin( "ActivateWindow(busydialog)" )
         try:
             ok = session.user.add_playlist_entries(playlist=playlist, item_ids=[item_id])
@@ -347,6 +376,8 @@ def user_playlist_set_default(item_type, playlist_id):
             addon.setSetting('default_trackplaylist_id', item.id)
         elif item_type.lower().find('video') >= 0:
             addon.setSetting('default_videoplaylist_id', item.id)
+        elif item_type.lower().find('album') >= 0:
+            addon.setSetting('default_albumplaylist_id', item.id)
     xbmc.executebuiltin('Container.Refresh()')
 
 
@@ -356,6 +387,8 @@ def user_playlist_reset_default(item_type):
         addon.setSetting('default_trackplaylist_id', '')
     elif item_type.lower().find('video') >= 0:
         addon.setSetting('default_videoplaylist_id', '')
+    elif item_type.lower().find('album') >= 0:
+        addon.setSetting('default_albumplaylist_id', '')
     xbmc.executebuiltin('Container.Refresh()')
 
 
@@ -377,16 +410,26 @@ def user_playlist_toggle():
         userpl_id = addon.getSetting('default_videoplaylist_id').decode('utf-8')
         item_id = url.split('play_video/')[1]
         item = session.get_video(item_id)
+    elif 'album/' in url:
+        item_type = 'album'
+        userpl_id = addon.getSetting('default_albumplaylist_id').decode('utf-8')
+        item_id = int('0%s' % url.split('album/')[1])
+        item = session.get_album(item_id)
+        if userpl_id:
+            if item._userplaylists and userpl_id in item._userplaylists:
+                user_playlist_remove_album(userpl_id, item.id, dialog=False)
+                return
+            item.id = item.id + 1  # Add First Track of Album
     else:
         return
     try:
         if not userpl_id:
             # Dialog Mode if default Playlist not set
-            user_playlist_add_item(item_type, item_id)
+            user_playlist_add_item(item_type, '%s' % item_id)
             return
         xbmc.executebuiltin( "ActivateWindow(busydialog)" )
         if item._userplaylists and userpl_id in item._userplaylists:
-            session.user.remove_playlist_entry(playlist_id=userpl_id, item_id=item.id)
+            session.user.remove_playlist_entry(playlist=userpl_id, item_id=item.id)
         else:
             session.user.add_playlist_entries(playlist=userpl_id, item_ids=['%s' % item.id])
     except Exception, e:
@@ -559,6 +602,8 @@ def login():
             addon.setSetting('password', password)
         else:
             addon.setSetting('password', '')
+    if not ok:
+        xbmcgui.Dialog().notification(plugin.name, _T(30253) , icon=xbmcgui.NOTIFICATION_ERROR)
     xbmc.executebuiltin('Container.update(plugin://%s/, True)' % addon.getAddonInfo('id'))
 
 

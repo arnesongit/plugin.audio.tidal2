@@ -151,6 +151,13 @@ class MetaCache(object):
         # debug.log('Inserting Master Album ID %s: %s' % (album_id, success))
         return success
 
+    def deleteMasterAlbumId(self, album_id):
+        success = True
+        if self.isMasterAlbum(album_id):
+            success = self.delete('master_album', '%s' % album_id)
+            # debug.log('Deleting Master Album ID %s: %s' % (album_id, success))
+        return success
+
     def isMasterAlbum(self, album_id):
         master_album_id = self.fetch('master_album', '%s' % album_id)
         isMaster = True if master_album_id and '%s' % master_album_id == '%s' % album_id else False 

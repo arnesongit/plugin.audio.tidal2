@@ -177,6 +177,9 @@ class Session(object):
         return self._map_request('playlists/%s' % playlist_id, ret='playlist')
 
     def get_playlist_tracks(self, playlist_id, offset=0, limit=9999):
+        # keeping 1st parameter as playlist_id for backward compatibility 
+        if isinstance(playlist_id, Playlist):
+            playlist_id = playlist_id.id
         items = self._map_request('playlists/%s/tracks' % playlist_id, params={'offset': offset, 'limit': limit}, ret='tracks')
         track_no = offset
         for item in items:
@@ -185,9 +188,9 @@ class Session(object):
             track_no += 1
         return items
 
-    def get_playlist_items(self, playlist_id=None, playlist=None, offset=0, limit=9999, ret='playlistitems'):
-        if not playlist:
-            playlist = self.get_playlist(playlist_id)
+    def get_playlist_items(self, playlist, offset=0, limit=9999, ret='playlistitems'):
+        if not isinstance(playlist, Playlist):
+            playlist = self.get_playlist(playlist)
         # Don't read empty playlists
         if not playlist or playlist.numberOfItems == 0:
             return []
@@ -745,15 +748,17 @@ class User(object):
         return self._session._map_request(self._base_url + '/playlists', method='POST', data={'title': title, 'description': description}, ret='playlist')
 
     def delete_playlist(self, playlist_id):
+        if isinstance(playlist_id, Playlist):
+            playlist_id = playlist_id.id
         return self._session.request('DELETE', 'playlists/%s' % playlist_id).ok
 
     def rename_playlist(self, playlist, title, description=''):
         if not isinstance(playlist, Playlist):
             playlist = self._session.get_playlist(playlist)
-        ok = False
-        if not playlist._etag:
-            # Read Playlist to get ETag
+        elif not playlist._etag:
+            # Re-Read Playlist to get ETag
             playlist = self._session.get_playlist(playlist.id)
+        ok = False
         if playlist and playlist._etag:
             headers = {'If-None-Match': '%s' % playlist._etag}
             data = {'title': title, 'description': description}
@@ -762,14 +767,14 @@ class User(object):
             log.debug('Got no ETag for playlist %s' & playlist.title)
         return ok
 
-    def add_playlist_entries(self, playlist=None, item_ids=[]):
+    def add_playlist_entries(self, playlist, item_ids=[]):
         if not isinstance(playlist, Playlist):
             playlist = self._session.get_playlist(playlist)
-        ok = False
-        trackIds = ','.join(item_ids)
-        if not playlist._etag:
-            # Read Playlist to get ETag
+        elif not playlist._etag:
+            # Re-Read Playlist to get ETag
             playlist = self._session.get_playlist(playlist.id)
+        trackIds = ','.join(item_ids)
+        ok = False
         if playlist and playlist._etag:
             headers = {'If-None-Match': '%s' % playlist._etag}
             data = {'trackIds': trackIds, 'toIndex': playlist.numberOfItems}
@@ -778,20 +783,23 @@ class User(object):
             log.debug('Got no ETag for playlist %s' & playlist.title)
         return ok
 
-    def remove_playlist_entry(self, playlist_id, entry_no=None, item_id=None):
+    def remove_playlist_entry(self, playlist, entry_no=None, item_id=None):
+        if not isinstance(playlist, Playlist):
+            playlist = self._session.get_playlist(playlist)
+        elif not playlist._etag:
+            # Re-Read Playlist to get ETag
+            playlist = self._session.get_playlist(playlist.id)
         if item_id:
             # Got Track/Video-ID to remove from Playlist
             entry_no = None
-            items = self._session.get_playlist_items(playlist_id)
+            items = self._session.get_playlist_items(playlist)
             for item in items:
                 if str(item.id) == str(item_id):
                     entry_no = item._playlist_pos
             if entry_no == None:
                 return False
-        # Read Playlist to get ETag
-        playlist = self._session.get_playlist(playlist_id)
         ok = False
         if playlist and playlist._etag:
             headers = {'If-None-Match': '%s' % playlist._etag}
-            ok = self._session.request('DELETE', 'playlists/%s/tracks/%s' % (playlist_id, entry_no), headers=headers).ok
+            ok = self._session.request('DELETE', 'playlists/%s/tracks/%s' % (playlist.id, entry_no), headers=headers).ok
         return ok

@@ -107,6 +107,9 @@
     <string id="30250">Reset Default %s Playlist</string>
     <string id="30251">Rename Playlist</string>
     <string id="30252">Open Playlist (Audio only)"</string>
+    <string id="30253">Login failed !!</string>
+    <string id="30254">Open as Track/Video Playlist</string>
+    <string id="30255">Open as Album Playlist</string>
 
     <!-- Extended Settings -->
     <string id="30501">Use Colors in Labels</string>
