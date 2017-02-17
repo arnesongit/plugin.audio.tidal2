@@ -196,13 +196,18 @@ class TidalSession2(TidalSession):
 
     def get_playlist_items(self, playlist, offset=0, limit=9999, ret='playlistitems'):
         items = TidalSession.get_playlist_items(self, playlist, offset=offset, limit=limit, ret=ret)
-        self.update_albums_in_items(items)
+        self.update_albums_in_items(items, forceAll=True)
         return items
 
     def get_playlist_tracks(self, playlist_id, offset=0, limit=9999):
         items = TidalSession.get_playlist_tracks(self, playlist_id, offset=offset, limit=limit)
-        self.update_albums_in_items(items)
+        self.update_albums_in_items(items, forceAll=True)
         return items
+
+    def get_playlist_albums(self, playlist, offset=0, limit=9999):
+        items = TidalSession.get_playlist_tracks(self, playlist, offset=offset, limit=limit)
+        self.update_albums_in_items(items, forceAll=True)
+        return self.get_item_albums(items)
 
     def get_category_content(self, group, path, content_type, offset=0, limit=999):
         items = TidalSession.get_category_content(self, group, path, content_type, offset=offset, limit=limit)
@@ -271,10 +276,14 @@ class TidalSession2(TidalSession):
                 kodiVersion = kodiVersion.split('.')[0]
                 skinTheme = xbmc.getSkinDir().lower()
                 if 'onfluence' in skinTheme:
-                    if kodiVersion <= '16' or content <> 'musicvideos':
+                    if kodiVersion <= '16':
                         xbmc.executebuiltin('Container.SetViewMode(506)')
-                    else:
+                    elif content == 'musicvideos':
                         xbmc.executebuiltin('Container.SetViewMode(511)')
+                    elif content == 'artists':
+                        xbmc.executebuiltin('Container.SetViewMode(512)')
+                    else:
+                        xbmc.executebuiltin('Container.SetViewMode(506)')
                 elif 'estuary' in skinTheme:
                     xbmc.executebuiltin('Container.SetViewMode(55)')
             except:
@@ -312,7 +321,7 @@ class TidalSession2(TidalSession):
         except Exception, e:
             traceback.print_exc()
 
-    def update_albums_in_items(self, items):
+    def update_albums_in_items(self, items, forceAll=False):
         if self._config.cache_albums:
             # Step 1: Read all available Albums from Cache
             self.albumQueue = Queue()
@@ -326,7 +335,7 @@ class TidalSession2(TidalSession):
                     isAlbum = True
                     try:
                         # In Single Tracks the Album-ID is Track-ID - 1
-                        if item.name == item.album.name and item.trackNumber == 1 and (int('%s' % item.id) - int('%s' % item.album.id)) == 1:
+                        if not forceAll and item.name == item.album.name and item.trackNumber == 1 and (int('%s' % item.id) - int('%s' % item.album.id)) == 1:
                             isAlbum = False
                     except:
                         pass

@@ -123,6 +123,9 @@ class HasListItem(object):
     def getContextMenuItems(self):
         return []
 
+    def getSortText(self, mode=None):
+        return self.getLabel(extended=False)
+
 
 class AlbumItem(Album, HasListItem):
 
@@ -166,15 +169,20 @@ class AlbumItem(Album, HasListItem):
             longTitle = self.MASTER_AUDIO_MASK.format(label=longTitle)
         return longTitle
 
+    def getSortText(self, mode=None):
+        return '%s - (%s) %s' % (self.artist.getLabel(extended=False), getattr(self, 'year', ''), self.getLongTitle())
+
     def getListItem(self):
         li = HasListItem.getListItem(self)
         url = plugin.url_for_path('/album/%s' % self.id)
         li.setInfo('music', {
+            'mediatype': 'album', # for Krypton to display media informations
             'title': self.title,
             'album': self.title,
             'artist': self.artist.name,
             'year': getattr(self, 'year', None),
-            'tracknumber': self._itemPosition + 1 if self._itemPosition >= 0 else 0
+            'tracknumber': self._itemPosition + 1 if self._itemPosition >= 0 else 0,
+            'userrating': '%s' % int(round(self.popularity / 10.0))  # for Krypton
         })
         return (url, li, True)
 
@@ -212,7 +220,11 @@ class ArtistItem(Artist, HasListItem):
     def getListItem(self):
         li = HasListItem.getListItem(self)
         url = plugin.url_for_path('/artist/%s' % self.id)
-        li.setInfo('music', {'artist': self.name})
+        li.setInfo('music', {
+            'mediatype': 'artist', # for Krypton to display media informations
+            'artist': self.name,
+            'userrating': '%s' % int(round(self.popularity / 10.0))  # for Krypton
+        })
         return (url, li, True)
 
     def getContextMenuItems(self):
@@ -249,26 +261,28 @@ class PlaylistItem(Playlist, HasListItem):
 
     def getListItem(self):
         li = HasListItem.getListItem(self)
-        path = '/playlist/%s/0'
-        if self.type == 'USER' and self.description.find(ALBUM_PLAYLIST_TAG) <> -1:
-            path = '/playlist/albums/%s/0'
+        path = '/playlist/%s/items/0'
+        if self.type == 'USER' and self.description.find(ALBUM_PLAYLIST_TAG) >= 0:
+            path = '/playlist/%s/albums/0'
         url = plugin.url_for_path(path % self.id)
         li.setInfo('music', {
             'artist': self.title,
             'album': self.description,
             'title': _T(30243).format(tracks=self.numberOfTracks, videos=self.numberOfVideos),
-            'tracknumber': self._itemPosition + 1 if self._itemPosition >= 0 else 0
+            'genre': _T(30243).format(tracks=self.numberOfTracks, videos=self.numberOfVideos),
+            'tracknumber': self._itemPosition + 1 if self._itemPosition >= 0 else 0,
+            'userrating': '%s' % int(round(self.popularity / 10.0))  # for Krypton
         })
         return (url, li, True)
 
     def getContextMenuItems(self):
         cm = []
         if self.numberOfVideos > 0:
-            cm.append((_T(30252), 'Container.Update(%s)' % plugin.url_for_path('/playlist/tracks/%s/0' % self.id)))
-        if self.type == 'USER' and self.description.find(ALBUM_PLAYLIST_TAG) <> -1:
-            cm.append((_T(30254), 'Container.Update(%s)' % plugin.url_for_path('/playlist/%s/0' % self.id)))
+            cm.append((_T(30252), 'Container.Update(%s)' % plugin.url_for_path('/playlist/%s/tracks/0' % self.id)))
+        if self.type == 'USER' and self.description.find(ALBUM_PLAYLIST_TAG) >= 0:
+            cm.append((_T(30254), 'Container.Update(%s)' % plugin.url_for_path('/playlist/%s/items/0' % self.id)))
         else:
-            cm.append((_T(30255), 'Container.Update(%s)' % plugin.url_for_path('/playlist/albums/%s/0' % self.id)))
+            cm.append((_T(30255), 'Container.Update(%s)' % plugin.url_for_path('/playlist/%s/albums/0' % self.id)))
         if self._is_logged_in:
             if self.type == 'USER':
                 cm.append((_T(30251), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/rename/%s' % self.id)))
@@ -334,6 +348,11 @@ class TrackItem(Track, HasListItem):
             longTitle = self.MASTER_AUDIO_MASK.format(label=longTitle)
         return longTitle
 
+    def getSortText(self, mode=None):
+        if mode == 'ALBUM':
+            return self.album.getSortText(mode=mode)
+        return self.getLabel(extended=False)
+
     def getFtArtistsText(self):
         text = ''
         for item in self._ftArtists:
@@ -359,6 +378,7 @@ class TrackItem(Track, HasListItem):
             url = plugin.url_for_path('/stream_locked')
             isFolder = True
         li.setInfo('music', {
+            'mediatype': 'song', # for Krypton to display media informations
             'title': self.title,
             'tracknumber': self._playlist_pos + 1 if self._playlist_id else self._itemPosition + 1 if self._itemPosition >= 0 else self.trackNumber,
             'discnumber': self.volumeNumber,
@@ -367,6 +387,7 @@ class TrackItem(Track, HasListItem):
             'album': self.album.title,
             'year': getattr(self, 'year', None),
             'rating': '%s' % int(round(self.popularity / 20.0)),
+            'userrating': '%s' % int(round(self.popularity / 10.0)), # for Krypton
             'comment': self.getComment()
         })
         return (url, li, isFolder)
@@ -458,11 +479,14 @@ class VideoItem(Video, HasListItem):
             url = plugin.url_for_path('/stream_locked')
             isFolder = True
         li.setInfo('video', {
+            'mediatype': 'musicvideo', # for Krypton to display media informations
             'artist': [self.artist.name],
             'title': self.title,
             'tracknumber': self._playlist_pos + 1 if self._playlist_id else self._itemPosition + 1,
             'year': getattr(self, 'year', None),
-            'plotoutline': self.getComment()
+            'plotoutline': self.getComment(),
+            'plot': self.getFtArtistsText(),
+            'userrating': '%s' % int(round(self.popularity / 10.0))  # for Krypton
         })
         li.addStreamInfo('video', { 'codec': 'h264', 'aspect': 1.78, 'width': 1920,
                          'height': 1080, 'duration': self.duration })
@@ -518,25 +542,30 @@ class PromotionItem(Promotion, HasListItem):
         li = HasListItem.getListItem(self)
         isFolder = True
         if self.type == 'PLAYLIST':
-            url = plugin.url_for_path('/playlist/%s/0' % self.id)
+            url = plugin.url_for_path('/playlist/%s/items/0' % self.id)
             li.setInfo('music', {
                 'artist': self.shortHeader,
                 'album': self.text,
-                'title': self.shortSubHeader
+                'title': self.shortSubHeader,
+                'userrating': '%s' % int(round(self.popularity / 10.0))  # for Krypton
             })
         elif self.type == 'ALBUM':
             url = plugin.url_for_path('/album/%s' % self.id)
             li.setInfo('music', {
+                'mediatype': 'album', # for Krypton to display media informations
                 'artist': self.shortHeader,
                 'album': self.text,
-                'title': self.shortSubHeader
+                'title': self.shortSubHeader,
+                'userrating': '%s' % int(round(self.popularity / 10.0))  # for Krypton
             })
         elif self.type == 'VIDEO':
             url = plugin.url_for_path('/play_video/%s' % self.id)
             li.setInfo('video', {
+                'mediatype': 'musicvideo', # for Krypton to display media informations
                 'artist': [self.shortHeader],
                 'album': self.text,
-                'title': self.shortSubHeader
+                'title': self.shortSubHeader,
+                'userrating': '%s' % int(round(self.popularity / 10.0))  # for Krypton
             })
             li.setProperty('isplayable', 'true')
             isFolder = False
@@ -850,14 +879,12 @@ class TidalSession(Session):
                 item._playlist_type = playlist.type
         return items
 
-    def get_playlist_albums(self, playlist, offset=0, limit=9999):
-        items = self.get_playlist_tracks(playlist, offset=offset, limit=limit)
+    def get_item_albums(self, items):
         albums = []
         for item in items:
-            if getattr(item.album, '_cached', False):
-                album = self.get_album(item.album.id)
-            else:
-                album = item.album
+            album = item.album
+            if not album.releaseDate:
+                album.releaseDate = item.streamStartDate
             # Item-Position in the Kodi-List (filled by _map_request)
             album._itemPosition = item._itemPosition
             album._offset = item._offset
@@ -872,6 +899,49 @@ class TidalSession(Session):
             album._playlist_track_id = item.id
             albums.append(album)
         return albums
+
+    def get_playlist_albums(self, playlist, offset=0, limit=9999):
+        return self.get_item_albums(self.get_playlist_tracks(self, playlist, offset=offset, limit=limit))
+
+    def get_artist_top_tracks(self, artist_id, offset=0, limit=999):
+        items = Session.get_artist_top_tracks(self, artist_id, offset=offset, limit=limit)
+        if not items and limit >= 100:
+            items = Session.get_artist_top_tracks(self, artist_id, offset=offset, limit=100)
+        if not items and limit >= 50:
+            items = Session.get_artist_top_tracks(self, artist_id, offset=offset, limit=50)
+        if not items:
+            items = Session.get_artist_top_tracks(self, artist_id, offset=offset, limit=20)
+        return items
+
+    def get_artist_radio(self, artist_id, offset=0, limit=999):
+        items = Session.get_artist_radio(self, artist_id, offset=offset, limit=limit)
+        if not items and limit >= 100:
+            items = Session.get_artist_radio(self, artist_id, offset=offset, limit=100)
+        if not items and limit >= 50:
+            items = Session.get_artist_radio(self, artist_id, offset=offset, limit=50)
+        if not items:
+            items = Session.get_artist_radio(self, artist_id, offset=offset, limit=20)
+        return items
+
+    def get_track_radio(self, track_id, offset=0, limit=999):
+        items = Session.get_track_radio(self, track_id, offset=offset, limit=limit)
+        if not items and limit >= 100:
+            items = Session.get_track_radio(self, track_id, offset=offset, limit=100)
+        if not items and limit >= 50:
+            items = Session.get_track_radio(self, track_id, offset=offset, limit=50)
+        if not items:
+            items = Session.get_track_radio(self, track_id, offset=offset, limit=20)
+        return items
+
+    def get_recommended_items(self, content_type, item_id, offset=0, limit=999):
+        items = Session.get_recommended_items(self, content_type, item_id, offset=offset, limit=limit)
+        if not items and limit >= 100:
+            items = Session.get_recommended_items(self, content_type, item_id, offset=offset, limit=100)
+        if not items and limit >= 50:
+            items = Session.get_recommended_items(self, content_type, item_id, offset=offset, limit=50)
+        if not items:
+            items = Session.get_recommended_items(self, content_type, item_id, offset=offset, limit=20)
+        return items
 
     def _parse_album(self, json_obj, artist=None):
         album = AlbumItem(Session._parse_album(self, json_obj, artist=artist))
@@ -892,6 +962,8 @@ class TidalSession(Session):
 
     def _parse_track(self, json_obj):
         track = TrackItem(Session._parse_track(self, json_obj))
+        if not getattr(track.album, 'streamStartDate', None):
+            track.album.streamStartDate = track.streamStartDate
         track._is_logged_in = self.is_logged_in
         if self.is_logged_in:
             track._userplaylists = self.user.playlists_of_id(track.id, track.album.id)
@@ -1018,7 +1090,8 @@ class TidalFavorites(Favorites):
     def load_cache(self):
         try:
             fd = xbmcvfs.File(FAVORITES_FILE, 'r')
-            self.ids = eval(fd.read())
+            self.ids_content = fd.read()
+            self.ids = eval(self.ids_content)
             fd.close()
             self.ids_loaded = not (self.ids['artists'] == None or self.ids['albums'] == None or
                                    self.ids['playlists'] == None or self.ids['tracks'] == None or
@@ -1033,10 +1106,12 @@ class TidalFavorites(Favorites):
     def save_cache(self):
         try:
             if self.ids_loaded:
-                fd = xbmcvfs.File(FAVORITES_FILE, 'w')
-                fd.write(repr(self.ids))
-                fd.close()
-                log('Saved %s Favorites to disk.' % sum(len(self.ids[content]) for content in ['artists', 'albums', 'playlists', 'tracks', 'videos']))
+                new_ids = repr(self.ids)
+                if new_ids <> self.ids_content:
+                    fd = xbmcvfs.File(FAVORITES_FILE, 'w')
+                    fd.write(new_ids)
+                    fd.close()
+                    log('Saved %s Favorites to disk.' % sum(len(self.ids[content]) for content in ['artists', 'albums', 'playlists', 'tracks', 'videos']))
         except:
             return False
         return True
@@ -1064,7 +1139,7 @@ class TidalFavorites(Favorites):
         items = Favorites.get(self, content_type, limit=limit)
         if items:
             self.load_all()
-            self.ids[content_type] = ['%s' % item.id for item in items]
+            self.ids[content_type] = sorted(['%s' % item.id for item in items])
             self.save_cache()
         return items
 

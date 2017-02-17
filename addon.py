@@ -25,7 +25,7 @@ import xbmcplugin
 from xbmcgui import ListItem
 from requests import HTTPError
 from lib.tidalapi.models import Quality, Category, SubscriptionType
-from lib.koditidal import plugin, addon, _addon_id, _T, log, DEBUG_LEVEL, KodiLogHandler
+from lib.koditidal import plugin, addon, _addon_id, _T, log, DEBUG_LEVEL, KodiLogHandler, ALBUM_PLAYLIST_TAG
 from lib.koditidal2 import TidalSession2 as TidalSession
 
 # Set Log Handler for tidalapi
@@ -40,7 +40,7 @@ session.load_session()
 
 add_items = session.add_list_items
 add_directory = session.add_directory_item
-CONTENT_FOR_TYPE = {'artists': 'artists', 'albums': 'albums', 'playlists': 'albums', 'tracks': 'songs', 'videos': 'musicvideos'}
+CONTENT_FOR_TYPE = {'artists': 'artists', 'albums': 'albums', 'playlists': 'albums', 'tracks': 'songs', 'videos': 'musicvideos', 'files': 'files'}
 
 
 @plugin.route('/')
@@ -62,7 +62,7 @@ def root():
 
 @plugin.route('/albums_with_videos')
 def albums_with_videos():
-    add_items(session.albums_with_videos(), content='albums')
+    add_items(session.albums_with_videos(), content=CONTENT_FOR_TYPE.get('albums'))
 
 
 @plugin.route('/category/<group>')
@@ -101,7 +101,7 @@ def category_item(group, path):
         if item.path == path:
             item._force_subfolders = True
             path_items.append(item)
-    add_items(path_items, content='files')
+    add_items(path_items, content=CONTENT_FOR_TYPE.get('files'))
 
 
 @plugin.route('/category/<group>/<path>/<content_type>/<offset>')
@@ -118,29 +118,29 @@ def master_albums(offset):
 
 @plugin.route('/track_radio/<track_id>')
 def track_radio(track_id):
-    add_items(session.get_track_radio(track_id), content='songs')
+    add_items(session.get_track_radio(track_id, limit=session._config.pageSize), content=CONTENT_FOR_TYPE.get('tracks'))
 
 
 @plugin.route('/recommended/tracks/<track_id>')
 def recommended_tracks(track_id):
-    add_items(session.get_recommended_items('tracks', track_id), content='songs')
+    add_items(session.get_recommended_items('tracks', track_id, limit=session._config.pageSize), content=CONTENT_FOR_TYPE.get('tracks'))
 
 
 @plugin.route('/recommended/videos/<video_id>')
 def recommended_videos(video_id):
-    add_items(session.get_recommended_items('videos', video_id), content='musicvideos')
+    add_items(session.get_recommended_items('videos', video_id, limit=session._config.pageSize), content=CONTENT_FOR_TYPE.get('videos'))
 
 
 @plugin.route('/featured/<group>')
 def featured(group):
     items = session.get_featured(group, types=['ALBUM', 'PLAYLIST', 'VIDEO'])
-    add_items(items, content='files')
+    add_items(items, content=CONTENT_FOR_TYPE.get('files'))
 
 
 @plugin.route('/featured_playlists')
 def featured_playlists():
     items = session.get_featured()
-    add_items(items, content='albums')
+    add_items(items, content=CONTENT_FOR_TYPE.get('albums'))
 
 
 @plugin.route('/my_music')
@@ -159,13 +159,13 @@ def album_view(album_id):
     album = session.get_album(album_id)
     if album and album.numberOfVideos > 0:
         add_directory(_T(30110), plugin.url_for(album_videos, album_id=album_id))
-    add_items(session.get_album_tracks(album_id), content='songs')
+    add_items(session.get_album_tracks(album_id), content=CONTENT_FOR_TYPE.get('tracks'))
 
 
 @plugin.route('/album_videos/<album_id>')
 def album_videos(album_id):
     xbmcplugin.addSortMethod(plugin.handle, xbmcplugin.SORT_METHOD_TRACKNUM)
-    add_items(session.get_album_items(album_id, ret='videos'), content='musicvideos')
+    add_items(session.get_album_items(album_id, ret='videos'), content=CONTENT_FOR_TYPE.get('videos'))
 
 
 @plugin.route('/artist/<artist_id>')
@@ -206,47 +206,47 @@ def artist_bio(artist_id):
 
 @plugin.route('/artist/<artist_id>/top')
 def top_tracks(artist_id):
-    add_items(session.get_artist_top_tracks(artist_id), content='songs')
+    add_items(session.get_artist_top_tracks(artist_id, limit=session._config.pageSize), content=CONTENT_FOR_TYPE.get('tracks'))
 
 
 @plugin.route('/artist/<artist_id>/radio')
 def artist_radio(artist_id):
-    add_items(session.get_artist_radio(artist_id), content='songs')
+    add_items(session.get_artist_radio(artist_id, limit=session._config.pageSize), content=CONTENT_FOR_TYPE.get('tracks'))
 
 
 @plugin.route('/artist/<artist_id>/videos')
 def artist_videos(artist_id):
-    add_items(session.get_artist_videos(artist_id), content='musicvideos')
+    add_items(session.get_artist_videos(artist_id), content=CONTENT_FOR_TYPE.get('videos'))
 
 
 @plugin.route('/artist/<artist_id>/playlists')
 def artist_playlists(artist_id):
-    add_items(session.get_artist_playlists(artist_id), content='albums')
+    add_items(session.get_artist_playlists(artist_id), content=CONTENT_FOR_TYPE.get('albums'))
 
 
 @plugin.route('/artist/<artist_id>/similar')
 def similar_artists(artist_id):
-    add_items(session.get_artist_similar(artist_id), content='artists')
+    add_items(session.get_artist_similar(artist_id), content=CONTENT_FOR_TYPE.get('artists'))
 
 
-@plugin.route('/playlist/<playlist_id>/<offset>')
+@plugin.route('/playlist/<playlist_id>/items/<offset>')
 def playlist_view(playlist_id, offset):
-    add_items(session.get_playlist_items(playlist_id, offset=int('0%s' % offset), limit=session._config.pageSize), content='songs', withNextPage=True)
+    add_items(session.get_playlist_items(playlist_id, offset=int('0%s' % offset), limit=session._config.pageSize), content=CONTENT_FOR_TYPE.get('tracks'), withNextPage=True)
 
 
-@plugin.route('/playlist/tracks/<playlist_id>/<offset>')
+@plugin.route('/playlist/<playlist_id>/tracks/<offset>')
 def playlist_tracks(playlist_id, offset):
-    add_items(session.get_playlist_tracks(playlist_id, offset=int('0%s' % offset), limit=session._config.pageSize), content='songs', withNextPage=True)
+    add_items(session.get_playlist_tracks(playlist_id, offset=int('0%s' % offset), limit=session._config.pageSize), content=CONTENT_FOR_TYPE.get('tracks'), withNextPage=True)
 
 
-@plugin.route('/playlist/albums/<playlist_id>/<offset>')
+@plugin.route('/playlist/<playlist_id>/albums/<offset>')
 def playlist_albums(playlist_id, offset):
-    add_items(session.get_playlist_albums(playlist_id, offset=int('0%s' % offset), limit=session._config.pageSize), content='albums', withNextPage=True)
+    add_items(session.get_playlist_albums(playlist_id, offset=int('0%s' % offset), limit=session._config.pageSize), content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True)
 
 
 @plugin.route('/user_playlists')
 def user_playlists():
-    add_items(session.user.playlists(), content='albums')
+    add_items(session.user.playlists(), content=CONTENT_FOR_TYPE.get('albums'))
 
 
 @plugin.route('/user_playlist/rename/<playlist_id>')
@@ -276,13 +276,22 @@ def user_playlist_delete(playlist_id):
 @plugin.route('/user_playlist/add/<item_type>/<item_id>')
 def user_playlist_add_item(item_type, item_id):
     if item_type == 'playlist':
-        items = session.get_playlist_items(item_id)
+        srcPlaylist = session.get_playlist(item_id)
+        if not srcPlaylist:
+            return
+        items = session.get_playlist_items(playlist=srcPlaylist)
         # Sort Items by Artist, Title
-        items.sort(key=lambda line: (line.artist.name, line.title) , reverse=False)
+        sortMode = 'ALBUM' if ALBUM_PLAYLIST_TAG in srcPlaylist.description else 'LABEL'
+        items.sort(key=lambda line: line.getSortText(mode=sortMode).upper(), reverse=False)
         items = ['%s' % item.id for item in items]
     elif item_type.startswith('album'):
         # Add First Track of the Album
-        items = [str(int('0%s' % item_id) + 1)]
+        tracks = session.get_album_items(item_id)
+        for track in tracks:
+            if track.available:
+                item_id = track.id
+                break
+        items = ['%s' % item_id]
     else:
         items = [item_id]
     playlist = session.user.selectPlaylistDialog(allowNew=True)
@@ -419,7 +428,11 @@ def user_playlist_toggle():
             if item._userplaylists and userpl_id in item._userplaylists:
                 user_playlist_remove_album(userpl_id, item.id, dialog=False)
                 return
-            item.id = item.id + 1  # Add First Track of Album
+            tracks = session.get_album_items(item.id)
+            for track in tracks:
+                if track.available:
+                    item.id = track.id  # Add First Track of Album
+                    break
     else:
         return
     try:
@@ -490,8 +503,9 @@ def cache_reload():
 def favorite_toggle():
     if not session.is_logged_in:
         return
-    url = xbmc.getInfoLabel( "ListItem.FilenameandPath" )
-    if not _addon_id in url:
+    path = xbmc.getInfoLabel('Container.FolderPath').decode('utf-8')
+    url = xbmc.getInfoLabel( "ListItem.FileNameAndPath" ).decode('utf-8')
+    if not _addon_id in url or '/favorites/' in path:
         return
     try:
         xbmc.executebuiltin( "ActivateWindow(busydialog)" )
@@ -511,7 +525,7 @@ def favorite_toggle():
                     session.user.favorites.add_album(item_id)
         elif 'play_track/' in url:
             item_id = url.split('play_track/')[1]
-            item_id = item_id.split('/')[0]
+            item_id = item_id.split('/')[0] # Remove album_id behind the track_id
             if not '/' in item_id:
                 if session.user.favorites.isFavoriteTrack(item_id):
                     session.user.favorites.remove_track(item_id)
@@ -519,6 +533,7 @@ def favorite_toggle():
                     session.user.favorites.add_track(item_id)
         elif 'playlist/' in url:
             item_id = url.split('playlist/')[1]
+            item_id = item_id.split('/')[0] # Remove offset behind playlist_id
             if not '/' in item_id:
                 if session.user.favorites.isFavoritePlaylist(item_id):
                     session.user.favorites.remove_playlist(item_id)
@@ -563,7 +578,7 @@ def search_type(field):
     addon.setSetting('last_search_text', search_text)
     if search_text:
         searchresults = session.search(field, search_text)
-        add_items(searchresults.artists, content='files', end=False)
+        add_items(searchresults.artists, content=CONTENT_FOR_TYPE.get('files'), end=False)
         add_items(searchresults.albums, end=False)
         add_items(searchresults.playlists, end=False)
         add_items(searchresults.tracks, end=False)

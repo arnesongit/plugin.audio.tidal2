@@ -1,3 +1,13 @@
+v2.0.0-beta11 (2017-02-17)
+- Fixes in ALbum Playlist handling:
+  - Add first available track into Album Playlist and not with album_id + 1
+  - Sorting Playlist by Artist, Year, Title when Album Playlist is copied into a new Playlist
+- Prevent update of the Favorites cache file if Favorites are unchanged
+- Fixed problem with Recommended Tracks/Videos and Track/Artist Radio
+- Changes for Krypton:
+  - Set ListItem.UserRating with TIDAL Rating
+  - Set "mediatype" in ListItems for artists/albums/songs/musicvideos
+
 v2.0.0-beta10 (2017-01-30)
 - Now shows an Error Message if login fails
 - Added Page-Mode for Playlist-Item View

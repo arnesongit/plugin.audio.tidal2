@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.audio.tidal2" name="TIDAL2" version="2.0.0-beta10" provider-name="arneson">
+<addon id="plugin.audio.tidal2" name="TIDAL2" version="2.0.0-beta11" provider-name="arneson">
   <requires>
     <import addon="xbmc.python" version="2.20.0"/>
     <import addon="script.module.requests" version="2.3.0"/>
@@ -26,6 +26,16 @@ Es wird ein Abbonement benötigt. Siehe tidal.com für Details.</description>
     <forum>http://forum.xbmc.org/showthread.php?tid=200555</forum>
     <source>https://github.com/arnesongit/plugin.audio.tidal2</source>
     <news>
+v2.0.0-beta11 (2017-02-17)
+- Fixes in ALbum Playlist handling:
+  - Add first available track into Album Playlist and not with album_id + 1
+  - Sorting Playlist by Artist, Year, Title when Album Playlist is copied into a new Playlist
+- Prevent update of the Favorites cache file if Favorites are unchanged
+- Fixed problem with Recommended Tracks/Videos and Track/Artist Radio
+- Changes for Krypton:
+  - Set ListItem.UserRating with TIDAL Rating
+  - Set "mediatype" in ListItems for artists/albums/songs/musicvideos
+
 v2.0.0-beta10 (2017-01-30)
 - Now shows an Error Message if login fails
 - Added Page-Mode for Playlist-Item View
@@ -37,11 +47,6 @@ v2.0.0-beta10 (2017-01-30)
   c) Shows User Album Playlist Name in Album Label
   d) New Context Menu Entries for Album Items to Add/Remove Albums to/from Album Playlists
   e) Every Playlist can be opend as "Album Playlist" with a new Context Menu Entry
-
-v2.0.0-beta9 (2017-01-21)
-- Page mode for Master Albums folder
-- Set MQA in blue color into Labels of Master Albums and Tracks
-- Keep Username for next login if password is not saved into settings
     </news>
     <assets>
       <icon>resources/icon.png</icon>

@@ -97,6 +97,7 @@ class Album(BrowsableMedia):
     type = 'ALBUM'
     explicit = False
     version = None
+    popularity = 0
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -135,6 +136,7 @@ class Album(BrowsableMedia):
 class Artist(BrowsableMedia):
     picture = None
     url = None
+    popularity = 0
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -166,6 +168,7 @@ class Playlist(BrowsableMedia):
     numberOfTracks = 0
     numberOfVideos = 0
     duration = -1
+    popularity = 0
 
     # Internal Properties
     _image = None  # For Backward Compatibility because "image" is a property method
@@ -295,6 +298,7 @@ class Video(PlayableMedia):
     quality = None
     imageId = None
     imagePath = None
+    popularity = 0
 
     # Internal Properties
     _ftArtists = []  # All artists except main (Filled by parser)
@@ -352,6 +356,7 @@ class Promotion(BrowsableMedia):
     type = None         # PLAYLIST|ALBUM|VIDEO|EXTURL
     artifactId = None
     duration= 0
+    popularity = 0
 
     # Internal Properties
     _artist = None       # filled by parser
