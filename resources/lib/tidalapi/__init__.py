@@ -25,8 +25,8 @@ import logging
 import requests
 from requests.packages import urllib3
 from collections import Iterable
-from .models import UserInfo, Subscription, SubscriptionType, Quality, TrackUrl, VideoUrl, CutInfo
-from .models import Artist, Album, Track, Video, Playlist, BrowsableMedia, PlayableMedia, Promotion, SearchResult, Category
+from models import UserInfo, Subscription, SubscriptionType, Quality, AlbumType, TrackUrl, VideoUrl, CutInfo
+from models import Artist, Album, Track, Video, Playlist, BrowsableMedia, PlayableMedia, Promotion, SearchResult, Category
 try:
     from urlparse import urljoin
 except ImportError:

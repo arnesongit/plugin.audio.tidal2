@@ -1,3 +1,8 @@
+v2.0.0-beta12 (2017-02-27)
+- Backward Compatibility down to XBMC Gotham 13.2
+- Use item infos "userrating" and "mediatype" only on Krypton version
+- Moved lib folder into resources for new Krypton Addon file structure
+
 v2.0.0-beta11 (2017-02-17)
 - Fixes in ALbum Playlist handling:
   - Add first available track into Album Playlist and not with album_id + 1

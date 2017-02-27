@@ -24,9 +24,9 @@ import xbmcgui
 import xbmcplugin
 from xbmcgui import ListItem
 from requests import HTTPError
-from lib.tidalapi.models import Quality, Category, SubscriptionType
-from lib.koditidal import plugin, addon, _addon_id, _T, log, DEBUG_LEVEL, KodiLogHandler, ALBUM_PLAYLIST_TAG
-from lib.koditidal2 import TidalSession2 as TidalSession
+from resources.lib.tidalapi.models import Quality, Category, SubscriptionType
+from resources.lib.koditidal import plugin, addon, _addon_id, _T, log, DEBUG_LEVEL, KodiLogHandler, ALBUM_PLAYLIST_TAG
+from resources.lib.koditidal2 import TidalSession2 as TidalSession
 
 # Set Log Handler for tidalapi
 logger = logging.getLogger()
@@ -246,7 +246,19 @@ def playlist_albums(playlist_id, offset):
 
 @plugin.route('/user_playlists')
 def user_playlists():
-    add_items(session.user.playlists(), content=CONTENT_FOR_TYPE.get('albums'))
+    items = session.user.playlists()
+    # Find Default Playlists via title if ID is not available anymore
+    all_ids = session.user.playlists_cache.keys()
+    for what in ['track', 'album', 'video']:
+        playlist_id = addon.getSetting('default_%splaylist_id' % what).decode('utf-8')
+        playlist_title = addon.getSetting('default_%splaylist_title' % what).decode('utf-8')
+        if playlist_id and playlist_title and playlist_id not in all_ids:
+            for playlist_id in all_ids:
+                if session.user.playlists_cache.get(playlist_id).get('title', '') == playlist_title:
+                    addon.setSetting('default_%splaylist_id' % what, playlist_id)
+                    addon.setSetting('default_%splaylist_title' % what, playlist_title)
+                    break
+    add_items(items, content=CONTENT_FOR_TYPE.get('albums'))
 
 
 @plugin.route('/user_playlist/rename/<playlist_id>')
@@ -383,10 +395,13 @@ def user_playlist_set_default(item_type, playlist_id):
     if item:
         if item_type.lower().find('track') >= 0:
             addon.setSetting('default_trackplaylist_id', item.id)
+            addon.setSetting('default_trackplaylist_title', item.title)
         elif item_type.lower().find('video') >= 0:
             addon.setSetting('default_videoplaylist_id', item.id)
+            addon.setSetting('default_videoplaylist_title', item.title)
         elif item_type.lower().find('album') >= 0:
             addon.setSetting('default_albumplaylist_id', item.id)
+            addon.setSetting('default_albumplaylist_title', item.title)
     xbmc.executebuiltin('Container.Refresh()')
 
 
@@ -394,10 +409,13 @@ def user_playlist_set_default(item_type, playlist_id):
 def user_playlist_reset_default(item_type):
     if item_type.lower().find('track') >= 0:
         addon.setSetting('default_trackplaylist_id', '')
+        addon.setSetting('default_trackplaylist_title', '')
     elif item_type.lower().find('video') >= 0:
         addon.setSetting('default_videoplaylist_id', '')
+        addon.setSetting('default_videoplaylist_title', '')
     elif item_type.lower().find('album') >= 0:
         addon.setSetting('default_albumplaylist_id', '')
+        addon.setSetting('default_albumplaylist_title', '')
     xbmc.executebuiltin('Container.Refresh()')
 
 

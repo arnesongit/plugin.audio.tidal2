@@ -47,6 +47,12 @@ class SubscriptionType(object):
     free = 'FREE'
 
 
+class AlbumType(object):
+    album = 'ALBUM'
+    ep = 'EP'
+    single = 'SINGLE'
+
+
 class Model(object):
     id = None
     name = 'Unknown'
@@ -94,7 +100,7 @@ class Album(BrowsableMedia):
     streamStartDate = None
     releaseDate = None
     cover = None
-    type = 'ALBUM'
+    type = AlbumType.album
     explicit = False
     version = None
     popularity = 0
@@ -369,6 +375,12 @@ class Promotion(BrowsableMedia):
         self.id = '%s' % self.artifactId
         self.id = self.id.strip()
         self.name = self.shortHeader
+        if self.type == 'ALBUM' and 'http' in self.id and 'album/' in self.id:
+            # Correct malformed ID
+            self.id = self.id.split('album/')[1]
+        if self.type == 'VIDEO' and 'http' in self.id and 'video/' in self.id:
+            # Correct malformed ID
+            self.id = self.id.split('video/')[1]
 
     @property
     def image(self):
@@ -435,15 +447,15 @@ class Role(object):
 
 class SearchResult(Model):
     ''' List of Search Result Items '''
-    artists = []
-    albums = []
-    tracks = []
-    playlists = []
-    videos = []
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         super(SearchResult, self).__init__()
+        self.artists = []
+        self.albums = []
+        self.tracks = []
+        self.playlists = []
+        self.videos = []
 
 
 class UserInfo(Model):

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.audio.tidal2" name="TIDAL2" version="2.0.0-beta11" provider-name="arneson">
+<addon id="plugin.audio.tidal2" name="TIDAL2" version="2.0.0-beta12" provider-name="arneson">
   <requires>
-    <import addon="xbmc.python" version="2.20.0"/>
+    <import addon="xbmc.python" version="2.14.0"/>
     <import addon="script.module.requests" version="2.3.0"/>
     <import addon="script.module.routing" version="0.1.0"/>
     <import addon="script.module.unidecode" version="0.4.16"/>
@@ -9,7 +9,7 @@
   <extension point="xbmc.python.pluginsource" library="addon.py">
     <provides>audio</provides>
   </extension>
-  <extension point="xbmc.python.module" library="lib"/>
+  <extension point="xbmc.python.module" library="resources/lib"/>
   <extension point="xbmc.addon.metadata">
     <summary lang="en">Extended version of the TIDAL music add-on</summary>
     <summary lang="de">Erweiterte Version des TIDAL Music-Addons</summary>
@@ -26,6 +26,11 @@ Es wird ein Abbonement benötigt. Siehe tidal.com für Details.</description>
     <forum>http://forum.xbmc.org/showthread.php?tid=200555</forum>
     <source>https://github.com/arnesongit/plugin.audio.tidal2</source>
     <news>
+v2.0.0-beta12 (2017-02-27)
+- Backward Compatibility down to XBMC Gotham 13.2
+- Use item infos "userrating" and "mediatype" only on Krypton version
+- Moved lib folder into resources for new Krypton Addon file structure
+
 v2.0.0-beta11 (2017-02-17)
 - Fixes in ALbum Playlist handling:
   - Add first available track into Album Playlist and not with album_id + 1
@@ -35,18 +40,6 @@ v2.0.0-beta11 (2017-02-17)
 - Changes for Krypton:
   - Set ListItem.UserRating with TIDAL Rating
   - Set "mediatype" in ListItems for artists/albums/songs/musicvideos
-
-v2.0.0-beta10 (2017-01-30)
-- Now shows an Error Message if login fails
-- Added Page-Mode for Playlist-Item View
-- Increased max. page size from 999 to 9999
-- Bugfix: MQA Label extension was missing in Favorite Tracks
-- Emulation of "User Album Playlists":
-  a) Shows Album List instead of Tracks if Playlist description contains the keyword ALBUM
-  b) "Default Album Playlist" can be set for Plugin function "user_playlist_toggle"
-  c) Shows User Album Playlist Name in Album Label
-  d) New Context Menu Entries for Album Items to Add/Remove Albums to/from Album Playlists
-  e) Every Playlist can be opend as "Album Playlist" with a new Context Menu Entry
     </news>
     <assets>
       <icon>resources/icon.png</icon>

@@ -29,7 +29,7 @@ import xbmcplugin
 from xbmcgui import ListItem
 from routing import Plugin
 from tidalapi import Config, Session, User, Favorites
-from tidalapi.models import Quality, SubscriptionType, BrowsableMedia, Artist, Album, PlayableMedia, Track, Video, Playlist, Promotion, Category, CutInfo
+from tidalapi.models import Quality, SubscriptionType, AlbumType, BrowsableMedia, Artist, Album, PlayableMedia, Track, Video, Playlist, Promotion, Category, CutInfo
 from m3u8 import load as m3u8_load
 
 
@@ -42,10 +42,17 @@ _addon_fanart = os.path.join(addon.getAddonInfo('path'), 'fanart.jpg')
 
 DEBUG_LEVEL = xbmc.LOGSEVERE if addon.getSetting('debug_log') == 'true' else xbmc.LOGDEBUG
 
+try:
+    KODI_VERSION = xbmc.getInfoLabel('System.BuildVersion').split()[0]
+except:
+    KODI_VERSION = '16.1'
+
 CACHE_DIR = xbmc.translatePath(addon.getAddonInfo('profile')).decode('utf-8')
 FAVORITES_FILE = os.path.join(CACHE_DIR, 'favorites.cfg')
 PLAYLISTS_FILE = os.path.join(CACHE_DIR, 'playlists.cfg')
 ALBUM_PLAYLIST_TAG = 'ALBUM'
+VARIOUS_ARTIST_ID = '2935'
+
 
 def log(msg, level=DEBUG_LEVEL):
     xbmc.log(("[%s] %s" % (plugin.name, msg)).encode('utf-8'), level=level)
@@ -159,9 +166,9 @@ class AlbumItem(Album, HasListItem):
 
     def getLongTitle(self):
         longTitle = self.title
-        if self.type == 'EP':
+        if self.type == AlbumType.ep:
             longTitle += ' (EP)'
-        elif self.type == 'SINGLE':
+        elif self.type == AlbumType.single:
             longTitle += ' (Single)'
         if getattr(self, 'year', None) and addon.getSetting('album_year_in_labels') == 'true':
             longTitle += ' (%s)' % self.year
@@ -175,15 +182,18 @@ class AlbumItem(Album, HasListItem):
     def getListItem(self):
         li = HasListItem.getListItem(self)
         url = plugin.url_for_path('/album/%s' % self.id)
-        li.setInfo('music', {
-            'mediatype': 'album', # for Krypton to display media informations
+        infoLabels = {
             'title': self.title,
             'album': self.title,
             'artist': self.artist.name,
             'year': getattr(self, 'year', None),
             'tracknumber': self._itemPosition + 1 if self._itemPosition >= 0 else 0,
-            'userrating': '%s' % int(round(self.popularity / 10.0))  # for Krypton
-        })
+        }
+        if '17.' in KODI_VERSION:
+            infoLabels.update({'mediatype': 'album',
+                               'userrating': '%s' % int(round(self.popularity / 10.0))
+                               })
+        li.setInfo('music', infoLabels)
         return (url, li, True)
 
     def getContextMenuItems(self):
@@ -220,11 +230,12 @@ class ArtistItem(Artist, HasListItem):
     def getListItem(self):
         li = HasListItem.getListItem(self)
         url = plugin.url_for_path('/artist/%s' % self.id)
-        li.setInfo('music', {
-            'mediatype': 'artist', # for Krypton to display media informations
-            'artist': self.name,
-            'userrating': '%s' % int(round(self.popularity / 10.0))  # for Krypton
-        })
+        infoLabel = {'artist': self.name}
+        if '17.' in KODI_VERSION:
+            infoLabel.update({'mediatype': 'artist',
+                              'userrating': '%s' % int(round(self.popularity / 10.0))
+                              })
+        li.setInfo('music', infoLabel)
         return (url, li, True)
 
     def getContextMenuItems(self):
@@ -265,14 +276,16 @@ class PlaylistItem(Playlist, HasListItem):
         if self.type == 'USER' and self.description.find(ALBUM_PLAYLIST_TAG) >= 0:
             path = '/playlist/%s/albums/0'
         url = plugin.url_for_path(path % self.id)
-        li.setInfo('music', {
+        infoLabel = {
             'artist': self.title,
             'album': self.description,
             'title': _T(30243).format(tracks=self.numberOfTracks, videos=self.numberOfVideos),
             'genre': _T(30243).format(tracks=self.numberOfTracks, videos=self.numberOfVideos),
-            'tracknumber': self._itemPosition + 1 if self._itemPosition >= 0 else 0,
-            'userrating': '%s' % int(round(self.popularity / 10.0))  # for Krypton
-        })
+            'tracknumber': self._itemPosition + 1 if self._itemPosition >= 0 else 0
+        }
+        if '17.' in KODI_VERSION:
+            infoLabel.update({'userrating': '%s' % int(round(self.popularity / 10.0))})
+        li.setInfo('music', infoLabel)
         return (url, li, True)
 
     def getContextMenuItems(self):
@@ -377,8 +390,7 @@ class TrackItem(Track, HasListItem):
         else:
             url = plugin.url_for_path('/stream_locked')
             isFolder = True
-        li.setInfo('music', {
-            'mediatype': 'song', # for Krypton to display media informations
+        infoLabel = {
             'title': self.title,
             'tracknumber': self._playlist_pos + 1 if self._playlist_id else self._itemPosition + 1 if self._itemPosition >= 0 else self.trackNumber,
             'discnumber': self.volumeNumber,
@@ -387,9 +399,13 @@ class TrackItem(Track, HasListItem):
             'album': self.album.title,
             'year': getattr(self, 'year', None),
             'rating': '%s' % int(round(self.popularity / 20.0)),
-            'userrating': '%s' % int(round(self.popularity / 10.0)), # for Krypton
             'comment': self.getComment()
-        })
+        }
+        if '17.' in KODI_VERSION:
+            infoLabel.update({'mediatype': 'song',
+                              'userrating': '%s' % int(round(self.popularity / 10.0))
+                              })
+        li.setInfo('music', infoLabel)
         return (url, li, isFolder)
 
     def getContextMenuItems(self):
@@ -478,16 +494,19 @@ class VideoItem(Video, HasListItem):
         else:
             url = plugin.url_for_path('/stream_locked')
             isFolder = True
-        li.setInfo('video', {
-            'mediatype': 'musicvideo', # for Krypton to display media informations
+        infoLabel = {
             'artist': [self.artist.name],
             'title': self.title,
             'tracknumber': self._playlist_pos + 1 if self._playlist_id else self._itemPosition + 1,
             'year': getattr(self, 'year', None),
             'plotoutline': self.getComment(),
-            'plot': self.getFtArtistsText(),
-            'userrating': '%s' % int(round(self.popularity / 10.0))  # for Krypton
-        })
+            'plot': self.getFtArtistsText()
+        }
+        if '17.' in KODI_VERSION:
+            infoLabel.update({'mediatype': 'musicvideo',
+                              'userrating': '%s' % int(round(self.popularity / 10.0))
+                              })
+        li.setInfo('video', infoLabel)
         li.addStreamInfo('video', { 'codec': 'h264', 'aspect': 1.78, 'width': 1920,
                          'height': 1080, 'duration': self.duration })
         li.addStreamInfo('audio', { 'codec': 'AAC', 'language': 'en', 'channels': 2 })
@@ -543,30 +562,38 @@ class PromotionItem(Promotion, HasListItem):
         isFolder = True
         if self.type == 'PLAYLIST':
             url = plugin.url_for_path('/playlist/%s/items/0' % self.id)
-            li.setInfo('music', {
+            infoLabel = {
                 'artist': self.shortHeader,
                 'album': self.text,
-                'title': self.shortSubHeader,
-                'userrating': '%s' % int(round(self.popularity / 10.0))  # for Krypton
-            })
+                'title': self.shortSubHeader
+            }
+            if '17.' in KODI_VERSION:
+                infoLabel.update({'userrating': '%s' % int(round(self.popularity / 10.0))})
+            li.setInfo('music', infoLabel)
         elif self.type == 'ALBUM':
             url = plugin.url_for_path('/album/%s' % self.id)
-            li.setInfo('music', {
-                'mediatype': 'album', # for Krypton to display media informations
+            infoLabel = {
                 'artist': self.shortHeader,
                 'album': self.text,
-                'title': self.shortSubHeader,
-                'userrating': '%s' % int(round(self.popularity / 10.0))  # for Krypton
-            })
+                'title': self.shortSubHeader
+            }
+            if '17.' in KODI_VERSION:
+                infoLabel.update({'mediatype': 'album',
+                                  'userrating': '%s' % int(round(self.popularity / 10.0))
+                                  })
+            li.setInfo('music', infoLabel)
         elif self.type == 'VIDEO':
             url = plugin.url_for_path('/play_video/%s' % self.id)
-            li.setInfo('video', {
-                'mediatype': 'musicvideo', # for Krypton to display media informations
+            infoLabel = {
                 'artist': [self.shortHeader],
                 'album': self.text,
-                'title': self.shortSubHeader,
-                'userrating': '%s' % int(round(self.popularity / 10.0))  # for Krypton
-            })
+                'title': self.shortSubHeader
+            }
+            if '17.' in KODI_VERSION:
+                infoLabel.update({'mediatype': 'musicvideo',
+                                  'userrating': '%s' % int(round(self.popularity / 10.0))
+                                  })
+            li.setInfo('video', infoLabel)
             li.setProperty('isplayable', 'true')
             isFolder = False
             li.addStreamInfo('video', { 'codec': 'h264', 'aspect': 1.78, 'width': 1920,
