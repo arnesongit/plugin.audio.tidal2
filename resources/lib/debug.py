@@ -17,9 +17,9 @@
 
 from __future__ import unicode_literals
 
-import sys, os, logging
+import sys, os
+import logging
 import xbmc
-import xbmcaddon
 
 try:
     from unidecode import unidecode
@@ -28,43 +28,56 @@ except:
         return txt.decode('utf-8', 'ignore') 
 
 #------------------------------------------------------------------------------
-# Global Definitions
+# Debug class
 #------------------------------------------------------------------------------
 
-DEBUG_ENABLED = True
-DEBUG_SERVER = 'localhost'
-ADDON_NAME = 'DEBUG'
-LOG_DETAILS = 2
-    
-#------------------------------------------------------------------------------
-# Functions
-#------------------------------------------------------------------------------
+class DebugHelper(object):
 
-def log(txt = '', level=xbmc.LOGDEBUG):
-    ''' Log a text into the Kodi-Logfile '''
-    try:
-        if LOG_DETAILS > 0:
-            if LOG_DETAILS == 2 and level == xbmc.LOGDEBUG:
-                # More Logging
-                level = xbmc.LOGNOTICE
-            if LOG_DETAILS == 3 and (level == xbmc.LOGDEBUG or level == xbmc.LOGSEVERE):
-                # Complex Logging
-                level = xbmc.LOGNOTICE
-            if level != xbmc.LOGSEVERE:
+    logHandler = None
+
+    def __init__(self, pluginName, detailLevel=0, enableTidalApiLog=False):
+        ''' Initialize Error Logging with a given Log Level
+            detailLevel = 0 : xbmc.LOGERROR and xbmc.LOGNOTICE
+            detailLevel = 1 : as level 0 plus xbmc.LOGWARNING
+            detailLevel = 2 : as level 1 plus xbmc.LOGDEBUG
+            detailLevel = 3 : as level 2 plus xbmc.LOGSEVERE
+        '''
+        self.pluginName = pluginName
+        self.detailLevel = detailLevel
+        self.debugServer = 'localhost'
+        # Set Log Handler for tidalapi
+        self.addTidalapiLogger(pluginName, enableDebug=enableTidalApiLog)
+
+    def log(self, txt = '', level=xbmc.LOGDEBUG):
+        ''' Log a text into the Kodi-Logfile '''
+        try:
+            if self.detailLevel > 0 or level == xbmc.LOGERROR:
+                if self.detailLevel == 2 and level == xbmc.LOGDEBUG:
+                    # More Logging
+                    level = xbmc.LOGNOTICE
+                elif self.detailLevel == 3 and (level == xbmc.LOGDEBUG or level == xbmc.LOGSEVERE):
+                    # Complex Logging
+                    level = xbmc.LOGNOTICE
+                if level != xbmc.LOGSEVERE:
+                    if isinstance(txt, unicode):
+                        txt = unidecode(txt)
+                    xbmc.log(b"[%s] %s" % (self.pluginName, txt), level) 
+        except:
+            xbmc.log(b"[%s] Unicode Error in message text" % self.pluginName, xbmc.LOGERROR)
+
+    def logException(self, e, txt=''):
+        ''' Logs an Exception as Error Message '''
+        try:
+            if txt:
                 if isinstance(txt, unicode):
                     txt = unidecode(txt)
-                xbmc.log(b"[%s] %s" % (ADDON_NAME, txt), level) 
-    except:
-        xbmc.log(b"[%s] Unicode Error in message text" % ADDON_NAME, xbmc.LOGERROR)
+                xbmc.log(b"[%s] %s\n%s" % (self.pluginName, txt, str(e)), level=xbmc.LOGERROR) 
+            logging.exception(str(e))
+        except:
+            pass
 
-def logException(e, txt='', level=xbmc.LOGERROR):
-    if txt:
-        log(txt + '\n' + str(e), level)
-    logging.exception(str(e))
-
-def updatePath():
-    ''' Update the path to find pydevd Package '''
-    if DEBUG_ENABLED:
+    def updatePath(self):
+        ''' Update the path to find pydevd Package '''
         # For PyCharm:
         # sys.path.append("/Applications/PyCharm.app/Contents/helpers/pydev")
         # For LiClipse:
@@ -76,63 +89,67 @@ def updatePath():
                 break
             pass
 
-def halt():
-    ''' This is the Break-Point-Function '''
-    host=None
-    if DEBUG_ENABLED:
-        if not host:
-            if DEBUG_SERVER:
-                host = DEBUG_SERVER
-            else:
-                host = 'localhost'
-        updatePath()
-        import pydevd
-        pydevd.settrace(host, stdoutToServer=True, stderrToServer=True)
-        pass
-
-
-def killDebugThreads():
-    ''' This kills all PyDevd Remote Debugger Threads '''
-    if DEBUG_ENABLED:
+    def halt(self):
+        ''' This is the Break-Point-Function '''
         try:
-            updatePath()
+            self.updatePath()
+            import pydevd
+            pydevd.settrace(self.debugServer, stdoutToServer=True, stderrToServer=True)
+        except:
+            pass
+
+    def killDebugThreads(self):
+        ''' This kills all PyDevd Remote Debugger Threads '''
+        try:
+            self.updatePath()
             import pydevd
             pydevd.stoptrace()
         except:
             pass
         pass
 
+    def addTidalapiLogger(self, pluginName, enableDebug):
+        if not DebugHelper.logHandler:
+            DebugHelper.logHandler = KodiLogHandler(name=pluginName, modules=['resources.lib.tidalapi', 'tidalapi'])
+            logger = logging.getLogger()
+            logger.addHandler(DebugHelper.logHandler)
+            logger.setLevel(logging.DEBUG if enableDebug else logging.WARNING)
+        elif enableDebug:
+            logger = logging.getLogger()
+            logger.setLevel(logging.DEBUG)
+
 
 class KodiLogHandler(logging.StreamHandler):
 
-    def __init__(self):
+    def __init__(self, name, modules):
         logging.StreamHandler.__init__(self)
-        addon_id = xbmcaddon.Addon().getAddonInfo('id')
-        prefix = b"[%s] " % addon_id
+        self._modules = modules
+        self.pluginName = name
+        prefix = b"[%s] " % name
         formatter = logging.Formatter(prefix + b'%(name)s: %(message)s')
         self.setFormatter(formatter)
 
     def emit(self, record):
+        if record.levelno < logging.WARNING and self._modules and not record.name in self._modules:
+            # Log INFO and DEBUG only with enabled modules
+            return
         levels = {
             logging.CRITICAL: xbmc.LOGFATAL,
             logging.ERROR: xbmc.LOGERROR,
             logging.WARNING: xbmc.LOGWARNING,
-            logging.INFO: xbmc.LOGINFO,
-            logging.DEBUG: xbmc.LOGDEBUG,
+            logging.INFO: xbmc.LOGNOTICE,
+            logging.DEBUG: xbmc.LOGSEVERE,
             logging.NOTSET: xbmc.LOGNONE,
         }
-        if DEBUG_ENABLED:
+        try:
+            xbmc.log(self.format(record), levels[record.levelno])
+        except:
             try:
-                xbmc.log(self.format(record), levels[record.levelno])
-            except UnicodeEncodeError:
                 xbmc.log(self.format(record).encode('utf-8', 'ignore'), levels[record.levelno])
+            except:
+                xbmc.log(b"[%s] Unicode Error in message text" % self.pluginName, levels[record.levelno])
 
     def flush(self):
         pass
-
-def setKodiLogHandler():
-    logger = logging.getLogger()
-    logger.addHandler(KodiLogHandler())
-    logger.setLevel(logging.DEBUG)
 
 # End of File

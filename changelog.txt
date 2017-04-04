@@ -1,3 +1,9 @@
+v2.0.0-beta13 (2017-04-04)
+- Mark Favorite Artists in Favorite Albums and Favorite Tracks lists
+- Fixed problem with Playlists without description
+- Cleanup Debug-Logging code
+- Fixed loop problem if a Playlist or Album contains less items as specified
+
 v2.0.0-beta12 (2017-02-27)
 - Backward Compatibility down to XBMC Gotham 13.2
 - Use item infos "userrating" and "mediatype" only on Krypton version

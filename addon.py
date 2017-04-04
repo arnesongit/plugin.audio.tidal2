@@ -18,21 +18,14 @@
 from __future__ import unicode_literals
 
 import traceback
-import logging
 import xbmc
 import xbmcgui
 import xbmcplugin
 from xbmcgui import ListItem
 from requests import HTTPError
 from resources.lib.tidalapi.models import Quality, Category, SubscriptionType
-from resources.lib.koditidal import plugin, addon, _addon_id, _T, log, DEBUG_LEVEL, KodiLogHandler, ALBUM_PLAYLIST_TAG
+from resources.lib.koditidal import plugin, addon, _addon_id, _T, log, ALBUM_PLAYLIST_TAG
 from resources.lib.koditidal2 import TidalSession2 as TidalSession
-
-# Set Log Handler for tidalapi
-logger = logging.getLogger()
-logger.addHandler(KodiLogHandler(modules=['lib.tidalapi', 'tidalapi']))
-if DEBUG_LEVEL == xbmc.LOGSEVERE:
-    logger.setLevel(logging.DEBUG)
 
 # This is the Tidal Session
 session = TidalSession()

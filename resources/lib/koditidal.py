@@ -19,7 +19,6 @@ from __future__ import unicode_literals
 
 import os, sys, re
 import datetime
-import logging
 from urlparse import urlsplit
 import xbmc
 import xbmcvfs
@@ -31,7 +30,7 @@ from routing import Plugin
 from tidalapi import Config, Session, User, Favorites
 from tidalapi.models import Quality, SubscriptionType, AlbumType, BrowsableMedia, Artist, Album, PlayableMedia, Track, Video, Playlist, Promotion, Category, CutInfo
 from m3u8 import load as m3u8_load
-
+from debug import DebugHelper
 
 _addon_id = 'plugin.audio.tidal2'
 addon = xbmcaddon.Addon(id=_addon_id)
@@ -40,7 +39,10 @@ plugin.name = addon.getAddonInfo('name')
 _addon_icon = os.path.join(addon.getAddonInfo('path'), 'icon.png')
 _addon_fanart = os.path.join(addon.getAddonInfo('path'), 'fanart.jpg')
 
-DEBUG_LEVEL = xbmc.LOGSEVERE if addon.getSetting('debug_log') == 'true' else xbmc.LOGDEBUG
+debug = DebugHelper(pluginName=plugin.name, 
+                    detailLevel=2 if addon.getSetting('debug_log') == 'true' else 1, 
+                    enableTidalApiLog= True if addon.getSetting('debug_log') == 'true' else False)
+log = debug.log
 
 try:
     KODI_VERSION = xbmc.getInfoLabel('System.BuildVersion').split()[0]
@@ -52,10 +54,6 @@ FAVORITES_FILE = os.path.join(CACHE_DIR, 'favorites.cfg')
 PLAYLISTS_FILE = os.path.join(CACHE_DIR, 'playlists.cfg')
 ALBUM_PLAYLIST_TAG = 'ALBUM'
 VARIOUS_ARTIST_ID = '2935'
-
-
-def log(msg, level=DEBUG_LEVEL):
-    xbmc.log(("[%s] %s" % (plugin.name, msg)).encode('utf-8'), level=level)
 
 
 def _T(txtid):
@@ -165,6 +163,7 @@ class AlbumItem(Album, HasListItem):
         return label
 
     def getLongTitle(self):
+        self.setLabelFormat()
         longTitle = self.title
         if self.type == AlbumType.ep:
             longTitle += ' (EP)'
@@ -206,8 +205,7 @@ class AlbumItem(Album, HasListItem):
             if self._playlist_type == 'USER':
                 cm.append((_T(30240), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove/%s/%s' % (self._playlist_id, self._playlist_pos))))
                 cm.append((_T(30248), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/move/%s/%s/%s' % (self._playlist_id, self._playlist_pos, self._playlist_track_id))))
-            else:
-                cm.append((_T(30239), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/add/album/%s' % self.id)))
+            cm.append((_T(30239), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/add/album/%s' % self.id)))
             plids = self._userplaylists.keys()
             for plid in plids:
                 if plid <> self._playlist_id:
@@ -223,7 +221,7 @@ class ArtistItem(Artist, HasListItem):
 
     def getLabel(self, extended=True):
         self.setLabelFormat()
-        if extended and self._isFavorite and not '/favorites/' in sys.argv[0]:
+        if extended and self._isFavorite and not '/favorites/artists' in sys.argv[0]:
             return self.FAVORITE_MASK.format(label=self.name)
         return self.name
 
@@ -273,7 +271,7 @@ class PlaylistItem(Playlist, HasListItem):
     def getListItem(self):
         li = HasListItem.getListItem(self)
         path = '/playlist/%s/items/0'
-        if self.type == 'USER' and self.description.find(ALBUM_PLAYLIST_TAG) >= 0:
+        if self.type == 'USER' and ALBUM_PLAYLIST_TAG in self.description:
             path = '/playlist/%s/albums/0'
         url = plugin.url_for_path(path % self.id)
         infoLabel = {
@@ -292,7 +290,7 @@ class PlaylistItem(Playlist, HasListItem):
         cm = []
         if self.numberOfVideos > 0:
             cm.append((_T(30252), 'Container.Update(%s)' % plugin.url_for_path('/playlist/%s/tracks/0' % self.id)))
-        if self.type == 'USER' and self.description.find(ALBUM_PLAYLIST_TAG) >= 0:
+        if self.type == 'USER' and ALBUM_PLAYLIST_TAG in self.description:
             cm.append((_T(30254), 'Container.Update(%s)' % plugin.url_for_path('/playlist/%s/items/0' % self.id)))
         else:
             cm.append((_T(30255), 'Container.Update(%s)' % plugin.url_for_path('/playlist/%s/albums/0' % self.id)))
@@ -351,7 +349,10 @@ class TrackItem(Track, HasListItem):
         return label
 
     def getLongTitle(self):
+        self.setLabelFormat()
         longTitle = self.title
+        if self.version and not self.version in self.title:
+            longTitle += ' (%s)' % self.version
         if self.explicit and not 'Explicit' in self.title:
             longTitle += ' (Explicit)'
         if self.editable and isinstance(self._cut, CutInfo):
@@ -611,6 +612,7 @@ class PromotionItem(Promotion, HasListItem):
                     cm.append((_T(30220), 'RunPlugin(%s)' % plugin.url_for_path('/favorites/remove/playlists/%s' % self.id)))
                 else:
                     cm.append((_T(30219), 'RunPlugin(%s)' % plugin.url_for_path('/favorites/add/playlists/%s' % self.id)))
+            cm.append((_T(30255), 'Container.Update(%s)' % plugin.url_for_path('/playlist/%s/albums/0' % self.id)))
         elif self.type == 'ALBUM':
             if self._is_logged_in:
                 if self._isFavorite:
@@ -791,7 +793,8 @@ class TidalConfig(Config):
             self.codec = 'MQA'
         self.maxVideoHeight = [9999, 1080, 720, 540, 480, 360, 240][min(6, int('0%s' % addon.getSetting('video_quality')))]
         self.pageSize = max(10, min(9999, int('0%s' % addon.getSetting('page_size'))))
-
+        self.debug = True if addon.getSetting('debug_log') == 'true' else False
+        self.debug_json = True if addon.getSetting('debug_json') == 'true' else False
 
 class TidalSession(Session):
 
@@ -1243,7 +1246,7 @@ class TidalUser(User):
         else:
             items = self._session.get_playlist_items(playlist)
         album_ids = []
-        if playlist.description.find(ALBUM_PLAYLIST_TAG) >= 0:
+        if ALBUM_PLAYLIST_TAG in playlist.description:
             album_ids = ['%s' % item.album.id for item in items if isinstance(item, TrackItem)]
         # Save Track-IDs into Buffer
         self.playlists_cache.update({playlist.id: {'title': playlist.title,
@@ -1360,31 +1363,3 @@ class TidalUser(User):
         return None
 
 
-class KodiLogHandler(logging.StreamHandler):
-
-    def __init__(self, modules):
-        logging.StreamHandler.__init__(self)
-        self._modules = modules
-        prefix = b"[%s] " % plugin.name
-        formatter = logging.Formatter(prefix + b'%(name)s: %(message)s')
-        self.setFormatter(formatter)
-
-    def emit(self, record):
-        if record.levelno < logging.WARNING and self._modules and not record.name in self._modules:
-            # Log INFO and DEBUG only with enabled modules
-            return
-        levels = {
-            logging.CRITICAL: xbmc.LOGFATAL,
-            logging.ERROR: xbmc.LOGERROR,
-            logging.WARNING: xbmc.LOGWARNING,
-            logging.INFO: xbmc.LOGDEBUG,
-            logging.DEBUG: xbmc.LOGSEVERE,
-            logging.NOTSET: xbmc.LOGNONE,
-        }
-        try:
-            xbmc.log(self.format(record), levels[record.levelno])
-        except UnicodeEncodeError:
-            xbmc.log(self.format(record).encode('utf-8', 'ignore'), levels[record.levelno])
-
-    def flush(self):
-        pass

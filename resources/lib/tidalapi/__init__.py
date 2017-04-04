@@ -33,7 +33,7 @@ except ImportError:
     from urllib.parse import urljoin
 
 
-log = logging.getLogger(__name__)
+log = logging.getLogger(__name__.split('.')[-1])
 
 
 class Config(object):
@@ -42,6 +42,7 @@ class Config(object):
         self.api_location = 'https://api.tidal.com/v1/'
         self.api_token = 'kgsOOmYk3zShYrNP'     # Android Token that works for everything
         self.preview_token = "8C7kRFdkaRp0dLBp" # Token for Preview Mode
+        self.debug_json = False
 
 
 class Session(object):
@@ -160,8 +161,8 @@ class Session(object):
             except:
                 log.error(r.reason)
         r.raise_for_status()
-        if r.content and log.isEnabledFor(logging.INFO):
-            log.info("response: %s" % json.dumps(r.json(), indent=4))
+        if self._config.debug_json and r.content and log.isEnabledFor(logging.DEBUG):
+            log.debug("response: %s" % json.dumps(r.json(), indent=4))
         return r
 
     def get_user(self, user_id):
@@ -212,6 +213,8 @@ class Session(object):
                     track_no += 1
                 remaining -= len(items)
                 result += items
+            else:
+                remaining = 0
             offset += 100
         if ret.startswith('track'):
             # Return tracks only
@@ -239,6 +242,8 @@ class Session(object):
                     remaining = items[0]._totalNumberOfItems
                 remaining -= len(items)
                 result += items
+            else:
+                remaining = 0
             offset += 100
         if ret.startswith('track'):
             # Return tracks only
@@ -409,7 +414,7 @@ class Session(object):
         soundQuality = quality if quality else self._config.quality
         media = self.get_track_url(track_id, quality=soundQuality, cut_id=cut_id)
         if fallback and soundQuality == Quality.lossless and (media == None or media.isEncrypted):
-            log.warning(media.url)
+            log.debug(media.url)
             if media:
                 # Got Encrypted Stream. Retry with HIGH Quality
                 log.warning('Got encryptionKey "%s" for track %s, trying HIGH Quality ...' % (media.encryptionKey, track_id))
@@ -764,7 +769,7 @@ class User(object):
             data = {'title': title, 'description': description}
             ok = self._session.request('POST', 'playlists/%s' % playlist.id, data=data, headers=headers).ok
         else:
-            log.debug('Got no ETag for playlist %s' & playlist.title)
+            log.warning('Got no ETag for playlist %s' & playlist.title)
         return ok
 
     def add_playlist_entries(self, playlist, item_ids=[]):
@@ -780,7 +785,7 @@ class User(object):
             data = {'trackIds': trackIds, 'toIndex': playlist.numberOfItems}
             ok = self._session.request('POST', 'playlists/%s/tracks' % playlist.id, data=data, headers=headers).ok
         else:
-            log.debug('Got no ETag for playlist %s' & playlist.title)
+            log.warning('Got no ETag for playlist %s' & playlist.title)
         return ok
 
     def remove_playlist_entry(self, playlist, entry_no=None, item_id=None):

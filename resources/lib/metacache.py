@@ -28,8 +28,7 @@ try:
 except:
     from pysqlite2 import dbapi2 as database
 
-from koditidal import addon
-import debug
+from koditidal import addon, debug
 
 
 METACACHE_DIR = xbmc.translatePath(addon.getAddonInfo('profile')).decode('utf-8')

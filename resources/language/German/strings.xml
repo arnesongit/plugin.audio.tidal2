@@ -113,7 +113,7 @@
 
     <!-- Extended Settings -->
     <string id="30501">Farben in Label verwenden</string>
-    <string id="30502">Debug-Log aktivieren</string>
+    <string id="30502">Debug-Logging aktivieren</string>
     <string id="30503">Album-Daten aller Titel lesen (Album-Cache)</string>
     <string id="30504">Kein FLAC-Stream !</string>
     <string id="30505">Album-Cache-Fehler !</string>

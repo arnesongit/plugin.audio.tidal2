@@ -113,7 +113,7 @@
 
     <!-- Extended Settings -->
     <string id="30501">Use Colors in Labels</string>
-    <string id="30502">Debug Output</string>
+    <string id="30502">Enable Debug-Logging</string>
     <string id="30503">Read Album Data for every Track (Album Cache)</string>
     <string id="30504">Not a FLAC Stream !</string>
     <string id="30505">Album Cache Error !</string>

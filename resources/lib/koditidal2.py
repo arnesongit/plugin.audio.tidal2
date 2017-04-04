@@ -25,7 +25,7 @@ import xbmc
 import xbmcgui
 
 from koditidal import HasListItem, AlbumItem, ArtistItem, PlaylistItem, TrackItem, VideoItem, PromotionItem, CategoryItem, FolderItem
-from koditidal import plugin, addon, log, _T, TidalSession, TidalUser, TidalFavorites, TidalConfig
+from koditidal import plugin, addon, debug, log, _T, TidalSession, TidalUser, TidalFavorites, TidalConfig
 from tidalapi import SubscriptionType
 from metacache import MetaCache
 

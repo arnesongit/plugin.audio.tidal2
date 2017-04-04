@@ -188,6 +188,8 @@ class Playlist(BrowsableMedia):
         self.last_updated = self.lastUpdated # For Backward Compatibility
         self.num_tracks = self.numberOfItems # For Backward Compatibility
         self.name = self.title               # For Backward Compatibility
+        if self.description == None:
+            self.description = ''
         self._image = kwargs.get('image', None) # Because "image" is a property method
         if self.created:
             # New Property for Backward Compatibility
