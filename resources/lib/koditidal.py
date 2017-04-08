@@ -18,6 +18,7 @@
 from __future__ import unicode_literals
 
 import os, sys, re
+import json
 import datetime
 from urlparse import urlsplit
 import xbmc
@@ -25,6 +26,7 @@ import xbmcvfs
 import xbmcgui
 import xbmcaddon
 import xbmcplugin
+import requests
 from xbmcgui import ListItem
 from routing import Plugin
 from tidalapi import Config, Session, User, Favorites
@@ -32,22 +34,33 @@ from tidalapi.models import Quality, SubscriptionType, AlbumType, BrowsableMedia
 from m3u8 import load as m3u8_load
 from debug import DebugHelper
 
+class KodiPlugin(Plugin):
+    def __init__(self, base_url=None):
+        try:
+            # Creates a Dump is sys.argv[] is empty !
+            Plugin.__init__(self, base_url=base_url)
+        except:
+            pass
+        self.base_url = base_url
+
 _addon_id = 'plugin.audio.tidal2'
 addon = xbmcaddon.Addon(id=_addon_id)
-plugin = Plugin(base_url = "plugin://" + _addon_id)
+plugin = KodiPlugin(base_url = "plugin://" + _addon_id)
 plugin.name = addon.getAddonInfo('name')
 _addon_icon = os.path.join(addon.getAddonInfo('path'), 'icon.png')
 _addon_fanart = os.path.join(addon.getAddonInfo('path'), 'fanart.jpg')
 
-debug = DebugHelper(pluginName=plugin.name, 
+debug = DebugHelper(pluginName=addon.getAddonInfo('name'), 
                     detailLevel=2 if addon.getSetting('debug_log') == 'true' else 1, 
                     enableTidalApiLog= True if addon.getSetting('debug_log') == 'true' else False)
+
 log = debug.log
 
 try:
-    KODI_VERSION = xbmc.getInfoLabel('System.BuildVersion').split()[0]
+    version = json.loads(xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Application.GetProperties", "params": {"properties": ["version", "name"]}, "id": 1 }'))['result']['version']
+    KODI_VERSION = (version['major'], version['minor'])
 except:
-    KODI_VERSION = '16.1'
+    KODI_VERSION = (16, 1)
 
 CACHE_DIR = xbmc.translatePath(addon.getAddonInfo('profile')).decode('utf-8')
 FAVORITES_FILE = os.path.join(CACHE_DIR, 'favorites.cfg')
@@ -188,7 +201,7 @@ class AlbumItem(Album, HasListItem):
             'year': getattr(self, 'year', None),
             'tracknumber': self._itemPosition + 1 if self._itemPosition >= 0 else 0,
         }
-        if '17.' in KODI_VERSION:
+        if KODI_VERSION >= (17, 0):
             infoLabels.update({'mediatype': 'album',
                                'userrating': '%s' % int(round(self.popularity / 10.0))
                                })
@@ -229,7 +242,7 @@ class ArtistItem(Artist, HasListItem):
         li = HasListItem.getListItem(self)
         url = plugin.url_for_path('/artist/%s' % self.id)
         infoLabel = {'artist': self.name}
-        if '17.' in KODI_VERSION:
+        if KODI_VERSION >= (17, 0):
             infoLabel.update({'mediatype': 'artist',
                               'userrating': '%s' % int(round(self.popularity / 10.0))
                               })
@@ -281,7 +294,7 @@ class PlaylistItem(Playlist, HasListItem):
             'genre': _T(30243).format(tracks=self.numberOfTracks, videos=self.numberOfVideos),
             'tracknumber': self._itemPosition + 1 if self._itemPosition >= 0 else 0
         }
-        if '17.' in KODI_VERSION:
+        if KODI_VERSION >= (17, 0):
             infoLabel.update({'userrating': '%s' % int(round(self.popularity / 10.0))})
         li.setInfo('music', infoLabel)
         return (url, li, True)
@@ -402,7 +415,7 @@ class TrackItem(Track, HasListItem):
             'rating': '%s' % int(round(self.popularity / 20.0)),
             'comment': self.getComment()
         }
-        if '17.' in KODI_VERSION:
+        if KODI_VERSION >= (17, 0):
             infoLabel.update({'mediatype': 'song',
                               'userrating': '%s' % int(round(self.popularity / 10.0))
                               })
@@ -503,7 +516,7 @@ class VideoItem(Video, HasListItem):
             'plotoutline': self.getComment(),
             'plot': self.getFtArtistsText()
         }
-        if '17.' in KODI_VERSION:
+        if KODI_VERSION >= (17, 0):
             infoLabel.update({'mediatype': 'musicvideo',
                               'userrating': '%s' % int(round(self.popularity / 10.0))
                               })
@@ -568,7 +581,7 @@ class PromotionItem(Promotion, HasListItem):
                 'album': self.text,
                 'title': self.shortSubHeader
             }
-            if '17.' in KODI_VERSION:
+            if KODI_VERSION >= (17, 0):
                 infoLabel.update({'userrating': '%s' % int(round(self.popularity / 10.0))})
             li.setInfo('music', infoLabel)
         elif self.type == 'ALBUM':
@@ -578,7 +591,7 @@ class PromotionItem(Promotion, HasListItem):
                 'album': self.text,
                 'title': self.shortSubHeader
             }
-            if '17.' in KODI_VERSION:
+            if KODI_VERSION >= (17, 0):
                 infoLabel.update({'mediatype': 'album',
                                   'userrating': '%s' % int(round(self.popularity / 10.0))
                                   })
@@ -590,7 +603,7 @@ class PromotionItem(Promotion, HasListItem):
                 'album': self.text,
                 'title': self.shortSubHeader
             }
-            if '17.' in KODI_VERSION:
+            if KODI_VERSION >= (17, 0):
                 infoLabel.update({'mediatype': 'musicvideo',
                                   'userrating': '%s' % int(round(self.popularity / 10.0))
                                   })
@@ -724,7 +737,7 @@ class LoginToken(object):
     amarra =    'wc8j_yBJd20zOmx0' # Like Android Token, but returns 'numberOfVideos = 0' in Playlists
     # Unkown working Tokens
     token1 =    'P5Xbeo5LFvESeDy6' # Like Android Token, but returns 'numberOfVideos = 0' in Playlists
-    token2 =    'oIaGpqT_vQPnTr0Q' # Like token1, nut uses RTMP for HIGH/LOW Quality
+    token2 =    'oIaGpqT_vQPnTr0Q' # Like token1, but uses RTMP for HIGH/LOW Quality
     token3 =    '_KM2HixcUBZtmktH' # Same as token1
 
     features = {
@@ -733,37 +746,48 @@ class LoginToken(object):
         # rtmp: Uses RTMP Protocol for HIGH/LOW Quality Audio Streams
         # videosInPlaylists: True: numberOfVideos in Playlists is correct, False: returns 'numberOfVideos = 0' in Playlists
         # user-agent: Special User-Agent in HTTP-Request-Header
-        'browser':   { 'token': browser,   'codecs': ['AAC'],                'rtmp': True,  'videosInPlaylists': True,  'user-agent': None },
-        'android':   { 'token': android,   'codecs': ['AAC', 'FLAC'],        'rtmp': False, 'videosInPlaylists': True,  'user-agent': 'TIDAL_ANDROID/686 okhttp/3.3.1' },
-        'ios':       { 'token': ios,       'codecs': ['AAC', 'ALAC'],        'rtmp': False, 'videosInPlaylists': True,  'user-agent': 'TIDAL/546 CFNetwork/808.2.16 Darwin/16.3.0' },
-        'native':    { 'token': native,    'codecs': ['AAC'],                'rtmp': False, 'videosInPlaylists': True,  'user-agent': 'TIDAL_NATIVE_PLAYER/OSX/2.3.20' },
-        'audirvana': { 'token': audirvana, 'codecs': ['AAC', 'FLAC', 'MQA'], 'rtmp': False, 'videosInPlaylists': False, 'user-agent': 'Audirvana Plus/2.6.4 CFNetwork/807.2.14 Darwin/16.3.0 (x86_64)' },
-        'amarra':    { 'token': amarra,    'codecs': ['AAC', 'FLAC'],        'rtmp': False, 'videosInPlaylists': False, 'user-agent': 'Amarra for TIDAL/2.2.1261 CFNetwork/807.2.14 Darwin/16.3.0 (x86_64)' },
+        'browser':   { 'token': browser,   'codecs': ['AAC'],                'rtmp': True,  'videoMode': 'HLS', 'videosInPlaylists': True,  'user-agent': None },
+        'android':   { 'token': android,   'codecs': ['AAC', 'FLAC'],        'rtmp': False, 'videoMode': 'HTTP','videosInPlaylists': True,  'user-agent': 'TIDAL_ANDROID/686 okhttp/3.3.1' },
+        'ios':       { 'token': ios,       'codecs': ['AAC', 'ALAC'],        'rtmp': False, 'videoMode': 'HLS', 'videosInPlaylists': True,  'user-agent': 'TIDAL/546 CFNetwork/808.2.16 Darwin/16.3.0' },
+        'native':    { 'token': native,    'codecs': ['AAC'],                'rtmp': False, 'videoMode': 'HLS', 'videosInPlaylists': True,  'user-agent': 'TIDAL_NATIVE_PLAYER/OSX/2.3.20' },
+        'audirvana': { 'token': audirvana, 'codecs': ['AAC', 'FLAC', 'MQA'], 'rtmp': False, 'videoMode': 'HLS', 'videosInPlaylists': False, 'user-agent': 'Audirvana Plus/2.6.4 CFNetwork/807.2.14 Darwin/16.3.0 (x86_64)' },
+        'amarra':    { 'token': amarra,    'codecs': ['AAC', 'FLAC'],        'rtmp': False, 'videoMode': 'HLS', 'videosInPlaylists': False, 'user-agent': 'Amarra for TIDAL/2.2.1261 CFNetwork/807.2.14 Darwin/16.3.0 (x86_64)' },
         # Unknown working Tokens
-        'token1':    { 'token': token1,    'codecs': ['AAC', 'FLAC'],        'rtmp': False, 'videosInPlaylists': False, 'user-agent': None },
-        'token2':    { 'token': token2,    'codecs': ['AAC', 'FLAC'],        'rtmp': True,  'videosInPlaylists': False, 'user-agent': None },
-        'token3':    { 'token': token3,    'codecs': ['AAC', 'FLAC'],        'rtmp': False, 'videosInPlaylists': False, 'user-agent': None }
+        'token1':    { 'token': token1,    'codecs': ['AAC', 'FLAC'],        'rtmp': False, 'videoMode': 'HTTP','videosInPlaylists': False, 'user-agent': None },
+        'token2':    { 'token': token2,    'codecs': ['AAC', 'FLAC'],        'rtmp': True,  'videoMode': 'HLS', 'videosInPlaylists': False, 'user-agent': None },
+        'token3':    { 'token': token3,    'codecs': ['AAC', 'FLAC'],        'rtmp': False, 'videoMode': 'HTTP','videosInPlaylists': False, 'user-agent': None }
     }
 
     priority = ['android', 'ios', 'audirvana', 'browser', 'native', 'amarra', 'token1', 'token2', 'token3']
 
     @staticmethod
     def getFeatures(tokenName='android'):
-        return LoginToken.features.get(tokenName)
+        return LoginToken.features.get(tokenName, None)
 
     @staticmethod
     def getToken(tokenName='android'):
         return LoginToken.getFeatures(tokenName).get('token')
 
     @staticmethod
-    def select(codec, rtmp=False, api=True):
-        tokens = []
+    def select(codec, rtmp=False, api=True, forceHttpVideo=False):
+        primary_tokens = []
+        secondary_tokens = []
         lossless = codec in ['FLAC', 'ALAC', 'MQA']
-        rtmp_relevant = False if lossless else True
+        rtmp_relevant = False if api or lossless else True
+        video_modes = ['HTTP'] if api and forceHttpVideo else ['HLS', 'HTTP'] if api or forceHttpVideo else ['HLS']
         for tokenName in LoginToken.priority:
             token = LoginToken.getFeatures(tokenName)
-            if codec in token.get('codecs') and (not rtmp_relevant or token.get('rtmp') == rtmp) and (not api or token.get('videosInPlaylists') == api):
-                tokens.append(tokenName)
+            if codec in token.get('codecs') and \
+               (token.get('videoMode') in video_modes) and \
+               (not rtmp_relevant or token.get('rtmp') == rtmp) and \
+               (not api or token.get('videosInPlaylists') == api):
+                if api and token.get('videoMode') == 'HTTP' and not forceHttpVideo:
+                    secondary_tokens.append(tokenName)
+                else:
+                    primary_tokens.append(tokenName)
+        tokens = primary_tokens + secondary_tokens
+        if not tokens:
+            log('No Token found for Codec:%s, RTMP:%s, API:%s, HTTP:%s' % (codec, rtmp, api, forceHttpVideo) )
         return tokens
 
 
@@ -777,9 +801,12 @@ class TidalConfig(Config):
 
     def load(self):
         self.session_id = addon.getSetting('session_id')
+        self.session_token_name = addon.getSetting('session_token_name')
         self.stream_session_id = addon.getSetting('stream_session_id')
+        self.stream_token_name = addon.getSetting('stream_token_name')
         if not self.stream_session_id:
             self.stream_session_id = self.session_id
+            self.stream_token_name = self.session_token_name
         self.country_code = addon.getSetting('country_code')
         self.user_id = addon.getSetting('user_id')
         self.subscription_type = [SubscriptionType.hifi, SubscriptionType.premium][min(1, int('0' + addon.getSetting('subscription_type')))]
@@ -795,6 +822,12 @@ class TidalConfig(Config):
         self.pageSize = max(10, min(9999, int('0%s' % addon.getSetting('page_size'))))
         self.debug = True if addon.getSetting('debug_log') == 'true' else False
         self.debug_json = True if addon.getSetting('debug_json') == 'true' else False
+        self.forceHttpVideo = True if addon.getSetting('http_for_videos') == 'true' else False
+        self.http_video_session_id = self.stream_session_id
+        if self.forceHttpVideo:
+            apiFeatures = LoginToken.getFeatures(self.session_token_name)
+            if apiFeatures and apiFeatures.get('videoMode') == 'HTTP':
+                self.http_video_session_id = self.session_id
 
 class TidalSession(Session):
 
@@ -813,6 +846,7 @@ class TidalSession(Session):
         Session.load_session(self, self._config.session_id, self._config.country_code, self._config.user_id,
                              self._config.subscription_type, self._config.client_unique_key)
         self.stream_session_id = self._config.stream_session_id
+        self.http_video_session_id = self._config.http_video_session_id
 
     def generate_client_unique_key(self):
         unique_key = addon.getSetting('client_unique_key')
@@ -844,34 +878,49 @@ class TidalSession(Session):
             # Generate a random client key if no key is given
             self.client_unique_key = self.generate_client_unique_key()
         api_token = ''
+        stream_token = ''
         # Get working Tokens with correct numberOfVideos in Playlists which can be used for API calls and for Streaming
-        tokenNames = LoginToken.select(codec=self._config.codec, rtmp=self._config.use_rtmp, api=True)
+        tokenNames = LoginToken.select(codec=self._config.codec, rtmp=self._config.use_rtmp, api=True, forceHttpVideo=self._config.forceHttpVideo)
         if not tokenNames:
             # Get a default API Token
-            tokenNames = LoginToken.select(codec='AAC', rtmp=self._config.use_rtmp, api=True)
+            tokenNames = LoginToken.select(codec='AAC', rtmp=self._config.use_rtmp, api=True, forceHttpVideo=self._config.forceHttpVideo)
+        # if not tokenNames:
         for tokenName in tokenNames:
+            log('Try Login for API Session with %s Token %s ...' % (tokenName, LoginToken.getToken(tokenName)))
             loginOk = self.login_with_token(username, password, subscription_type, tokenName, api=True)
             if loginOk:
-                self.stream_session_id = self.session_id
                 api_token = tokenName
+                # Use the API Session also for Streaming as default
+                stream_token = api_token
+                self.stream_session_id = self.session_id
                 break
         # Get Tokens which are necessary for Streaming
-        tokenNames = LoginToken.select(codec=self._config.codec, rtmp=self._config.use_rtmp, api=False)
-        if api_token not in tokenNames:
+        tokenNames = LoginToken.select(codec=self._config.codec, rtmp=self._config.use_rtmp, api=False, forceHttpVideo=False)
+        if api_token in tokenNames:
+            log('Using API Session also for Streaming.')
+        else:
             # Get Session-ID for Streaming
             for tokenName in tokenNames:
+                log('Try Login for Stream Session with %s Token %s ...' % (tokenName, LoginToken.getToken(tokenName)))
                 loginOk = self.login_with_token(username, password, subscription_type, tokenName, api=False)
                 if loginOk:
+                    stream_token = tokenName
                     break
         # Save Session Data into Addon-Settings
         if self.is_logged_in:
             addon.setSetting('session_id', self.session_id)
+            addon.setSetting('session_token_name', api_token)
             addon.setSetting('stream_session_id', self.stream_session_id)
+            addon.setSetting('stream_token_name', stream_token)
             addon.setSetting('country_code', self.country_code)
             addon.setSetting('user_id', unicode(self.user.id))
             addon.setSetting('subscription_type', '0' if self.user.subscription.type == SubscriptionType.hifi else '1')
             addon.setSetting('client_unique_key', self.client_unique_key)
+            # Reload the Configuration after Settings are saved.
             self._config.load()
+            self.load_session()
+            if self._config.forceHttpVideo and self.http_video_session_id == self.session_id and self.session_id <> self.stream_session_id:
+                log('Using API Session for HTTP Video Streaming. Videos are limited to 720p !')
         return self.is_logged_in
 
     def logout(self):
@@ -1046,9 +1095,28 @@ class TidalSession(Session):
 
     def get_video_url(self, video_id, maxHeight=-1):
         oldSessionId = self.session_id
-        self.session_id = self.stream_session_id
-        media = Session.get_video_url(self, video_id)
+        self.session_id = self.http_video_session_id
         maxVideoHeight = maxHeight if maxHeight > 0 else self._config.maxVideoHeight
+        media = None
+        try:
+            if self._config.forceHttpVideo:
+                quality = 'MP4_640P' if self._config.maxVideoHeight < 720 else 'MP4_720P' if self._config.maxVideoHeight < 1080 else 'MP4_1080P'
+                media = Session.get_video_url(self, video_id, quality=quality)
+        except requests.HTTPError as e:
+            r = e.response
+            msg = _T(30505)
+            try:
+                msg = r.reason
+                msg = r.json().get('userMessage')
+            except:
+                pass
+            log('HTTP-Error: ' + msg, xbmc.LOGERROR)
+            log('Got no HTTP Stream for Video ID %s, using HLS Stream ...' % video_id, xbmc.LOGERROR)
+            xbmcgui.Dialog().notification(plugin.name, _T(30510), xbmcgui.NOTIFICATION_WARNING)
+        if not media:
+            # Using HLS-Stream 
+            self.session_id = self.stream_session_id
+            media = Session.get_video_url(self, video_id, quality=None)
         if maxVideoHeight <> 9999 and media.url.lower().find('.m3u8') > 0:
             log('Parsing M3U8 Playlist: %s' % media.url)
             m3u8obj = m3u8_load(media.url)

@@ -437,12 +437,15 @@ class Session(object):
             url = 'tracks/%s/previewurl' % track_id
         return self._map_request(url,  params=params, ret='track_url')
 
-    def get_video_url(self, video_id):
+    def get_video_url(self, video_id, quality=None):
+        params = None
         if self.is_logged_in:
             url = 'videos/%s/streamUrl' % video_id
+            if quality:
+                params = {'videoQuality': quality}
         else:
             url = 'videos/%s/previewurl' % video_id
-        return self._map_request(url,  ret='video_url')
+        return self._map_request(url,  ret='video_url', params=params)
 
     def search(self, field, value, limit=50):
         params = {

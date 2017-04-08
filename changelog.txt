@@ -1,3 +1,11 @@
+v2.0.0-beta14 (2017-04-06)
+- Fixed "RTMP-Protocol for High/Low Quality" for Kodi Krypton
+  (Krypton can decode RTMP Audio Streams without the inputstream.rtmp Addon)
+- Fixed Video Playback if the Android Login Token is used (FLAC 16-Bit Mode)
+- New Option to enable HTTP Video Streaming instead of HLS (max. resolution is 720p)
+- Added a Service which asks for a re-login if Streaming Options are changed
+  (only for Kodi versions >= 16.1)
+
 v2.0.0-beta13 (2017-04-04)
 - Mark Favorite Artists in Favorite Albums and Favorite Tracks lists
 - Fixed problem with Playlists without description

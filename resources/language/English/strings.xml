@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <strings>
-    <string id="30001">General</string>
+    <string id="30001">User Account</string>
     <string id="30002">Extended</string>
     <string id="30004">Music Quality</string>
     <string id="30005">Lossless (FLAC,ALAC,MQA)</string>
@@ -23,6 +23,8 @@
     <string id="30022">RTMP-Protocol for High/Low Quality</string>
     <string id="30023">Show Album Year in Labels</string>
     <string id="30024">Add (MQA) to Master Album Labels</string>
+    <string id="30025">Options</string>
+    <string id="30026">Use HTTP instead of HLS Steaming (max. 720p)</string>
 
     <!-- Video Settings -->
     <string id="30040">Video Quality</string>
@@ -110,6 +112,8 @@
     <string id="30253">Login failed !!</string>
     <string id="30254">Open as Track/Video Playlist</string>
     <string id="30255">Open as Album Playlist</string>
+    <string id="30256">Streaming Options changed. Please re-login !</string>
+    <string id="30257">Execute the re-login now ?</string>
 
     <!-- Extended Settings -->
     <string id="30501">Use Colors in Labels</string>
@@ -121,5 +125,6 @@
     <string id="30507">Delete Album Cache</string>
     <string id="30508">Are you sure to delete the Album Cache Database ?</string>
     <string id="30509">Cached Albums with Videos</string>
+    <string id="30510">Got no HTTP Stream, using HLS ...</string>
 
 </strings>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.audio.tidal2" name="TIDAL2" version="2.0.0-beta13" provider-name="arneson">
+<addon id="plugin.audio.tidal2" name="TIDAL2" version="2.0.0-beta14" provider-name="arneson">
   <requires>
     <import addon="xbmc.python" version="2.14.0"/>
     <import addon="script.module.requests" version="2.3.0"/>
@@ -10,6 +10,7 @@
     <provides>audio</provides>
   </extension>
   <extension point="xbmc.python.module" library="resources/lib"/>
+  <extension point="xbmc.service" library="service.py" start="login"/>
   <extension point="xbmc.addon.metadata">
     <summary lang="en">Extended version of the TIDAL music add-on</summary>
     <summary lang="de">Erweiterte Version des TIDAL Music-Addons</summary>
@@ -26,11 +27,13 @@ Es wird ein Abbonement benötigt. Siehe tidal.com für Details.</description>
     <forum>http://forum.xbmc.org/showthread.php?tid=200555</forum>
     <source>https://github.com/arnesongit/plugin.audio.tidal2</source>
     <news>
-v2.0.0-beta13 (2017-04-04)
-- Mark Favorite Artists in Favorite Albums and Favorite Tracks lists
-- Fixed problem with Playlists without description
-- Cleanup Debug-Logging code
-- Fixed loop problem if a Playlist or Album contains less items as specified
+v2.0.0-beta14 (2017-04-06)
+- Fixed "RTMP-Protocol for High/Low Quality" for Kodi Krypton
+  (Krypton can decode RTMP Audio Streams without the inputstream.rtmp Addon)
+- Fixed Video Playback if the Android Login Token is used (FLAC 16-Bit Mode)
+- New Option to enable HTTP Video Streaming instead of HLS (max. resolution is 720p)
+- Added a Service which asks for a re-login if Streaming Options are changed
+  (only for Kodi versions >= 16.1)
     </news>
     <assets>
       <icon>resources/icon.png</icon>

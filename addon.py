@@ -24,7 +24,7 @@ import xbmcplugin
 from xbmcgui import ListItem
 from requests import HTTPError
 from resources.lib.tidalapi.models import Quality, Category, SubscriptionType
-from resources.lib.koditidal import plugin, addon, _addon_id, _T, log, ALBUM_PLAYLIST_TAG
+from resources.lib.koditidal import plugin, addon, _addon_id, _T, log, ALBUM_PLAYLIST_TAG, KODI_VERSION
 from resources.lib.koditidal2 import TidalSession2 as TidalSession
 
 # This is the Tidal Session
@@ -630,26 +630,34 @@ def login():
             addon.setSetting('password', '')
     if not ok:
         xbmcgui.Dialog().notification(plugin.name, _T(30253) , icon=xbmcgui.NOTIFICATION_ERROR)
-    xbmc.executebuiltin('Container.update(plugin://%s/, True)' % addon.getAddonInfo('id'))
+    xbmc.executebuiltin('Container.Refresh()')
 
 
 @plugin.route('/logout')
 def logout():
     session.logout()
-    xbmc.executebuiltin('Container.update(plugin://%s/, True)' % addon.getAddonInfo('id'))
+    xbmc.executebuiltin('Container.Refresh()')
 
 
 @plugin.route('/play_track/<track_id>/<album_id>')
 def play_track(track_id, album_id):
     media_url = session.get_media_url(track_id, album_id=album_id)
     log("Playing: %s" % media_url)
+    disableInputstreamAddon = False
     if not media_url.startswith('http://') and not media_url.startswith('https://') and \
         not 'app=' in media_url.lower() and not 'playpath=' in media_url.lower():
         # Rebuild RTMP URL
-        host, tail = media_url.split('/', 1)
-        app, playpath = tail.split('/mp4:', 1)
-        media_url = 'rtmp://%s app=%s playpath=mp4:%s' % (host, app, playpath)
+        if KODI_VERSION >= (17, 0):
+            media_url = 'rtmp://%s' % media_url
+            disableInputstreamAddon = True
+        else:
+            host, tail = media_url.split('/', 1)
+            app, playpath = tail.split('/mp4:', 1)
+            media_url = 'rtmp://%s app=%s playpath=mp4:%s' % (host, app, playpath)
     li = ListItem(path=media_url)
+    if disableInputstreamAddon:
+        # Krypton can play RTMP Audio Streams without inputstream.rtmp Addon
+        li.setProperty('inputstreamaddon', '')
     mimetype = 'audio/flac' if session._config.quality == Quality.lossless and session.is_logged_in else 'audio/mpeg'
     li.setProperty('mimetype', mimetype)
     xbmcplugin.setResolvedUrl(plugin.handle, True, li)
@@ -659,13 +667,21 @@ def play_track(track_id, album_id):
 def play_track_cut(track_id, cut_id, album_id):
     media_url = session.get_media_url(track_id, cut_id=cut_id, album_id=album_id)
     log("Playing Cut %s: %s" % (cut_id, media_url))
+    disableInputstreamAddon = False
     if not media_url.startswith('http://') and not media_url.startswith('https://') and \
         not 'app=' in media_url.lower() and not 'playpath=' in media_url.lower():
         # Rebuild RTMP URL
-        host, tail = media_url.split('/', 1)
-        app, playpath = tail.split('/mp4:', 1)
-        media_url = 'rtmp://%s app=%s playpath=mp4:%s' % (host, app, playpath)
+        if KODI_VERSION >= (17, 0):
+            media_url = 'rtmp://%s' % media_url
+            disableInputstreamAddon = True
+        else:
+            host, tail = media_url.split('/', 1)
+            app, playpath = tail.split('/mp4:', 1)
+            media_url = 'rtmp://%s app=%s playpath=mp4:%s' % (host, app, playpath)
     li = ListItem(path=media_url)
+    if disableInputstreamAddon:
+        # Krypton can play RTMP Audio Streams without inputstream.rtmp Addon
+        li.setProperty('inputstreamaddon', '')
     mimetype = 'audio/flac' if session._config.quality == Quality.lossless and session.is_logged_in else 'audio/mpeg'
     li.setProperty('mimetype', mimetype)
     xbmcplugin.setResolvedUrl(plugin.handle, True, li)
