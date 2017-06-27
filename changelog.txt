@@ -1,3 +1,9 @@
+v2.0.0-beta15 (2017-06-27)
+- TIDAL now returns a flag for MQA Master for each Track and Album
+- Changed method to retrieve the Video stream URL (TIDAL changed the query URL)
+- Inserted Track version into its title
+- Included Addon-Settings to main menu
+
 v2.0.0-beta14 (2017-04-06)
 - Fixed "RTMP-Protocol for High/Low Quality" for Kodi Krypton
   (Krypton can decode RTMP Audio Streams without the inputstream.rtmp Addon)

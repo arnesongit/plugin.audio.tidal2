@@ -35,6 +35,7 @@ RE_ISO8601 = re.compile(r'^(?P<full>((?P<year>\d{4})([/-]?(?P<month>(0[1-9])|(1[
 
 
 class Quality(object):
+    hi_res = 'HI_RES'
     lossless = 'LOSSLESS'
     high = 'HIGH'
     low = 'LOW'
@@ -101,6 +102,7 @@ class Album(BrowsableMedia):
     releaseDate = None
     cover = None
     type = AlbumType.album
+    audioQuality = Quality.lossless
     explicit = False
     version = None
     popularity = 0
@@ -269,6 +271,7 @@ class Track(PlayableMedia):
     premiumStreamingOnly = False
     replayGain = 0.0
     peak = 1.0
+    audioQuality = Quality.lossless
     editable = False
 
     # Internal Properties
@@ -530,24 +533,36 @@ class TrackUrl(StreamUrl):
     codec = None            # MP3, AAC, FLAC, ALAC, MQA
     cutId = None
     soundQuality = None     # LOW, HIGH, LOSSLESS
+    audioQuality = None     # LOW, HIGH, LOSSLESS, HI_RES
     encryptionKey = None
+    securityToken = None
+    securityType = None
     trackId = None
+    urls = []
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         super(TrackUrl, self).__init__()
+        if not self.url and len(self.urls) > 0:
+            self.url = self.urls[0]
+        if not self.soundQuality:
+            self.soundQuality = self.audioQuality
 
     @property
     def isEncrypted(self):
-        return True if self.encryptionKey else False
+        return True if self.encryptionKey or self.securityToken else False
 
 
 class VideoUrl(StreamUrl):
     videoQuality = None     # HIGH
+    urls = []
+    format = 'HLS'
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         super(VideoUrl, self).__init__()
+        if not self.url and len(self.urls) > 0:
+            self.url = self.urls[0]
 
 
 class CutInfo(Model):

@@ -24,7 +24,7 @@ import requests
 import xbmc
 import xbmcgui
 
-from koditidal import HasListItem, AlbumItem, ArtistItem, PlaylistItem, TrackItem, VideoItem, PromotionItem, CategoryItem, FolderItem
+from koditidal import HasListItem, AlbumItem, ArtistItem, PlaylistItem, TrackItem, VideoItem, PromotionItem, CategoryItem, FolderItem, Quality
 from koditidal import plugin, addon, log, _T, TidalSession, TidalUser, TidalFavorites, TidalConfig
 from tidalapi import SubscriptionType
 from metacache import MetaCache
@@ -56,7 +56,6 @@ class ColoredListItem(HasListItem):
 class AlbumItem2(AlbumItem, ColoredListItem):
 
     _cached = False
-    _mqa = False
 
     def __init__(self, item):
         self.__dict__.update(vars(item))
@@ -66,7 +65,7 @@ class AlbumItem2(AlbumItem, ColoredListItem):
 
     @property
     def isMasterAlbum(self):
-        return True if self._mqa else False
+        return True if self.audioQuality == Quality.hi_res else False
 
 
 class ArtistItem2(ArtistItem, ColoredListItem):
@@ -98,6 +97,8 @@ class TrackItem2(TrackItem, ColoredListItem):
         userpl = self._userplaylists.keys()
         if len(userpl) > 0:
             comments.append('UserPlaylists: %s' % ', '.join([self._userplaylists.get(plid).get('title') for plid in userpl]))
+        #if self.replayGain <> 0:
+        #    comments.append("gain:%0.3f, peak:%0.3f" % (self.replayGain, self.peak))
         return ', '.join(comments)
 
 
@@ -161,6 +162,9 @@ class TidalSession2(TidalSession):
         self.albumJsonBuffer = {}
         self.abortAlbumThreads = True
         self.albumQueue = Queue()
+        if addon.getSetting('mqa_cache_cleaned') <> 'true':
+            self.metaCache.deleteOldMasterAlbums()
+            addon.setSetting('mqa_cache_cleaned', 'true')
 
     def init_user(self, user_id, subscription_type):
         return User2(self, user_id, subscription_type)
@@ -179,7 +183,7 @@ class TidalSession2(TidalSession):
             json_obj = self.albumJsonBuffer.get('%s' % album_id, None)
             if json_obj == None:
                 # Now read from Cache Database
-                json_obj = self.metaCache.getAlbumJson(album_id, checkMasterAlbum=self._config.codec == 'MQA')
+                json_obj = self.metaCache.getAlbumJson(album_id)
                 if json_obj != None and 'id' in json_obj:
                     # Transfer into the local buffer
                     self.albumJsonBuffer['%s' % json_obj.get('id')] = json_obj
@@ -255,19 +259,9 @@ class TidalSession2(TidalSession):
         media = self.get_track_url(track_id, quality=soundQuality, cut_id=cut_id)
         if not media:
             return None
-        if album_id and media.codec == 'MQA' and self._config.mqa_in_labels:
-            self.metaCache.insertMasterAlbumId(album_id)
         return media.url
 
     def add_list_items(self, items, content=None, end=True, withNextPage=False):
-        noMQA = True if not self._config.mqa_in_labels or self._config.codec <> 'MQA' else False
-        for item in items:
-            if isinstance(item, AlbumItem2) and not item.isMasterAlbum:
-                # Check if Album-ID is saved as Master-Album
-                item._mqa = False if noMQA else self.metaCache.isMasterAlbum(item.id)
-            elif not self._config.cache_albums and isinstance(item, TrackItem2) and not item.album.isMasterAlbum:
-                # Check if Album-ID is saved as Master-Album
-                item.album._mqa = False if noMQA else self.metaCache.isMasterAlbum(item.album.id)
         TidalSession.add_list_items(self, items, content=content, end=end, withNextPage=withNextPage)
         if end:
             try:
@@ -344,7 +338,7 @@ class TidalSession2(TidalSession):
                         # Try to read Album from Cache
                         json_obj = self.albumJsonBuffer.get('%s' % item.album.id, None)
                         if json_obj == None:
-                            json_obj = self.metaCache.getAlbumJson(item.album.id, checkMasterAlbum=self._config.codec == 'MQA')
+                            json_obj = self.metaCache.getAlbumJson(item.album.id)
                         if json_obj != None:
                             item.album = self._parse_album(json_obj)
                         else:
@@ -406,11 +400,6 @@ class TidalSession2(TidalSession):
 
     def master_albums(self, offset=0, limit=999):
         items = self.get_category_content('master', 'recommended', 'albums', offset=offset, limit=limit)
-        if self._config.codec == 'MQA' and self._config.mqa_in_labels:
-            for item in items:
-                item._mqa = True
-                self.metaCache.insertMasterAlbumId(item.id)
-            self.save_album_cache()
         return items
 
 

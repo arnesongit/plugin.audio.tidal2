@@ -132,8 +132,8 @@ class MetaCache(object):
 
     def getAlbumJson(self, album_id, checkMasterAlbum=False):
         json_obj = self.fetch('album', '%s' % album_id)
-        if isinstance(json_obj, DictionaryType):
-            json_obj.update({'_cached': True, '_mqa': False if not checkMasterAlbum else self.isMasterAlbum(album_id)})
+        #if isinstance(json_obj, DictionaryType):
+        #    json_obj.update({'_cached': True, '_mqa': False if not checkMasterAlbum else self.isMasterAlbum(album_id)})
         return json_obj
 
     def insertAlbumJson(self, json_obj):
@@ -141,27 +141,39 @@ class MetaCache(object):
             self.insert('album', '%s' % json_obj.get('id'), json_obj, overwrite=True)
             if json_obj.get('numberOfVideos', 0) > 0:
                 self.insert('album_with_videos', '%s' % json_obj.get('id'), json_obj, overwrite=True)
-            if json_obj.get('_mqa', False):
-                self.insertMasterAlbumId(json_obj.get('id'))
+            #if json_obj.get('_mqa', False):
+            #    self.insertMasterAlbumId(json_obj.get('id'))
             json_obj.update({'_cached': True})
 
-    def insertMasterAlbumId(self, album_id):
-        success = self.insert('master_album', '%s' % album_id, '%s' % album_id, overwrite=False)
-        # debug.log('Inserting Master Album ID %s: %s' % (album_id, success))
-        return success
+    #def insertMasterAlbumId(self, album_id):
+    #    success = self.insert('master_album', '%s' % album_id, '%s' % album_id, overwrite=False)
+    #    # debug.log('Inserting Master Album ID %s: %s' % (album_id, success))
+    #    return success
 
-    def deleteMasterAlbumId(self, album_id):
-        success = True
-        if self.isMasterAlbum(album_id):
-            success = self.delete('master_album', '%s' % album_id)
-            # debug.log('Deleting Master Album ID %s: %s' % (album_id, success))
-        return success
+    #def deleteMasterAlbumId(self, album_id):
+    #    success = True
+    #    if self.isMasterAlbum(album_id):
+    #        success = self.delete('master_album', '%s' % album_id)
+    #        # debug.log('Deleting Master Album ID %s: %s' % (album_id, success))
+    #    return success
 
-    def isMasterAlbum(self, album_id):
-        master_album_id = self.fetch('master_album', '%s' % album_id)
-        isMaster = True if master_album_id and '%s' % master_album_id == '%s' % album_id else False 
-        # debug.log('Checking Master Album ID %s: %s' % (album_id, isMaster))
-        return isMaster
+    #def isMasterAlbum(self, album_id):
+    #    master_album_id = self.fetch('master_album', '%s' % album_id)
+    #    isMaster = True if master_album_id and '%s' % master_album_id == '%s' % album_id else False 
+    #    # debug.log('Checking Master Album ID %s: %s' % (album_id, isMaster))
+    #    return isMaster
+
+    def deleteOldMasterAlbums(self):
+        allIds = self.fetchAllIds('master_album')
+        deletedMasterAlbums = 0
+        deletedAlbums = 0
+        for nextId in allIds:
+            if self.delete('master_album', '%s' % nextId):
+                deletedMasterAlbums += 1
+            if self.delete('album', '%s' % nextId):
+                deletedAlbums += 1
+        debug.log('Deleted %s old Master Albums from Cache.' % deletedMasterAlbums)
+        debug.log('Deleted %s Albums from Cache.' % deletedAlbums)
 
     def insertUserPlaylist(self, playlist_id, title='Unknown', items=[], overwrite=True):
         if CACHE_PLAYLISTS:

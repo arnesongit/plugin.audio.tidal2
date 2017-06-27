@@ -428,11 +428,14 @@ class Session(object):
     def get_track_url(self, track_id, quality=None, cut_id=None):
         params = {}
         if self.is_logged_in:
-            params.update({'soundQuality': quality if quality else self._config.quality})
             if cut_id:
                 url = 'cuts/%s/streamUrl' % cut_id
+                params.update({'soundQuality': quality if quality else self._config.quality})
             else:
                 url = 'tracks/%s/streamUrl' % track_id
+                params.update({'soundQuality': quality if quality else self._config.quality})
+                #url = 'tracks/%s/urlpostpaywall' % track_id
+                #params = {'urlusagemode': 'STREAM', 'assetpresentation': 'FULL', 'audioquality': quality if quality else self._config.quality}
         else:
             url = 'tracks/%s/previewurl' % track_id
         return self._map_request(url,  params=params, ret='track_url')
@@ -440,9 +443,11 @@ class Session(object):
     def get_video_url(self, video_id, quality=None):
         params = None
         if self.is_logged_in:
-            url = 'videos/%s/streamUrl' % video_id
-            if quality:
-                params = {'videoQuality': quality}
+            # url = 'videos/%s/streamUrl' % video_id
+            #if quality:
+            #    params = {'videoQuality': quality}
+            url = 'videos/%s/urlpostpaywall' % video_id
+            params = {'urlusagemode': 'STREAM', 'assetpresentation': 'FULL', 'videoquality': quality if quality else 'HIGH' }
         else:
             url = 'videos/%s/previewurl' % video_id
         return self._map_request(url,  ret='video_url', params=params)

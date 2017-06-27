@@ -35,6 +35,9 @@ class MyMonitor(xbmc.Monitor):
         self.config = TidalConfig2()
         self.setLastSettings()
 
+    def __del__(self):
+        log('MyMonitor() Object destroyed.')
+
     def setLastSettings(self):
         self.last_session_token_name = self.config.session_token_name
         self.last_stream_token_name = self.config.stream_token_name
@@ -96,6 +99,8 @@ class MyMonitor(xbmc.Monitor):
             if self.waitForAbort(wait_time):
                 break
         log('MyMonitor: Service Terminated')
+        # Cleanup for Garbage Collector
+        self.config = None
 
 #------------------------------------------------------------------------------
 # Service 

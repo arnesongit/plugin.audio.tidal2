@@ -184,7 +184,7 @@ class AlbumItem(Album, HasListItem):
             longTitle += ' (Single)'
         if getattr(self, 'year', None) and addon.getSetting('album_year_in_labels') == 'true':
             longTitle += ' (%s)' % self.year
-        if self.isMasterAlbum and addon.getSetting('mqa_in_labels') == 'true':
+        if self.audioQuality == Quality.hi_res and addon.getSetting('mqa_in_labels') == 'true':
             longTitle = self.MASTER_AUDIO_MASK.format(label=longTitle)
         return longTitle
 
@@ -337,6 +337,9 @@ class TrackItem(Track, HasListItem):
 
     def __init__(self, item):
         self.__dict__.update(vars(item))
+        if self.version and not self.version in self.title:
+            self.title += ' (%s)' % self.version
+            self.version = None
         self.artist = ArtistItem(self.artist)
         self.artists = [ArtistItem(artist) for artist in self.artists]
         self._ftArtists = [ArtistItem(artist) for artist in self._ftArtists]
@@ -371,7 +374,7 @@ class TrackItem(Track, HasListItem):
         if self.editable and isinstance(self._cut, CutInfo):
             if self._cut.name:
                 longTitle += ' (%s)' % self._cut.name
-        if self.album.isMasterAlbum and addon.getSetting('mqa_in_labels') == 'true':
+        if self.audioQuality == Quality.hi_res and addon.getSetting('mqa_in_labels') == 'true':
             longTitle = self.MASTER_AUDIO_MASK.format(label=longTitle)
         return longTitle
 
@@ -720,11 +723,11 @@ class FolderItem(BrowsableMedia, HasListItem):
 
     @property
     def image(self):
-        return self._thumb if self._thumb else HasListItem.image
+        return self._thumb
 
     @property
     def fanart(self):
-        return self._fanart if self._fanart else HasListItem.fanart
+        return self._fanart
 
 
 class LoginToken(object):
@@ -1078,6 +1081,8 @@ class TidalSession(Session):
         oldSessionId = self.session_id
         self.session_id = self.stream_session_id
         soundQuality = quality if quality else self._config.quality
+        #if soundQuality == Quality.lossless and self._config.codec == 'MQA' and not cut_id:
+        #    soundQuality = Quality.hi_res
         media = Session.get_track_url(self, track_id, quality=soundQuality, cut_id=cut_id)
         if fallback and soundQuality == Quality.lossless and (media == None or media.isEncrypted):
             log(media.url, level=xbmc.LOGWARNING)
@@ -1100,7 +1105,7 @@ class TidalSession(Session):
         media = None
         try:
             if self._config.forceHttpVideo:
-                quality = 'MP4_640P' if self._config.maxVideoHeight < 720 else 'MP4_720P' if self._config.maxVideoHeight < 1080 else 'MP4_1080P'
+                quality = 'LOW' if self._config.maxVideoHeight < 480 else 'MEDIUM' if self._config.maxVideoHeight < 720 else 'HIGH'
                 media = Session.get_video_url(self, video_id, quality=quality)
         except requests.HTTPError as e:
             r = e.response
@@ -1125,17 +1130,30 @@ class TidalSession(Session):
                 # You can change the Bandwidth Limit in Kodi Settings to select other streams !
                 # Select stream with highest resolution <= maxVideoHeight
                 selected_height = 0
+                selected_bandwidth = -1
                 for playlist in m3u8obj.playlists:
                     try:
                         width, height = playlist.stream_info.resolution
-                        if height > selected_height and height <= maxVideoHeight:
+                        bandwidth = playlist.stream_info.average_bandwidth
+                        if not bandwidth:
+                            bandwidth = playlist.stream_info.bandwidth
+                        if not bandwidth:
+                            bandwidth = 0
+                        if (height > selected_height or (height == selected_height and bandwidth > selected_bandwidth)) and height <= maxVideoHeight:
                             if re.match(r'https?://', playlist.uri):
                                 media.url = playlist.uri
                             else:
                                 media.url = m3u8obj.base_uri + playlist.uri
+                            if height == selected_height and bandwidth > selected_bandwidth:
+                                log('Bandwidth %s > %s' % (bandwidth, selected_bandwidth))
+                            log('Selected %sx%s %s: %s' % (width, height, bandwidth, playlist.uri.split('?')[0].split('/')[-1]))
                             selected_height = height
+                            selected_bandwidth = bandwidth
                             media.width = width
                             media.height = height
+                            media.bandwidth = bandwidth
+                        elif height > maxVideoHeight:
+                            log('Skipped %sx%s %s: %s' % (width, height, bandwidth, playlist.uri.split('?')[0].split('/')[-1]))
                     except:
                         pass
         self.session_id = oldSessionId

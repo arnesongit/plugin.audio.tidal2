@@ -47,10 +47,16 @@ def root():
     for item in categories:
         add_directory(_T(item), plugin.url_for(category, group=item))
     add_directory(_T(30206), search)
+    add_directory(_T(30027), settings, isFolder=False)
     if session.is_logged_in:
         add_directory(_T(30207), logout, end=True, isFolder=False)
     else:
         add_directory(_T(30208), login, end=True, isFolder=False)
+
+
+@plugin.route('/settings')
+def settings():
+    xbmc.executebuiltin('Addon.OpenSettings("%s")' % _addon_id)
 
 
 @plugin.route('/albums_with_videos')

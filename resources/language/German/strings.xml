@@ -25,6 +25,7 @@
     <string id="30024">Master-Alben mit (MQA) kennzeichnen</string>
     <string id="30025">Optionen</string>
     <string id="30026">HTTP statt HLS-Steaming benutzen (max. 720p)</string>
+    <string id="30027">Addon-Einstellungen</string>
 
     <!-- Video Settings -->
     <string id="30040">Video-Qualität</string>

@@ -25,6 +25,7 @@
     <string id="30024">Add (MQA) to Master Album Labels</string>
     <string id="30025">Options</string>
     <string id="30026">Use HTTP instead of HLS Steaming (max. 720p)</string>
+    <string id="30027">Addon-Settings</string>
 
     <!-- Video Settings -->
     <string id="30040">Video Quality</string>
