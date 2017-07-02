@@ -83,6 +83,7 @@ def category(group):
         # Add Promotions as Folder on the Top if more than 10 Promotions available
         add_directory(_T(30120), plugin.url_for(featured, group=promoGroup))
         add_directory('Master %s (MQA)' % _T(30107), plugin.url_for(master_albums, offset=0))
+        add_directory('Master %s (MQA)' % _T(30108), plugin.url_for(master_playlists, offset=0))
     # Add Category Items as Folders
     add_items(items, content=None, end=not(promoGroup and totalCount <= 10))
     if promoGroup and totalCount <= 10:
@@ -112,6 +113,12 @@ def category_content(group, path, content_type, offset):
 @plugin.route('/master_albums/<offset>')
 def master_albums(offset):
     items = session.master_albums(offset=int('0%s' % offset), limit=session._config.pageSize)
+    add_items(items, content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True)
+
+
+@plugin.route('/master_playlists/<offset>')
+def master_playlists(offset):
+    items = session.master_playlists(offset=int('0%s' % offset), limit=session._config.pageSize)
     add_items(items, content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True)
 
 

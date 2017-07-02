@@ -27,8 +27,9 @@ Es wird ein Abbonement benötigt. Siehe tidal.com für Details.</description>
     <forum>http://forum.xbmc.org/showthread.php?tid=200555</forum>
     <source>https://github.com/arnesongit/plugin.audio.tidal2</source>
     <news>
-v2.0.0-beta15 (2017-06-27)
+v2.0.0-beta15 (2017-07-01)
 - TIDAL now returns a flag for MQA Master for each Track and Album
+- New Folder "Master Playlists (MQA)"
 - Changed method to retrieve the Video stream URL (TIDAL changed the query URL)
 - Inserted Track version into its title
 - Included Addon-Settings to main menu

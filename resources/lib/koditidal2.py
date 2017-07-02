@@ -402,6 +402,10 @@ class TidalSession2(TidalSession):
         items = self.get_category_content('master', 'recommended', 'albums', offset=offset, limit=limit)
         return items
 
+    def master_playlists(self, offset=0, limit=999):
+        items = self.get_category_content('master', 'recommended', 'playlists', offset=offset, limit=limit)
+        return items
+
 
 class Favorites2(TidalFavorites):
 
