@@ -275,6 +275,22 @@ def user_playlist_rename(playlist_id):
         xbmc.executebuiltin('Container.Refresh()')
 
 
+@plugin.route('/user_playlist/clear/<playlist_id>')
+def user_playlist_clear(playlist_id):
+    dialog = xbmcgui.Dialog()
+    playlist = session.get_playlist(playlist_id)
+    ok = dialog.yesno(_T(30258), _T(30259).format(name=playlist.title, count=playlist.numberOfItems))
+    if ok:
+        xbmc.executebuiltin('ActivateWindow(busydialog)')
+        try:
+            session.user.remove_all_playlist_entries(playlist_id)
+        except Exception, e:
+            log(str(e), level=xbmc.LOGERROR)
+            traceback.print_exc()
+        xbmc.executebuiltin('Dialog.Close(busydialog)')
+        xbmc.executebuiltin('Container.Refresh()')
+
+
 @plugin.route('/user_playlist/delete/<playlist_id>')
 def user_playlist_delete(playlist_id):
     dialog = xbmcgui.Dialog()

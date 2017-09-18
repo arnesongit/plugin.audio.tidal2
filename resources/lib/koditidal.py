@@ -47,8 +47,8 @@ _addon_id = 'plugin.audio.tidal2'
 addon = xbmcaddon.Addon(id=_addon_id)
 plugin = KodiPlugin(base_url = "plugin://" + _addon_id)
 plugin.name = addon.getAddonInfo('name')
-_addon_icon = os.path.join(addon.getAddonInfo('path'), 'icon.png')
-_addon_fanart = os.path.join(addon.getAddonInfo('path'), 'fanart.jpg')
+_addon_icon = os.path.join(addon.getAddonInfo('path').decode('utf-8'), 'icon.png')
+_addon_fanart = os.path.join(addon.getAddonInfo('path').decode('utf-8'), 'fanart.jpg')
 
 debug = DebugHelper(pluginName=addon.getAddonInfo('name'), 
                     detailLevel=2 if addon.getSetting('debug_log') == 'true' else 1, 
@@ -310,6 +310,8 @@ class PlaylistItem(Playlist, HasListItem):
         if self._is_logged_in:
             if self.type == 'USER':
                 cm.append((_T(30251), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/rename/%s' % self.id)))
+                if self.numberOfItems > 0:
+                    cm.append((_T(30258), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/clear/%s' % self.id)))
                 cm.append((_T(30235), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/delete/%s' % self.id)))
             else:
                 if self._isFavorite:

@@ -814,5 +814,20 @@ class User(object):
         ok = False
         if playlist and playlist._etag:
             headers = {'If-None-Match': '%s' % playlist._etag}
-            ok = self._session.request('DELETE', 'playlists/%s/tracks/%s' % (playlist.id, entry_no), headers=headers).ok
+            ok = self._session.request('DELETE', 'playlists/%s/items/%s' % (playlist.id, entry_no), headers=headers).ok
         return ok
+
+    def remove_all_playlist_entries(self, playlist):
+        if not isinstance(playlist, Playlist):
+            playlist = self._session.get_playlist(playlist)
+        elif not playlist._etag:
+            # Re-Read Playlist to get ETag
+            playlist = self._session.get_playlist(playlist.id)
+        if playlist.numberOfItems < 1:
+            return True
+        entries = []
+        i = 0
+        while i < playlist.numberOfItems:
+            entries.append('%s' % i)
+            i = i + 1
+        return self.remove_playlist_entry(playlist, entry_no=','.join(entries))

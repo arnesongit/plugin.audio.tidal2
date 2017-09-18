@@ -1,3 +1,7 @@
+v2.0.0-beta16 (2017-09-18)
+- Fixed Unicode problem if Windows user name contains special characters
+- Added Context Menu Function "Clear Playlist" to remove all items from a User Playlist
+
 v2.0.0-beta15 (2017-07-01)
 - TIDAL now returns a flag for MQA Master for each Track and Album
 - New Folder "Master Playlists (MQA)"

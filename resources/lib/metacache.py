@@ -31,7 +31,7 @@ except:
 from koditidal import addon, debug
 
 
-METACACHE_DIR = xbmc.translatePath(addon.getAddonInfo('profile')).decode('utf-8')
+METACACHE_DIR = xbmc.translatePath(addon.getAddonInfo('profile').decode('utf-8'))
 METACACHE_FILE = 'metaCache.db'  # SQlite DB for cach data
 CACHE_ALBUMS = True
 CACHE_PLAYLISTS = True

@@ -115,6 +115,8 @@
     <string id="30255">Open as Album Playlist</string>
     <string id="30256">Streaming Options changed. Please re-login !</string>
     <string id="30257">Execute the re-login now ?</string>
+    <string id="30258">Clear Playlist</string>
+    <string id="30259">Playlist "{name}" contains {count} items. Are you sure to remove all items from this playlist ?</string>
 
     <!-- Extended Settings -->
     <string id="30501">Use Colors in Labels</string>

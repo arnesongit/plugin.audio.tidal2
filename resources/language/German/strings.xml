@@ -115,6 +115,8 @@
     <string id="30255">Als Album-Playliste öffnen</string>
     <string id="30256">Streaming-Optionen verändert. Bitte neu einloggen !</string>
     <string id="30257">Neuen Login jetzt durchführen ?</string>
+    <string id="30258">Playliste leeren</string>
+    <string id="30259">Die Playliste "{name}" enthält {count} Elemente. Sollen alle Elemente aus der Playliste entfernt werden ?</string>
 
     <!-- Extended Settings -->
     <string id="30501">Farben in Label verwenden</string>
