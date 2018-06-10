@@ -231,11 +231,14 @@ class ArtistItem(Artist, HasListItem):
 
     def __init__(self, item):
         self.__dict__.update(vars(item))
+        self._isLocked = True if VARIOUS_ARTIST_ID == '%s' % self.id else False
 
     def getLabel(self, extended=True):
         self.setLabelFormat()
         if extended and self._isFavorite and not '/favorites/artists' in sys.argv[0]:
             return self.FAVORITE_MASK.format(label=self.name)
+        if self._isLocked and '/favorites/artists' in sys.argv[0]:
+            return self.STREAM_LOCKED_MASK.format(label=self.name, info=_T(30260))
         return self.name
 
     def getListItem(self):
@@ -256,6 +259,11 @@ class ArtistItem(Artist, HasListItem):
                 cm.append((_T(30220), 'RunPlugin(%s)' % plugin.url_for_path('/favorites/remove/artists/%s' % self.id)))
             else:
                 cm.append((_T(30219), 'RunPlugin(%s)' % plugin.url_for_path('/favorites/add/artists/%s' % self.id)))
+            if '/favorites/artists' in sys.argv[0]:
+                if self._isLocked:
+                    cm.append((_T(30262), 'RunPlugin(%s)' % plugin.url_for_path('/unlock_artist/%s' % self.id)))
+                else:
+                    cm.append((_T(30261), 'RunPlugin(%s)' % plugin.url_for_path('/lock_artist/%s' % self.id)))
         return cm
 
 
@@ -979,6 +987,7 @@ class TidalSession(Session):
             album._etag = item._etag
             album._playlist_name = item._playlist_name
             album._playlist_type = item._playlist_type
+            album._userplaylists = self.user.playlists_of_id(None, album.id)
             # Track-ID in TIDAL-Playlist
             album._playlist_track_id = item.id
             albums.append(album)
@@ -1036,6 +1045,8 @@ class TidalSession(Session):
 
     def _parse_artist(self, json_obj):
         artist = ArtistItem(Session._parse_artist(self, json_obj))
+        if self.is_logged_in and self.user.favorites:
+            artist._isLocked = self.user.favorites.isLockedArtist(artist.id)
         artist._is_logged_in = self.is_logged_in
         return artist
 
@@ -1210,6 +1221,8 @@ class TidalFavorites(Favorites):
             fd = xbmcvfs.File(FAVORITES_FILE, 'r')
             self.ids_content = fd.read()
             self.ids = eval(self.ids_content)
+            if not 'locked_artists' in self.ids:
+                self.ids['locked_artists'] = [VARIOUS_ARTIST_ID]
             fd.close()
             self.ids_loaded = not (self.ids['artists'] == None or self.ids['albums'] == None or
                                    self.ids['playlists'] == None or self.ids['tracks'] == None or
@@ -1292,6 +1305,26 @@ class TidalFavorites(Favorites):
     def isFavoriteVideo(self, video_id):
         self.load_all()
         return Favorites.isFavoriteVideo(self, video_id)
+
+    def isLockedArtist(self, artist_id):
+        self.load_all()
+        return '%s' % artist_id in self.ids.get('locked_artists', [])
+
+    def setLockedArtist(self, artist_id, lock=True):
+        self.load_all()
+        actually_locked = self.isLockedArtist(artist_id)
+        ok = True
+        if lock <> actually_locked:
+            try:
+                if lock:
+                    self.ids['locked_artists'].append('%s' % artist_id)
+                    self.ids['locked_artists'] = sorted(self.ids['locked_artists'])
+                else:
+                    self.ids['locked_artists'].remove('%s' % artist_id)
+                self.save_cache()
+            except:
+                ok = False
+        return ok
 
 
 class TidalUser(User):

@@ -117,6 +117,9 @@
     <string id="30257">Neuen Login jetzt durchführen ?</string>
     <string id="30258">Playliste leeren</string>
     <string id="30259">Die Playliste "{name}" enthält {count} Elemente. Sollen alle Elemente aus der Playliste entfernt werden ?</string>
+    <string id="30260">gesperrt</string>
+    <string id="30261">Für autom. Suche sperren</string>
+    <string id="30262">Für autom. Suche freigeben</string>
 
     <!-- Extended Settings -->
     <string id="30501">Farben in Label verwenden</string>

@@ -117,6 +117,9 @@
     <string id="30257">Execute the re-login now ?</string>
     <string id="30258">Clear Playlist</string>
     <string id="30259">Playlist "{name}" contains {count} items. Are you sure to remove all items from this playlist ?</string>
+    <string id="30260">Locked</string>
+    <string id="30261">Lock "Search for New Music"</string>
+    <string id="30262">Enable "Search for New Music"</string>
 
     <!-- Extended Settings -->
     <string id="30501">Use Colors in Labels</string>

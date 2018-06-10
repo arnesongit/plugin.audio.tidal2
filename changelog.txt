@@ -1,3 +1,6 @@
+v2.0.0-beta17 (2018-06-09)
+- Artists can now be locked for "Search for New Music"
+
 v2.0.0-beta16 (2017-09-18)
 - Fixed Unicode problem if Windows user name contains special characters
 - Added Context Menu Function "Clear Playlist" to remove all items from a User Playlist

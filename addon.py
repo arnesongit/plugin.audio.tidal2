@@ -518,6 +518,18 @@ def favorites_remove(content_type, item_id):
     xbmc.executebuiltin('Container.Refresh()')
 
 
+@plugin.route('/lock_artist/<artist_id>')
+def lock_artist(artist_id):
+    session.user.favorites.setLockedArtist(artist_id, True)
+    xbmc.executebuiltin('Container.Refresh()')
+
+
+@plugin.route('/unlock_artist/<artist_id>')
+def unlock_artist(artist_id):
+    session.user.favorites.setLockedArtist(artist_id, False)
+    xbmc.executebuiltin('Container.Refresh()')
+
+
 @plugin.route('/cache_reset')
 def cache_reset():
     if not session.is_logged_in:

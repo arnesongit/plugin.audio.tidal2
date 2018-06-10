@@ -326,6 +326,8 @@ class TidalSession2(TidalSession):
             for item in items:
                 if isinstance(item, TrackItem):
                     track_count += 1
+                    # Set Album quality to Track quality (for Album Playlists)
+                    item.album.audioQuality = item.audioQuality
                     isAlbum = True
                     try:
                         # In Single Tracks the Album-ID is Track-ID - 1
