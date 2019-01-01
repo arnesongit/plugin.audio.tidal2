@@ -17,7 +17,9 @@
 
 from __future__ import unicode_literals
 
+import sys
 import traceback
+import urllib
 import xbmc
 import xbmcgui
 import xbmcplugin
@@ -25,7 +27,7 @@ from xbmcgui import ListItem
 from requests import HTTPError
 from resources.lib.tidalapi.models import Quality, Category, SubscriptionType
 from resources.lib.koditidal import plugin, addon, _addon_id, _T, log, ALBUM_PLAYLIST_TAG, KODI_VERSION
-from resources.lib.koditidal2 import TidalSession2 as TidalSession
+from resources.lib.koditidal2 import FolderItem2, TidalSession2 as TidalSession
 
 # This is the Tidal Session
 session = TidalSession()
@@ -34,12 +36,14 @@ session.load_session()
 add_items = session.add_list_items
 add_directory = session.add_directory_item
 CONTENT_FOR_TYPE = {'artists': 'artists', 'albums': 'albums', 'playlists': 'albums', 'tracks': 'songs', 'videos': 'musicvideos', 'files': 'files'}
+HOMEPAGE_ITEM_TYPES = {'PLAYLIST_LIST': 'playlists', 'ALBUM_LIST': 'albums', 'TRACK_LIST': 'tracks', 'VIDEO_LIST': 'videos', 'MIX_LIST': 'mix'}
 
 
 @plugin.route('/')
 def root():
     if session.is_logged_in:
         add_directory(_T(30201), my_music)
+        add_directory(_T(30212), plugin.url_for(homepage_items))
     add_directory(_T(30202), featured_playlists)
     if getattr(session._config, 'cache_albums', False):
         add_directory(_T(30509), plugin.url_for(albums_with_videos))
@@ -57,6 +61,37 @@ def root():
 @plugin.route('/settings')
 def settings():
     xbmc.executebuiltin('Addon.OpenSettings("%s")' % _addon_id)
+
+
+@plugin.route('/homepage_items')
+def homepage_items():
+    params = { 'locale': session._config.locale, 'deviceType': 'BROWSER' }
+    r = session.request('GET', 'pages/home', params=params)
+    if r.ok:
+        items = []
+        json_obj = r.json()
+        for row in json_obj['rows']:
+            for module in row['modules']:
+                try:
+                    item_type = module['type']
+                    if item_type in HOMEPAGE_ITEM_TYPES:
+                        item = FolderItem2(module['title'], plugin.url_for(homepage_item, item_type, urllib.quote_plus(module['pagedList']['dataApiPath'])))
+                        items.append(item)
+                    else:
+                        log('Unknown Homepage Item "%s": %s' % (item_type, module.get('title', 'Unknown')), level=xbmc.LOGDEBUG)
+                except:
+                    pass
+        session.add_list_items(items, end=True)
+
+
+@plugin.route('/homepage_item/<item_type>/<path>')
+def homepage_item(item_type, path):
+    path = urllib.unquote_plus(path).decode('utf-8').strip()
+    rettype = HOMEPAGE_ITEM_TYPES.get(item_type, 'NONE')
+    if rettype <> 'NONE':
+        params = { 'locale': session._config.locale, 'deviceType': 'BROWSER', 'offset': 0, 'limit': 50 }
+        items = session._map_request(url=path, method='GET', params=params, ret=rettype)
+        session.add_list_items(items, content=CONTENT_FOR_TYPE.get(rettype, 'files'), end=True)
 
 
 @plugin.route('/albums_with_videos')
@@ -235,6 +270,24 @@ def similar_artists(artist_id):
     add_items(session.get_artist_similar(artist_id), content=CONTENT_FOR_TYPE.get('artists'))
 
 
+@plugin.route('/mix/<mix_id>')
+def mix_view(mix_id):
+    params = { 'locale': session._config.locale, 'deviceType': 'BROWSER', 'mixId': mix_id }
+    r = session.request('GET', 'pages/mix', params=params)
+    if r.ok:
+        json_obj = r.json()
+        for row in json_obj['rows']:
+            for module in row['modules']:
+                try:
+                    item_type = module['type']
+                    if item_type in HOMEPAGE_ITEM_TYPES:
+                        api_path = module['pagedList']['dataApiPath']
+                        homepage_item(item_type, api_path)
+                        break
+                except:
+                    pass
+
+
 @plugin.route('/playlist/<playlist_id>/items/<offset>')
 def playlist_view(playlist_id, offset):
     add_items(session.get_playlist_items(playlist_id, offset=int('0%s' % offset), limit=session._config.pageSize), content=CONTENT_FOR_TYPE.get('tracks'), withNextPage=True)
@@ -281,13 +334,13 @@ def user_playlist_clear(playlist_id):
     playlist = session.get_playlist(playlist_id)
     ok = dialog.yesno(_T(30258), _T(30259).format(name=playlist.title, count=playlist.numberOfItems))
     if ok:
-        xbmc.executebuiltin('ActivateWindow(busydialog)')
+        session.show_busydialog(_T(30258), playlist.name)
         try:
             session.user.remove_all_playlist_entries(playlist_id)
         except Exception, e:
             log(str(e), level=xbmc.LOGERROR)
             traceback.print_exc()
-        xbmc.executebuiltin('Dialog.Close(busydialog)')
+        session.hide_busydialog()
         xbmc.executebuiltin('Container.Refresh()')
 
 
@@ -297,13 +350,13 @@ def user_playlist_delete(playlist_id):
     playlist = session.get_playlist(playlist_id)
     ok = dialog.yesno(_T(30235), _T(30236).format(name=playlist.title, count=playlist.numberOfItems))
     if ok:
-        xbmc.executebuiltin('ActivateWindow(busydialog)')
+        session.show_busydialog(_T(30235), playlist.name)
         try:
             session.user.delete_playlist(playlist_id)
         except Exception, e:
             log(str(e), level=xbmc.LOGERROR)
             traceback.print_exc()
-        xbmc.executebuiltin('Dialog.Close(busydialog)')
+        session.hide_busydialog()
         xbmc.executebuiltin('Container.Refresh()')
 
 
@@ -317,7 +370,7 @@ def user_playlist_add_item(item_type, item_id):
         # Sort Items by Artist, Title
         sortMode = 'ALBUM' if ALBUM_PLAYLIST_TAG in srcPlaylist.description else 'LABEL'
         items.sort(key=lambda line: line.getSortText(mode=sortMode).upper(), reverse=False)
-        items = ['%s' % item.id for item in items]
+        items = ['%s' % item.id for item in items if item.available]
     elif item_type.startswith('album'):
         # Add First Track of the Album
         tracks = session.get_album_items(item_id)
@@ -330,13 +383,13 @@ def user_playlist_add_item(item_type, item_id):
         items = [item_id]
     playlist = session.user.selectPlaylistDialog(allowNew=True)
     if playlist:
-        xbmc.executebuiltin('ActivateWindow(busydialog)')
+        session.show_busydialog(_T(30263), playlist.name)
         try:
             session.user.add_playlist_entries(playlist=playlist, item_ids=items)
         except Exception, e:
             log(str(e), level=xbmc.LOGERROR)
             traceback.print_exc()
-        xbmc.executebuiltin('Dialog.Close(busydialog)')
+        session.hide_busydialog()
         xbmc.executebuiltin('Container.Refresh()')
 
 
@@ -344,30 +397,30 @@ def user_playlist_add_item(item_type, item_id):
 def user_playlist_remove_item(playlist_id, entry_no):
     item_no = int('0%s' % entry_no) + 1
     playlist = session.get_playlist(playlist_id)
-    ok = xbmcgui.Dialog().yesno(_T(30247) % playlist.title, _T(30241) % item_no)
+    ok = xbmcgui.Dialog().yesno(_T(30247).format(name=playlist.name), _T(30241).format(entry=item_no))
     if ok:
-        xbmc.executebuiltin('ActivateWindow(busydialog)')
+        session.show_busydialog(_T(30264), playlist.name)
         try:
             session.user.remove_playlist_entry(playlist, entry_no=entry_no)
         except Exception, e:
             log(str(e), level=xbmc.LOGERROR)
             traceback.print_exc()
-        xbmc.executebuiltin('Dialog.Close(busydialog)')
+        session.hide_busydialog()
         xbmc.executebuiltin('Container.Refresh()')
 
 
 @plugin.route('/user_playlist/remove_id/<playlist_id>/<item_id>')
 def user_playlist_remove_id(playlist_id, item_id):
     playlist = session.get_playlist(playlist_id)
-    ok = xbmcgui.Dialog().yesno(_T(30247) % playlist.title, _T(30246))
+    ok = xbmcgui.Dialog().yesno(_T(30247).format(name=playlist.name), _T(30246))
     if ok:
-        xbmc.executebuiltin('ActivateWindow(busydialog)')
+        session.show_busydialog(_T(30264), playlist.name)
         try:
             session.user.remove_playlist_entry(playlist, item_id=item_id)
         except Exception, e:
             log(str(e), level=xbmc.LOGERROR)
             traceback.print_exc()
-        xbmc.executebuiltin('Dialog.Close(busydialog)')
+        session.hide_busydialog()
         xbmc.executebuiltin('Container.Refresh()')
 
 
@@ -376,9 +429,9 @@ def user_playlist_remove_album(playlist_id, item_id, dialog=True):
     playlist = session.get_playlist(playlist_id)
     ok = True
     if dialog:
-        ok = xbmcgui.Dialog().yesno(_T(30247) % playlist.title, _T(30246))
+        ok = xbmcgui.Dialog().yesno(_T(30247).format(name=playlist.name), _T(30246))
     if ok:
-        xbmc.executebuiltin('ActivateWindow(busydialog)')
+        session.show_busydialog(_T(30264), playlist.name)
         try:
             items = session.get_playlist_tracks(playlist)
             for item in items:
@@ -388,7 +441,7 @@ def user_playlist_remove_album(playlist_id, item_id, dialog=True):
         except Exception, e:
             log(str(e), level=xbmc.LOGERROR)
             traceback.print_exc()
-        xbmc.executebuiltin('Dialog.Close(busydialog)')
+        session.hide_busydialog()
         xbmc.executebuiltin('Container.Refresh()')
 
 
@@ -397,7 +450,7 @@ def user_playlist_move_entry(playlist_id, entry_no, item_id):
     dialog = xbmcgui.Dialog()
     playlist = session.user.selectPlaylistDialog(headline=_T(30248), allowNew=True)
     if playlist and playlist.id <> playlist_id:
-        xbmc.executebuiltin( "ActivateWindow(busydialog)" )
+        session.show_busydialog(_T(30265), playlist.name)
         try:
             ok = session.user.add_playlist_entries(playlist=playlist, item_ids=[item_id])
             if ok:
@@ -407,7 +460,7 @@ def user_playlist_move_entry(playlist_id, entry_no, item_id):
         except Exception, e:
             log(str(e), level=xbmc.LOGERROR)
             traceback.print_exc()
-        xbmc.executebuiltin( "Dialog.Close(busydialog)" )
+        session.hide_busydialog()
         xbmc.executebuiltin('Container.Refresh()')
 
 
@@ -451,17 +504,20 @@ def user_playlist_toggle():
     if 'play_track/' in url:
         item_type = 'track'
         userpl_id = addon.getSetting('default_trackplaylist_id').decode('utf-8')
+        userpl_name = addon.getSetting('default_trackplaylist_title').decode('utf-8')
         item_id = url.split('play_track/')[1]
         item_id = item_id.split('/')[0]
         item = session.get_track(item_id)
     elif 'play_video/' in url:
         item_type = 'video'
         userpl_id = addon.getSetting('default_videoplaylist_id').decode('utf-8')
+        userpl_name = addon.getSetting('default_videoplaylist_title').decode('utf-8')
         item_id = url.split('play_video/')[1]
         item = session.get_video(item_id)
     elif 'album/' in url:
         item_type = 'album'
         userpl_id = addon.getSetting('default_albumplaylist_id').decode('utf-8')
+        userpl_name = addon.getSetting('default_albumplaylist_title').decode('utf-8')
         item_id = int('0%s' % url.split('album/')[1])
         item = session.get_album(item_id)
         if userpl_id:
@@ -480,15 +536,16 @@ def user_playlist_toggle():
             # Dialog Mode if default Playlist not set
             user_playlist_add_item(item_type, '%s' % item_id)
             return
-        xbmc.executebuiltin( "ActivateWindow(busydialog)" )
         if item._userplaylists and userpl_id in item._userplaylists:
+            session.show_busydialog(_T(30264), userpl_name)
             session.user.remove_playlist_entry(playlist=userpl_id, item_id=item.id)
         else:
+            session.show_busydialog(_T(30263), userpl_name)
             session.user.add_playlist_entries(playlist=userpl_id, item_ids=['%s' % item.id])
     except Exception, e:
         log(str(e), level=xbmc.LOGERROR)
         traceback.print_exc()
-    xbmc.executebuiltin( "Dialog.Close(busydialog)" ) # Avoid GUI Lock        
+    session.hide_busydialog()
     xbmc.executebuiltin('Container.Refresh()')
 
 
@@ -560,48 +617,43 @@ def favorite_toggle():
     if not _addon_id in url or '/favorites/' in path:
         return
     try:
-        xbmc.executebuiltin( "ActivateWindow(busydialog)" )
+        isFavorite = False
+        content_type = None
         if 'artist/' in url:
             item_id = url.split('artist/')[1]
             if not '/' in item_id:
-                if session.user.favorites.isFavoriteArtist(item_id):
-                    session.user.favorites.remove_artist(item_id)
-                else:
-                    session.user.favorites.add_artist(item_id)
+                content_type = 'artists'
+                isFavorite = session.user.favorites.isFavoriteArtist(item_id)
         elif 'album/' in url:
             item_id = url.split('album/')[1]
             if not '/' in item_id:
-                if session.user.favorites.isFavoriteAlbum(item_id):
-                    session.user.favorites.remove_album(item_id)
-                else:
-                    session.user.favorites.add_album(item_id)
+                content_type = 'albums'
+                isFavorite = session.user.favorites.isFavoriteAlbum(item_id)
         elif 'play_track/' in url:
             item_id = url.split('play_track/')[1]
             item_id = item_id.split('/')[0] # Remove album_id behind the track_id
             if not '/' in item_id:
-                if session.user.favorites.isFavoriteTrack(item_id):
-                    session.user.favorites.remove_track(item_id)
-                else:
-                    session.user.favorites.add_track(item_id)
+                content_type = 'tracks'
+                isFavorite = session.user.favorites.isFavoriteTrack(item_id)
         elif 'playlist/' in url:
             item_id = url.split('playlist/')[1]
             item_id = item_id.split('/')[0] # Remove offset behind playlist_id
             if not '/' in item_id:
-                if session.user.favorites.isFavoritePlaylist(item_id):
-                    session.user.favorites.remove_playlist(item_id)
-                else:
-                    session.user.favorites.add_playlist(item_id)
+                content_type = 'playlists'
+                isFavorite = session.user.favorites.isFavoritePlaylist(item_id)
         elif 'play_video/' in url:
             item_id = url.split('play_video/')[1]
             if not '/' in item_id:
-                if session.user.favorites.isFavoriteVideo(item_id):
-                    session.user.favorites.remove_video(item_id)
-                else:
-                    session.user.favorites.add_video(item_id)
+                content_type = 'videos'
+                isFavorite = session.user.favorites.isFavoriteVideo(item_id)
+        if content_type == None:
+            return
+        if isFavorite:
+            favorites_remove(content_type, item_id)
+        else:
+            favorites_add(content_type, item_id)
     except:
         pass
-    xbmc.executebuiltin( "Dialog.Close(busydialog)" ) # Avoid GUI Lock        
-    xbmc.executebuiltin('Container.Refresh()')
 
 
 @plugin.route('/search')
@@ -745,7 +797,10 @@ def stream_locked():
 
 if __name__ == '__main__':
     try:
-        plugin.run()
+        # Remove last slash for folder paths
+        newargv = sys.argv
+        newargv[0] = newargv[0].rstrip('/')
+        plugin.run(argv=newargv)
     except HTTPError as e:
         r = e.response
         if r.status_code in [401, 403]:

@@ -18,6 +18,7 @@
 from __future__ import unicode_literals
 
 import os, sys, re
+import locale
 import json
 import datetime
 from urlparse import urlsplit
@@ -30,7 +31,7 @@ import requests
 from xbmcgui import ListItem
 from routing import Plugin
 from tidalapi import Config, Session, User, Favorites
-from tidalapi.models import Quality, SubscriptionType, AlbumType, BrowsableMedia, Artist, Album, PlayableMedia, Track, Video, Playlist, Promotion, Category, CutInfo
+from tidalapi.models import Quality, SubscriptionType, AlbumType, BrowsableMedia, Artist, Album, PlayableMedia, Track, Video, Mix, Playlist, Promotion, Category, CutInfo
 from m3u8 import load as m3u8_load
 from debug import DebugHelper
 
@@ -183,7 +184,10 @@ class AlbumItem(Album, HasListItem):
         elif self.type == AlbumType.single:
             longTitle += ' (Single)'
         if getattr(self, 'year', None) and addon.getSetting('album_year_in_labels') == 'true':
-            longTitle += ' (%s)' % self.year
+            if self.releaseDate and self.releaseDate > datetime.datetime.now():
+                longTitle += ' (%s)' % _T(30268).format(self.releaseDate)
+            else:
+                longTitle += ' (%s)' % self.year
         if self.audioQuality == Quality.hi_res and addon.getSetting('mqa_in_labels') == 'true':
             longTitle = self.MASTER_AUDIO_MASK.format(label=longTitle)
         return longTitle
@@ -203,6 +207,7 @@ class AlbumItem(Album, HasListItem):
         }
         if KODI_VERSION >= (17, 0):
             infoLabels.update({'mediatype': 'album',
+                               'rating': '%s' % int(round(self.popularity / 10.0)),
                                'userrating': '%s' % int(round(self.popularity / 10.0))
                                })
         li.setInfo('music', infoLabels)
@@ -222,7 +227,7 @@ class AlbumItem(Album, HasListItem):
             plids = self._userplaylists.keys()
             for plid in plids:
                 if plid <> self._playlist_id:
-                    cm.append(((_T(30247) % self._userplaylists[plid].get('title'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_album/%s/%s' % (plid, self.id)))))
+                    cm.append(((_T(30247).format(name=self._userplaylists[plid].get('title')), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_album/%s/%s' % (plid, self.id)))))
             cm.append((_T(30221), 'Container.Update(%s)' % plugin.url_for_path('/artist/%s' % self.artist.id)))
         return cm
 
@@ -247,6 +252,7 @@ class ArtistItem(Artist, HasListItem):
         infoLabel = {'artist': self.name}
         if KODI_VERSION >= (17, 0):
             infoLabel.update({'mediatype': 'artist',
+                              'rating': '%s' % int(round(self.popularity / 10.0)),
                               'userrating': '%s' % int(round(self.popularity / 10.0))
                               })
         li.setInfo('music', infoLabel)
@@ -265,6 +271,27 @@ class ArtistItem(Artist, HasListItem):
                 else:
                     cm.append((_T(30261), 'RunPlugin(%s)' % plugin.url_for_path('/lock_artist/%s' % self.id)))
         return cm
+
+
+class MixItem(Mix, HasListItem):
+
+    def __init__(self, item):
+        self.__dict__.update(vars(item))
+
+    def getLabel(self, extended=True):
+        self.setLabelFormat()
+        label = self.name
+        return label
+
+    def getListItem(self):
+        li = HasListItem.getListItem(self)
+        url = plugin.url_for_path('/mix/%s' % self.id)
+        infoLabel = {
+            'title': self.title,
+            'album': self.subTitle
+        }
+        li.setInfo('music', infoLabel)
+        return (url, li, True)
 
 
 class PlaylistItem(Playlist, HasListItem):
@@ -329,17 +356,17 @@ class PlaylistItem(Playlist, HasListItem):
             cm.append((_T(30239), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/add/playlist/%s' % self.id)))
             if self.type == 'USER' and sys.argv[0].lower().find('user_playlists') >= 0:
                 if str(self.id) == addon.getSetting('default_trackplaylist_id'):
-                    cm.append((_T(30250) % _T('Track'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist_reset_default/tracks')))
+                    cm.append((_T(30250).format(what=_T('Track')), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist_reset_default/tracks')))
                 else:
-                    cm.append((_T(30249) % _T('Track'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist_set_default/tracks/%s' % self.id)))
+                    cm.append((_T(30249).format(what=_T('Track')), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist_set_default/tracks/%s' % self.id)))
                 if str(self.id) == addon.getSetting('default_videoplaylist_id'):
-                    cm.append((_T(30250) % _T('Video'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist_reset_default/videos')))
+                    cm.append((_T(30250).format(what=_T('Video')), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist_reset_default/videos')))
                 else:
-                    cm.append((_T(30249) % _T('Video'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist_set_default/videos/%s' % self.id)))
+                    cm.append((_T(30249).format(what=_T('Video')), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist_set_default/videos/%s' % self.id)))
                 if str(self.id) == addon.getSetting('default_albumplaylist_id'):
-                    cm.append((_T(30250) % _T('Album'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist_reset_default/albums')))
+                    cm.append((_T(30250).format(what=_T('Album')), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist_reset_default/albums')))
                 else:
-                    cm.append((_T(30249) % _T('Album'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist_set_default/albums/%s' % self.id)))
+                    cm.append((_T(30249).format(what=_T('Album')), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist_set_default/albums/%s' % self.id)))
         return cm
 
 
@@ -425,7 +452,7 @@ class TrackItem(Track, HasListItem):
             'artist': self.artist.name,
             'album': self.album.title,
             'year': getattr(self, 'year', None),
-            'rating': '%s' % int(round(self.popularity / 20.0)),
+            'rating': '%s' % int(round(self.popularity / 10.0)),
             'comment': self.getComment()
         }
         if KODI_VERSION >= (17, 0):
@@ -453,9 +480,9 @@ class TrackItem(Track, HasListItem):
                 if plid <> self._playlist_id:
                     playlist = self._userplaylists[plid]
                     if '%s' % self.album.id in playlist.get('album_ids', []):
-                        cm.append(((_T(30247) % playlist.get('title'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_album/%s/%s' % (plid, self.album.id)))))
+                        cm.append(((_T(30247).format(name=playlist.get('title')), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_album/%s/%s' % (plid, self.album.id)))))
                     else:
-                        cm.append(((_T(30247) % playlist.get('title'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_id/%s/%s' % (plid, self.id)))))
+                        cm.append(((_T(30247).format(name=playlist.get('title')), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_id/%s/%s' % (plid, self.id)))))
         cm.append((_T(30221), 'Container.Update(%s)' % plugin.url_for_path('/artist/%s' % self.artist.id)))
         cm.append((_T(30245), 'Container.Update(%s)' % plugin.url_for_path('/album/%s' % self.album.id)))
         cm.append((_T(30222), 'Container.Update(%s)' % plugin.url_for_path('/track_radio/%s' % self.id)))
@@ -529,11 +556,20 @@ class VideoItem(Video, HasListItem):
             'plotoutline': self.getComment(),
             'plot': self.getFtArtistsText()
         }
+        musicLabel = {
+            'artist': self.artist.name,
+            'title': self.title,
+            'tracknumber': self._playlist_pos + 1 if self._playlist_id else self._itemPosition + 1,
+            'year': getattr(self, 'year', None),
+            'comment': self.getComment()
+        }
         if KODI_VERSION >= (17, 0):
             infoLabel.update({'mediatype': 'musicvideo',
+                              'rating': '%s' % int(round(self.popularity / 10.0)),
                               'userrating': '%s' % int(round(self.popularity / 10.0))
                               })
         li.setInfo('video', infoLabel)
+        li.setInfo('music', musicLabel)
         li.addStreamInfo('video', { 'codec': 'h264', 'aspect': 1.78, 'width': 1920,
                          'height': 1080, 'duration': self.duration })
         li.addStreamInfo('audio', { 'codec': 'AAC', 'language': 'en', 'channels': 2 })
@@ -554,7 +590,7 @@ class VideoItem(Video, HasListItem):
             plids = self._userplaylists.keys()
             for plid in plids:
                 if plid <> self._playlist_id:
-                    cm.append(((_T(30247) % self._userplaylists[plid].get('title'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_id/%s/%s' % (plid, self.id)))))
+                    cm.append(((_T(30247).format(name=self._userplaylists[plid].get('title')), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_id/%s/%s' % (plid, self.id)))))
         cm.append((_T(30221), 'Container.Update(%s)' % plugin.url_for_path('/artist/%s' % self.artist.id)))
         cm.append((_T(30224), 'Container.Update(%s)' % plugin.url_for_path('/recommended/videos/%s' % self.id)))
         return cm
@@ -654,7 +690,7 @@ class PromotionItem(Promotion, HasListItem):
                 cm.append((_T(30239), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/add/video/%s' % self.id)))
             plids = self._userplaylists.keys()
             for plid in plids:
-                cm.append(((_T(30247) % self._userplaylists[plid].get('title'), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_id/%s/%s' % (plid, self.id)))))
+                cm.append(((_T(30247).format(name=self._userplaylists[plid].get('title')), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_id/%s/%s' % (plid, self.id)))))
             cm.append((_T(30224), 'Container.Update(%s)' % plugin.url_for_path('/recommended/videos/%s' % self.id)))
         return cm
 
@@ -821,6 +857,26 @@ class TidalConfig(Config):
             self.stream_session_id = self.session_id
             self.stream_token_name = self.session_token_name
         self.country_code = addon.getSetting('country_code')
+        # Determine the locale of the system
+        self.locale = None
+        try:
+            self.locale = locale.getdefaultlocale()[0]
+        except:
+            pass
+        if not self.locale:
+            try:
+                self.locale = locale.getlocale()[0]
+            except:
+                pass
+        if not self.locale:
+            try:
+                langval = json.loads(xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Settings.GetSettingValue", "params": {"setting": "locale.language"}, "id": 1 }'))['result']['value'].split('.')[-1]
+                self.locale = locale.locale_alias.get(langval).split('.')[0]
+            except:
+                pass
+        if not self.locale:
+            # If no locale is found take the US locale
+            self.locale = 'en_US'
         self.user_id = addon.getSetting('user_id')
         self.subscription_type = [SubscriptionType.hifi, SubscriptionType.premium][min(1, int('0' + addon.getSetting('subscription_type')))]
         self.client_unique_key = addon.getSetting('client_unique_key')
@@ -848,6 +904,9 @@ class TidalSession(Session):
 
     def __init__(self, config=TidalConfig()):
         Session.__init__(self, config=config)
+
+    def halt(self):
+        debug.halt()
 
     def init_user(self, user_id, subscription_type):
         return TidalUser(self, user_id, subscription_type)
@@ -990,6 +1049,9 @@ class TidalSession(Session):
             album._userplaylists = self.user.playlists_of_id(None, album.id)
             # Track-ID in TIDAL-Playlist
             album._playlist_track_id = item.id
+            # Album Quality = Track Quality if Album Cache is disabled
+            if not self._config.cache_albums:
+                album.audioQuality = item.audioQuality
             albums.append(album)
         return albums
 
@@ -1049,6 +1111,11 @@ class TidalSession(Session):
             artist._isLocked = self.user.favorites.isLockedArtist(artist.id)
         artist._is_logged_in = self.is_logged_in
         return artist
+
+    def _parse_mix(self, json_obj):
+        mix = MixItem(Session._parse_mix(self, json_obj))
+        mix._is_logged_in = self.is_logged_in
+        return mix
 
     def _parse_playlist(self, json_obj):
         playlist = PlaylistItem(Session._parse_playlist(self, json_obj))
@@ -1181,11 +1248,11 @@ class TidalSession(Session):
                 category_items = item.getListItems()
                 for url, li, isFolder in category_items:
                     if url and li:
-                        list_items.append((url, li, isFolder))
+                        list_items.append(('%s/' % url if isFolder else url, li, isFolder))
             elif isinstance(item, BrowsableMedia):
                 url, li, isFolder = item.getListItem()
                 if url and li:
-                    list_items.append((url, li, isFolder))
+                    list_items.append(('%s/' % url if isFolder else url, li, isFolder))
         if withNextPage and len(items) > 0:
             # Add folder for next page
             try:
@@ -1461,7 +1528,6 @@ class TidalUser(User):
     def selectPlaylistDialog(self, headline=None, allowNew=False):
         if not self._session.is_logged_in:
             return None
-        xbmc.executebuiltin("ActivateWindow(busydialog)")
         try:
             if not headline:
                 headline = _T(30238)
@@ -1472,9 +1538,7 @@ class TidalUser(User):
                 item_list.append(_T(30237))
         except Exception, e:
             log(str(e), level=xbmc.LOGERROR)
-            xbmc.executebuiltin("Dialog.Close(busydialog)")
             return None
-        xbmc.executebuiltin("Dialog.Close(busydialog)")
         selected = dialog.select(headline, item_list)
         if selected >= len(items):
             item = self.newPlaylistDialog()

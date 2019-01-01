@@ -69,7 +69,7 @@
     <string id="30209">Remember login details ?</string>  
     <string id="30210">Authorization problem</string>  
     <string id="30211">TIDAL Rising</string>  
-    <string id="30212">TIDAL Discovery</string>
+    <string id="30212">Suggestions for me</string>
     <string id="30213">My Playlists</string>
     <string id="30214">Favorite Artists</string>
     <string id="30215">Favorite Albums</string>
@@ -98,16 +98,16 @@
     <string id="30238">Choose Playlist</string>
     <string id="30239">Add to Playlist ...</string>
     <string id="30240">Remove from Playlist</string>
-    <string id="30241">Are you sure to remove item number %s from this playlist ?</string>
+    <string id="30241">Are you sure to remove item number {entry} from this playlist ?</string>
     <string id="30242">Stream locked</string>
     <string id="30243">Tracks:{tracks} / Videos:{videos}</string>
     <string id="30244">Next Page ({pos1}-{pos2})</string>
     <string id="30245">Show Album</string>
     <string id="30246">Are you sure to remove the item from this playlist ?</string>
-    <string id="30247">Remove from '%s'</string>
+    <string id="30247">Remove from '{name}'</string>
     <string id="30248">Move to Playlist ...</string>
-    <string id="30249">Set as Default %s Playlist</string>
-    <string id="30250">Reset Default %s Playlist</string>
+    <string id="30249">Set as Default {what} Playlist</string>
+    <string id="30250">Reset Default {what} Playlist</string>
     <string id="30251">Rename Playlist</string>
     <string id="30252">Open Playlist (Audio only)"</string>
     <string id="30253">Login failed !!</string>
@@ -120,6 +120,12 @@
     <string id="30260">Locked</string>
     <string id="30261">Lock "Search for New Music"</string>
     <string id="30262">Enable "Search for New Music"</string>
+    <string id="30263">Adding to Playlist ...</string>
+    <string id="30264">Removing from Playlist ...</string>
+    <string id="30265">Moving to Playlist ...</string>
+    <string id="30266">Deleting from Playlist ...</string>
+    <string id="30267">Please wait ...</string>
+    <string id="30268">Release Date: {:%m/%d/%Y}</string>
 
     <!-- Extended Settings -->
     <string id="30501">Use Colors in Labels</string>

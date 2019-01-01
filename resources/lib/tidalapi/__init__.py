@@ -23,15 +23,13 @@ import random
 import json
 import logging
 import requests
-from requests.packages import urllib3
 from collections import Iterable
 from models import UserInfo, Subscription, SubscriptionType, Quality, AlbumType, TrackUrl, VideoUrl, CutInfo
-from models import Artist, Album, Track, Video, Playlist, BrowsableMedia, PlayableMedia, Promotion, SearchResult, Category
+from models import Artist, Album, Track, Video, Mix, Playlist, BrowsableMedia, PlayableMedia, Promotion, SearchResult, Category
 try:
     from urlparse import urljoin
 except ImportError:
     from urllib.parse import urljoin
-
 
 log = logging.getLogger(__name__.split('.')[-1])
 
@@ -54,7 +52,11 @@ class Session(object):
         self.user = None
         self.country_code = 'US'   # Enable Trial Mode
         self.client_unique_key = None
-        urllib3.disable_warnings() # Disable OpenSSL Warnings in URLLIB3
+        try:
+            from requests.packages import urllib3
+            urllib3.disable_warnings() # Disable OpenSSL Warnings in URLLIB3
+        except:
+            pass
 
     def logout(self):
         self.session_id = None
@@ -272,8 +274,8 @@ class Session(object):
         return self._map_request('artists/%s/videos' % artist_id, params={'offset': offset, 'limit': limit}, ret='videos')
 
     def _cleanup_text(self, text):
-        clean_text = re.sub(r"\[.*\]", ' ', text)         # Remove Tags: [wimpLink ...] [/wimpLink]
-        clean_text = re.sub(r"<br.>", '\n', clean_text)   # Replace Tags: <br/> with NewLine
+        clean_text = re.sub("\[.*?\]", '', text)            # Remove Tags: [wimpLink ...] [/wimpLink]
+        clean_text = re.sub(r"<br.>", '\n\n', clean_text)   # Replace Tags: <br/> with NewLine
         return clean_text
 
     def get_artist_bio(self, artist_id):
@@ -494,6 +496,8 @@ class Session(object):
             parse = self._parse_search
         elif ret.startswith('cut'):
             parse = self._parse_cut_info
+        elif ret.startswith('mix'):
+            parse = self._parse_mix
         else:
             raise NotImplementedError()
         oneItem = parse(json_obj)
@@ -613,6 +617,11 @@ class Session(object):
 
     def _parse_cut_info(self, json_obj):
         return CutInfo(**json_obj)
+
+    def _parse_mix(self, json_obj):
+        mix = Mix(**json_obj)
+        return mix
+
 
 #------------------------------------------------------------------------------
 # Class to work with user favorites
@@ -755,7 +764,8 @@ class User(object):
         self.subscription = Subscription(subscription = {'type': subscription_type})
 
     def playlists(self, offset=0, limit=9999):
-        return self._session._map_request(self._base_url + '/playlists', params={'offset': offset, 'limit': limit}, ret='playlists')
+        headers = {'If-None-Match': '%s' % datetime.datetime.now().strftime("%Y%m%d%H%M%S")}
+        return self._session._map_request(self._base_url + '/playlists', params={'offset': offset, 'limit': limit}, headers=headers, ret='playlists')
 
     def create_playlist(self, title, description=''):
         return self._session._map_request(self._base_url + '/playlists', method='POST', data={'title': title, 'description': description}, ret='playlist')

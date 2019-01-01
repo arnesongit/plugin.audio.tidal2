@@ -69,7 +69,7 @@
     <string id="30209">Anmeldedaten merken ?</string>  
     <string id="30210">Anmeldefehler !</string>  
     <string id="30211">TIDAL Rising</string>  
-    <string id="30212">TIDAL Discovery</string>
+    <string id="30212">Vorschläge für mich</string>
     <string id="30213">Meine Playlisten</string>
     <string id="30214">Favorisierte Künstler</string>
     <string id="30215">Favorisierte Alben</string>
@@ -98,16 +98,16 @@
     <string id="30238">Playliste auswählen</string>
     <string id="30239">Zur Playliste hinzufügen...</string>
     <string id="30240">Aus Playliste entfernen</string>
-    <string id="30241">Soll Eintrag Nr. %s aus der Playliste entfernt werden ?</string>
+    <string id="30241">Soll Eintrag Nr. {entry} aus der Playliste entfernt werden ?</string>
     <string id="30242">Stream gesperrt</string>
     <string id="30243">Tracks:{tracks} / Videos:{videos}</string>
     <string id="30244">Nächste Seite ({pos1}-{pos2})</string>
     <string id="30245">Album anzeigen</string>
     <string id="30246">Soll dieser Eintrag aus der Playliste entfernt werden ?</string>
-    <string id="30247">Aus '%s' entfernen</string>
+    <string id="30247">Aus '{name}' entfernen</string>
     <string id="30248">Verschieben nach Playliste ...</string>
-    <string id="30249">Als Default-%s-Playliste setzen</string>
-    <string id="30250">Default-%s-Playliste zurücksetzen</string>
+    <string id="30249">Als Default-{what}-Playliste setzen</string>
+    <string id="30250">Default-{what}-Playliste zurücksetzen</string>
     <string id="30251">Playliste umbenennen</string>
     <string id="30252">Playliste öffnen (nur Audio)</string>
     <string id="30253">Login fehlgeschlagen !!</string>
@@ -120,6 +120,12 @@
     <string id="30260">gesperrt</string>
     <string id="30261">Für autom. Suche sperren</string>
     <string id="30262">Für autom. Suche freigeben</string>
+    <string id="30263">Hinzufügen zur Playliste ...</string>
+    <string id="30264">Entfernen aus Playliste ...</string>
+    <string id="30265">Verschieben nach Playliste ...</string>
+    <string id="30266">Löschen aus Playliste ...</string>
+    <string id="30267">Bitte warten ...</string>
+    <string id="30268">Veröffentlichung: {:%d.%m.%Y}</string>
 
     <!-- Extended Settings -->
     <string id="30501">Farben in Label verwenden</string>

@@ -1,3 +1,17 @@
+v2.0.0-beta18 (2018-12-31)
+- Fixed Artist Bio
+- Using new SquareImage property of Playlists as Cover Image
+- Removed TIDAL Discovery, because it is not supported anymore
+- Added Menu "Suggestions for me" to show Suggestions from the TIDAL Homepage
+- Show "Release Date: mm/dd/yyyy" in label if album release date is in future
+  and Addon Setting "Show Album Year in Labels" is enabled.
+- First Changes für Kodi 18.x compatibility:
+  - BusyDialog is not allowed anymore, using DialogProgressBG instead
+  - xbmc.abortRequested is depricated, now using xbmc.Monitor().waitForAbort()
+  - Adding 'music' infos to Video items
+  - Removed '%s' from any line in strings.xml
+  - Plugin folder items now end with '/', otherwise ActivateWindow() in favorites won't work
+
 v2.0.0-beta17 (2018-06-09)
 - Artists can now be locked for "Search for New Music"
 

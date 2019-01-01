@@ -163,6 +163,33 @@ class Artist(BrowsableMedia):
         return ARTIST_IMAGE_URL.format(width=1080, height=720, artistid=self.id)
 
 
+class Mix(BrowsableMedia):
+    title = 'Unknown'
+    subTitle = ''
+    _image = None
+
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+        super(Mix, self).__init__()
+        self.name = self.title
+        try:
+            self._image = kwargs['graphic']['images'][0]['id']
+        except:
+            self._image = DEFAULT_PLAYLIST_IMG
+
+    @property
+    def image(self):
+        if self._image:
+            return IMG_URL.format(picture=self._image.replace('-', '/'), size='320x214')
+        return IMG_URL.format(picture=DEFAULT_PLAYLIST_IMG.replace('-', '/'), size='320x214')
+
+    @property
+    def fanart(self):
+        if self._image:
+            return IMG_URL.format(picture=self._image.replace('-', '/'), size='1080x720')
+        return None
+
+
 class Playlist(BrowsableMedia):
     description = None
     creator = None
@@ -173,6 +200,7 @@ class Playlist(BrowsableMedia):
     creationDate = None
     publicPlaylist = None
     lastUpdated = None
+    squareImage = None
     numberOfTracks = 0
     numberOfVideos = 0
     duration = -1
@@ -215,7 +243,9 @@ class Playlist(BrowsableMedia):
 
     @property
     def image(self):
-        if self._image:
+        if self.squareImage:
+            return IMG_URL.format(picture=self.squareImage.replace('-', '/'), size='640x640')
+        elif self._image:
             return IMG_URL.format(picture=self._image.replace('-', '/'), size='320x214')
         return IMG_URL.format(picture=DEFAULT_PLAYLIST_IMG.replace('-', '/'), size='320x214')
 
@@ -414,7 +444,7 @@ class Category(BrowsableMedia):
 
     @staticmethod
     def groups():
-        return ['featured', 'rising', 'discovery', 'genres', 'moods', 'movies', 'shows']
+        return ['featured', 'rising', 'genres', 'moods', 'movies', 'shows']
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)

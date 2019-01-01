@@ -24,7 +24,7 @@ import requests
 import xbmc
 import xbmcgui
 
-from koditidal import HasListItem, AlbumItem, ArtistItem, PlaylistItem, TrackItem, VideoItem, PromotionItem, CategoryItem, FolderItem, Quality
+from koditidal import HasListItem, AlbumItem, ArtistItem, MixItem, PlaylistItem, TrackItem, VideoItem, PromotionItem, CategoryItem, FolderItem, Quality
 from koditidal import plugin, addon, log, _T, TidalSession, TidalUser, TidalFavorites, TidalConfig
 from tidalapi import SubscriptionType
 from metacache import MetaCache
@@ -69,6 +69,12 @@ class AlbumItem2(AlbumItem, ColoredListItem):
 
 
 class ArtistItem2(ArtistItem, ColoredListItem):
+
+    def __init__(self, item):
+        self.__dict__.update(vars(item))
+
+
+class MixItem2(MixItem, ColoredListItem):
 
     def __init__(self, item):
         self.__dict__.update(vars(item))
@@ -165,6 +171,7 @@ class TidalSession2(TidalSession):
         if addon.getSetting('mqa_cache_cleaned') <> 'true':
             self.metaCache.deleteOldMasterAlbums()
             addon.setSetting('mqa_cache_cleaned', 'true')
+        self.progressWindow = None
 
     def init_user(self, user_id, subscription_type):
         return User2(self, user_id, subscription_type)
@@ -235,6 +242,10 @@ class TidalSession2(TidalSession):
         artist = ArtistItem2(TidalSession._parse_artist(self, json_obj))
         return artist
 
+    def _parse_mix(self, json_obj):
+        mix = MixItem2(TidalSession._parse_mix(self, json_obj))
+        return mix
+
     def _parse_playlist(self, json_obj):
         playlist = PlaylistItem2(TidalSession._parse_playlist(self, json_obj))
         return playlist
@@ -291,7 +302,7 @@ class TidalSession2(TidalSession):
 
     def get_album_json_thread(self):
         try:
-            while not xbmc.abortRequested and not self.abortAlbumThreads:
+            while not xbmc.Monitor().waitForAbort(timeout=0.01) and not self.abortAlbumThreads:
                 try:
                     album_id = self.albumQueue.get_nowait()
                 except:
@@ -382,7 +393,7 @@ class TidalSession2(TidalSession):
         if self._config.cache_albums:
             album_ids = self.albumJsonBuffer.keys()
             for album_id in album_ids:
-                if xbmc.abortRequested:
+                if xbmc.Monitor().waitForAbort(timeout=0.01):
                     break
                 json_obj = self.albumJsonBuffer.get(album_id, None)
                 if json_obj != None and 'id' in json_obj and not json_obj.get('_cached', False):
@@ -407,6 +418,29 @@ class TidalSession2(TidalSession):
     def master_playlists(self, offset=0, limit=999):
         items = self.get_category_content('master', 'recommended', 'playlists', offset=offset, limit=limit)
         return items
+
+    def show_busydialog(self, headline='', textline=''):
+        #self.progressWindow = xbmcgui.DialogProgress()
+        #self.progressWindow.create(heading=_T(30267), line1=headline, line2=textline)
+        # or:
+        self.progressWindow = xbmcgui.DialogProgressBG()
+        self.progressWindow.create(heading=headline, message=textline)
+        self.progressWindow.update(percent=50)
+        #if KODI_VERSION >= (18, 0):
+        #    xbmc.executebuiltin('ActivateWindow(busydialognocancel)')
+        #else:
+        #    xbmc.executebuiltin('ActivateWindow(busydialog)')
+    def hide_busydialog(self):
+        try:
+            if self.progressWindow:
+                self.progressWindow.close()
+            #if KODI_VERSION >= (18, 0):
+            #    xbmc.executebuiltin('Dialog.Close(busydialognocancel)')
+            #else:
+            #    xbmc.executebuiltin('Dialog.Close(busydialog)')
+        except:
+            pass
+        self.progressWindow = None
 
 
 class Favorites2(TidalFavorites):
