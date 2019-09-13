@@ -1,3 +1,9 @@
+v2.0.0-beta19 (2019-09-13)
+- New login token for MQA playback
+- Fixes:
+  - user_playlist_toggle() and favorite_toggle() get correct id numbers now
+  - Changed playlists are now detected correctly to refresh the Playlist Cache
+
 v2.0.0-beta18 (2018-12-31)
 - Fixed Artist Bio
 - Using new SquareImage property of Playlists as Cover Image

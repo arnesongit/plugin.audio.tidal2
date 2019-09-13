@@ -513,12 +513,14 @@ def user_playlist_toggle():
         userpl_id = addon.getSetting('default_videoplaylist_id').decode('utf-8')
         userpl_name = addon.getSetting('default_videoplaylist_title').decode('utf-8')
         item_id = url.split('play_video/')[1]
+        item_id = item_id.split('/')[0]
         item = session.get_video(item_id)
     elif 'album/' in url:
         item_type = 'album'
         userpl_id = addon.getSetting('default_albumplaylist_id').decode('utf-8')
         userpl_name = addon.getSetting('default_albumplaylist_title').decode('utf-8')
-        item_id = int('0%s' % url.split('album/')[1])
+        item_id = url.split('album/')[1]
+        item_id = int('0%s' % item_id.split('/')[0])
         item = session.get_album(item_id)
         if userpl_id:
             if item._userplaylists and userpl_id in item._userplaylists:
@@ -621,11 +623,13 @@ def favorite_toggle():
         content_type = None
         if 'artist/' in url:
             item_id = url.split('artist/')[1]
+            item_id = int('0%s' % item_id.split('/')[0])
             if not '/' in item_id:
                 content_type = 'artists'
                 isFavorite = session.user.favorites.isFavoriteArtist(item_id)
         elif 'album/' in url:
             item_id = url.split('album/')[1]
+            item_id = item_id.split('/')[0]
             if not '/' in item_id:
                 content_type = 'albums'
                 isFavorite = session.user.favorites.isFavoriteAlbum(item_id)

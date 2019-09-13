@@ -782,7 +782,7 @@ class LoginToken(object):
     android =   'kgsOOmYk3zShYrNP' # All Streams are HTTP Streams. Correct numberOfVideos in Playlists (best Token to use)
     ios =       '_DSTon1kC8pABnTw' # Same as Android Token, but uses ALAC instead of FLAC
     native =    '4zx46pyr9o8qZNRw' # Same as Android Token, but FLAC streams are encrypted
-    audirvana = 'BI218mwp9ERZ3PFI' # Like Android Token, supports MQA, but returns 'numberOfVideos = 0' in Playlists
+    audirvana = 'MbjR4DLXz1ghC4rV' # Like Android Token, supports MQA, but returns 'numberOfVideos = 0' in Playlists
     amarra =    'wc8j_yBJd20zOmx0' # Like Android Token, but returns 'numberOfVideos = 0' in Playlists
     # Unkown working Tokens
     token1 =    'P5Xbeo5LFvESeDy6' # Like Android Token, but returns 'numberOfVideos = 0' in Playlists
@@ -799,7 +799,7 @@ class LoginToken(object):
         'android':   { 'token': android,   'codecs': ['AAC', 'FLAC'],        'rtmp': False, 'videoMode': 'HTTP','videosInPlaylists': True,  'user-agent': 'TIDAL_ANDROID/686 okhttp/3.3.1' },
         'ios':       { 'token': ios,       'codecs': ['AAC', 'ALAC'],        'rtmp': False, 'videoMode': 'HLS', 'videosInPlaylists': True,  'user-agent': 'TIDAL/546 CFNetwork/808.2.16 Darwin/16.3.0' },
         'native':    { 'token': native,    'codecs': ['AAC'],                'rtmp': False, 'videoMode': 'HLS', 'videosInPlaylists': True,  'user-agent': 'TIDAL_NATIVE_PLAYER/OSX/2.3.20' },
-        'audirvana': { 'token': audirvana, 'codecs': ['AAC', 'FLAC', 'MQA'], 'rtmp': False, 'videoMode': 'HLS', 'videosInPlaylists': False, 'user-agent': 'Audirvana Plus/2.6.4 CFNetwork/807.2.14 Darwin/16.3.0 (x86_64)' },
+        'audirvana': { 'token': audirvana, 'codecs': ['AAC', 'FLAC', 'MQA'], 'rtmp': False, 'videoMode': 'HLS', 'videosInPlaylists': False, 'user-agent': 'Audirvana/3550 CFNetwork/897.15 Darwin/17.5.0 (x86_64)' },
         'amarra':    { 'token': amarra,    'codecs': ['AAC', 'FLAC'],        'rtmp': False, 'videoMode': 'HLS', 'videosInPlaylists': False, 'user-agent': 'Amarra for TIDAL/2.2.1261 CFNetwork/807.2.14 Darwin/16.3.0 (x86_64)' },
         # Unknown working Tokens
         'token1':    { 'token': token1,    'codecs': ['AAC', 'FLAC'],        'rtmp': False, 'videoMode': 'HTTP','videosInPlaylists': False, 'user-agent': None },
@@ -1429,10 +1429,10 @@ class TidalUser(User):
         if self.playlists_cache.get(playlist.id, {}).get('lastUpdated', datetime.datetime.fromordinal(1)) == playlist.lastUpdated:
             # Playlist unchanged
             return False
-        if playlist.numberOfVideos == 0:
-            items = self._session.get_playlist_tracks(playlist)
-        else:
-            items = self._session.get_playlist_items(playlist)
+        #if playlist.numberOfVideos == 0:
+        #    items = self._session.get_playlist_tracks(playlist)
+        #else:
+        items = self._session.get_playlist_items(playlist)
         album_ids = []
         if ALBUM_PLAYLIST_TAG in playlist.description:
             album_ids = ['%s' % item.album.id for item in items if isinstance(item, TrackItem)]
