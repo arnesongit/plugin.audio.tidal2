@@ -1,3 +1,8 @@
+v2.0.0-beta20 (2020-04-18)
+- Added Videos to "Suggestions for me"
+- Fixed missing "Explicit" status in Album Playlists
+- Fixed number of tracks and videos for user playlists
+
 v2.0.0-beta19 (2019-09-13)
 - New login token for MQA playback
 - Fixes:

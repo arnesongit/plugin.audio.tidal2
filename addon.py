@@ -26,7 +26,7 @@ import xbmcplugin
 from xbmcgui import ListItem
 from requests import HTTPError
 from resources.lib.tidalapi.models import Quality, Category, SubscriptionType
-from resources.lib.koditidal import plugin, addon, _addon_id, _T, log, ALBUM_PLAYLIST_TAG, KODI_VERSION
+from resources.lib.koditidal import plugin, addon, _addon_id, _T, _P, log, ALBUM_PLAYLIST_TAG, KODI_VERSION
 from resources.lib.koditidal2 import FolderItem2, TidalSession2 as TidalSession
 
 # This is the Tidal Session
@@ -66,22 +66,46 @@ def settings():
 @plugin.route('/homepage_items')
 def homepage_items():
     params = { 'locale': session._config.locale, 'deviceType': 'BROWSER' }
+    apiPaths = []
+    items = []
     r = session.request('GET', 'pages/home', params=params)
     if r.ok:
-        items = []
         json_obj = r.json()
         for row in json_obj['rows']:
             for module in row['modules']:
                 try:
                     item_type = module['type']
                     if item_type in HOMEPAGE_ITEM_TYPES:
-                        item = FolderItem2(module['title'], plugin.url_for(homepage_item, item_type, urllib.quote_plus(module['pagedList']['dataApiPath'])))
+                        apiPath = module['pagedList']['dataApiPath']
+                        item = FolderItem2(module['title'], plugin.url_for(homepage_item, item_type, urllib.quote_plus(apiPath)))
                         items.append(item)
+                        apiPaths.append(apiPath)
                     else:
                         log('Unknown Homepage Item "%s": %s' % (item_type, module.get('title', 'Unknown')), level=xbmc.LOGDEBUG)
                 except:
                     pass
-        session.add_list_items(items, end=True)
+    r = session.request('GET', 'pages/videos', params=params)
+    if r.ok:
+        json_obj = r.json()
+        for row in json_obj['rows']:
+            for module in row['modules']:
+                try:
+                    item_type = module['type']
+                    if item_type in HOMEPAGE_ITEM_TYPES:
+                        apiPath = module['pagedList']['dataApiPath']
+                        item = FolderItem2(module['title'], plugin.url_for(homepage_item, item_type, urllib.quote_plus(apiPath)))
+                        if not apiPath in apiPaths:
+                            if item_type == 'MIX_LIST':
+                                item.name = item.name + ' (' + _P('videos') + ')'
+                                items.insert(1, item)
+                            else:
+                                items.append(item)
+                            apiPaths.append(apiPath)
+                    else:
+                        log('Unknown Homepage Item "%s": %s' % (item_type, module.get('title', 'Unknown')), level=xbmc.LOGDEBUG)
+                except:
+                    pass
+    session.add_list_items(items, end=True)
 
 
 @plugin.route('/homepage_item/<item_type>/<path>')

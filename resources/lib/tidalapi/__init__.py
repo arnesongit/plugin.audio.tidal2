@@ -764,8 +764,11 @@ class User(object):
         self.subscription = Subscription(subscription = {'type': subscription_type})
 
     def playlists(self, offset=0, limit=9999):
-        headers = {'If-None-Match': '%s' % datetime.datetime.now().strftime("%Y%m%d%H%M%S")}
-        return self._session._map_request(self._base_url + '/playlists', params={'offset': offset, 'limit': limit}, headers=headers, ret='playlists')
+        # Insert Timestamp as dummy parameter to avoid caching and get actual "lastUpdated" for Playlists
+        #headers = {'If-None-Match': '%s' % datetime.datetime.now().strftime("%Y%m%d%H%M%S")}
+        #return self._session._map_request(self._base_url + '/playlists', params={'offset': offset, 'limit': limit}, headers=headers, ret='playlists')
+        dummy = '%s' % datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        return self._session._map_request(self._base_url + '/playlists', params={'offset': offset, 'limit': limit, 'dummy':dummy}, ret='playlists')
 
     def create_playlist(self, title, description=''):
         return self._session._map_request(self._base_url + '/playlists', method='POST', data={'title': title, 'description': description}, ret='playlist')

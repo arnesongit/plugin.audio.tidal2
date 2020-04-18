@@ -178,11 +178,13 @@ class AlbumItem(Album, HasListItem):
 
     def getLongTitle(self):
         self.setLabelFormat()
-        longTitle = self.title
+        longTitle = '%s' % self.title
         if self.type == AlbumType.ep:
             longTitle += ' (EP)'
         elif self.type == AlbumType.single:
             longTitle += ' (Single)'
+        if self.explicit and not 'Explicit' in self.title:
+            longTitle += ' (Explicit)'
         if getattr(self, 'year', None) and addon.getSetting('album_year_in_labels') == 'true':
             if self.releaseDate and self.releaseDate > datetime.datetime.now():
                 longTitle += ' (%s)' % _T(30268).format(self.releaseDate)
@@ -205,6 +207,13 @@ class AlbumItem(Album, HasListItem):
             'year': getattr(self, 'year', None),
             'tracknumber': self._itemPosition + 1 if self._itemPosition >= 0 else 0,
         }
+        try:
+            if self.streamStartDate:
+                infoLabels.update({'date': self.streamStartDate.date().strftime('%d.%m.%Y')})
+            elif self.releaseDate:
+                infoLabels.update({'date': self.releaseDate.date().strftime('%d.%m.%Y')})
+        except:
+            pass
         if KODI_VERSION >= (17, 0):
             infoLabels.update({'mediatype': 'album',
                                'rating': '%s' % int(round(self.popularity / 10.0)),
@@ -298,6 +307,15 @@ class PlaylistItem(Playlist, HasListItem):
 
     def __init__(self, item):
         self.__dict__.update(vars(item))
+        # Fix negative number of tracks/videos in playlist
+        if self.numberOfItems > 0 and self.numberOfTracks < 0:
+            self.numberOfVideos += self.numberOfTracks
+            self.numberOfTracks = 0
+        if self.numberOfItems > 0 and self.numberOfVideos < 0:
+            self.numberOfTracks += self.numberOfVideos
+            self.numberOfVideos = 0
+        if self.numberOfItems < 0:
+            self.numberOfTracks = self.numberOfVideos = 0
 
     def getLabel(self, extended=True):
         self.setLabelFormat()
@@ -329,6 +347,13 @@ class PlaylistItem(Playlist, HasListItem):
             'genre': _T(30243).format(tracks=self.numberOfTracks, videos=self.numberOfVideos),
             'tracknumber': self._itemPosition + 1 if self._itemPosition >= 0 else 0
         }
+        try:
+            if self.lastUpdated:
+                infoLabel.update({'date': self.lastUpdated.date().strftime('%d.%m.%Y')})
+            elif self.creationDate:
+                infoLabel.update({'date': self.creationDate.date().strftime('%d.%m.%Y')})
+        except:
+            pass
         if KODI_VERSION >= (17, 0):
             infoLabel.update({'userrating': '%s' % int(round(self.popularity / 10.0))})
         li.setInfo('music', infoLabel)
@@ -444,8 +469,11 @@ class TrackItem(Track, HasListItem):
         else:
             url = plugin.url_for_path('/stream_locked')
             isFolder = True
+        longTitle = self.title
+        if self.explicit and not 'Explicit' in self.title:
+            longTitle += ' (Explicit)'
         infoLabel = {
-            'title': self.title,
+            'title': longTitle,
             'tracknumber': self._playlist_pos + 1 if self._playlist_id else self._itemPosition + 1 if self._itemPosition >= 0 else self.trackNumber,
             'discnumber': self.volumeNumber,
             'duration': self.duration,
@@ -455,6 +483,13 @@ class TrackItem(Track, HasListItem):
             'rating': '%s' % int(round(self.popularity / 10.0)),
             'comment': self.getComment()
         }
+        try:
+            if self.streamStartDate:
+                infoLabel.update({'date': self.streamStartDate.date().strftime('%d.%m.%Y')})
+            elif self.releaseDate:
+                infoLabel.update({'date': self.releaseDate.date().strftime('%d.%m.%Y')})
+        except:
+            pass
         if KODI_VERSION >= (17, 0):
             infoLabel.update({'mediatype': 'song',
                               'userrating': '%s' % int(round(self.popularity / 10.0))
@@ -563,6 +598,15 @@ class VideoItem(Video, HasListItem):
             'year': getattr(self, 'year', None),
             'comment': self.getComment()
         }
+        try:
+            if self.streamStartDate:
+                infoLabel.update({'date': self.streamStartDate.date().strftime('%d.%m.%Y')})
+                musicLabel.update({'date': self.streamStartDate.date().strftime('%d.%m.%Y')})
+            elif self.releaseDate:
+                infoLabel.update({'date': self.releaseDate.date().strftime('%d.%m.%Y')})
+                musicLabel.update({'date': self.releaseDate.date().strftime('%d.%m.%Y')})
+        except:
+            pass
         if KODI_VERSION >= (17, 0):
             infoLabel.update({'mediatype': 'musicvideo',
                               'rating': '%s' % int(round(self.popularity / 10.0)),
@@ -779,6 +823,7 @@ class FolderItem(BrowsableMedia, HasListItem):
 class LoginToken(object):
 
     browser =   'wdgaB1CilGA-S_s2' # Streams HIGH/LOW Quality over RTMP, FLAC and Videos over HTTP, but many Lossless Streams are encrypted.
+    browser2 =  'CzET4vdadNUFQ5JU' # All Streams encrypted (widevine ?)
     android =   'kgsOOmYk3zShYrNP' # All Streams are HTTP Streams. Correct numberOfVideos in Playlists (best Token to use)
     ios =       '_DSTon1kC8pABnTw' # Same as Android Token, but uses ALAC instead of FLAC
     native =    '4zx46pyr9o8qZNRw' # Same as Android Token, but FLAC streams are encrypted
@@ -1126,6 +1171,7 @@ class TidalSession(Session):
         track = TrackItem(Session._parse_track(self, json_obj))
         if not getattr(track.album, 'streamStartDate', None):
             track.album.streamStartDate = track.streamStartDate
+        track.album.explicit = track.explicit
         track._is_logged_in = self.is_logged_in
         if self.is_logged_in:
             track._userplaylists = self.user.playlists_of_id(track.id, track.album.id)
