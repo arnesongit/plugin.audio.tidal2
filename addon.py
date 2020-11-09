@@ -27,7 +27,7 @@ from xbmcgui import ListItem
 from requests import HTTPError
 from resources.lib.tidalapi.models import Quality, Category, SubscriptionType
 from resources.lib.koditidal import plugin, addon, _addon_id, _T, _P, log, ALBUM_PLAYLIST_TAG, KODI_VERSION
-from resources.lib.koditidal2 import FolderItem2, TidalSession2 as TidalSession
+from resources.lib.koditidal import FolderItem, TidalSession
 
 # This is the Tidal Session
 session = TidalSession()
@@ -45,8 +45,6 @@ def root():
         add_directory(_T(30201), my_music)
         add_directory(_T(30212), plugin.url_for(homepage_items))
     add_directory(_T(30202), featured_playlists)
-    if getattr(session._config, 'cache_albums', False):
-        add_directory(_T(30509), plugin.url_for(albums_with_videos))
     categories = Category.groups()
     for item in categories:
         add_directory(_T(item), plugin.url_for(category, group=item))
@@ -77,7 +75,7 @@ def homepage_items():
                     item_type = module['type']
                     if item_type in HOMEPAGE_ITEM_TYPES:
                         apiPath = module['pagedList']['dataApiPath']
-                        item = FolderItem2(module['title'], plugin.url_for(homepage_item, item_type, urllib.quote_plus(apiPath)))
+                        item = FolderItem(module['title'], plugin.url_for(homepage_item, item_type, urllib.quote_plus(apiPath)))
                         items.append(item)
                         apiPaths.append(apiPath)
                     else:
@@ -93,7 +91,7 @@ def homepage_items():
                     item_type = module['type']
                     if item_type in HOMEPAGE_ITEM_TYPES:
                         apiPath = module['pagedList']['dataApiPath']
-                        item = FolderItem2(module['title'], plugin.url_for(homepage_item, item_type, urllib.quote_plus(apiPath)))
+                        item = FolderItem(module['title'], plugin.url_for(homepage_item, item_type, urllib.quote_plus(apiPath)))
                         if not apiPath in apiPaths:
                             if item_type == 'MIX_LIST':
                                 item.name = item.name + ' (' + _P('videos') + ')'
@@ -116,11 +114,6 @@ def homepage_item(item_type, path):
         params = { 'locale': session._config.locale, 'deviceType': 'BROWSER', 'offset': 0, 'limit': 50 }
         items = session._map_request(url=path, method='GET', params=params, ret=rettype)
         session.add_list_items(items, content=CONTENT_FOR_TYPE.get(rettype, 'files'), end=True)
-
-
-@plugin.route('/albums_with_videos')
-def albums_with_videos():
-    add_items(session.albums_with_videos(), content=CONTENT_FOR_TYPE.get('albums'))
 
 
 @plugin.route('/category/<group>')
@@ -762,7 +755,7 @@ def logout():
 
 @plugin.route('/play_track/<track_id>/<album_id>')
 def play_track(track_id, album_id):
-    media_url = session.get_media_url(track_id, album_id=album_id)
+    media_url = session.get_media_url(track_id)
     log("Playing: %s" % media_url)
     disableInputstreamAddon = False
     if not media_url.startswith('http://') and not media_url.startswith('https://') and \
@@ -786,7 +779,7 @@ def play_track(track_id, album_id):
 
 @plugin.route('/play_track_cut/<track_id>/<cut_id>/<album_id>')
 def play_track_cut(track_id, cut_id, album_id):
-    media_url = session.get_media_url(track_id, cut_id=cut_id, album_id=album_id)
+    media_url = session.get_media_url(track_id, cut_id=cut_id)
     log("Playing Cut %s: %s" % (cut_id, media_url))
     disableInputstreamAddon = False
     if not media_url.startswith('http://') and not media_url.startswith('https://') and \

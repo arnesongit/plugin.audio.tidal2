@@ -138,5 +138,7 @@
     <string id="30508">Soll der Album-Cache wirklich gelöscht werden ?</string>
     <string id="30509">Alben mit Videos (im Album-Cache)</string>
     <string id="30510">Kein HTTP-Stream, verwende HLS ...</string>
+    <string id="30511">Fanart-HTTP-Server aktivieren</string>
+    <string id="30512">IP-Port für Fanart-HTTP-Server</string>
 
 </strings>

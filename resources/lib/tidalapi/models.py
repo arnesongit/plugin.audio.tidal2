@@ -21,8 +21,6 @@ import re
 import datetime
 
 IMG_URL = 'http://resources.tidal.com/images/{picture}/{size}.jpg'
-ARTIST_IMAGE_URL = 'http://images.tidalhifi.com/im/im?w={width}&h={height}&artistid={artistid}'
-VIDEO_IMAGE_URL = 'http://images.tidalhifi.com/im/im?w={width}&h={height}&img={imagepath}'
 
 DEFAULT_ARTIST_IMG = '1e01cdb6-f15d-4d8b-8440-a047976c1cac'
 DEFAULT_ALBUM_IMG = '0dfd3368-3aa1-49a3-935f-10ffb39803c0'
@@ -140,6 +138,10 @@ class Album(BrowsableMedia):
             return IMG_URL.format(picture=self.cover.replace('-', '/'), size='1280x1280')
         return None
 
+    @property
+    def isMasterAlbum(self):
+        return True if self.audioQuality == Quality.hi_res else False
+
 
 class Artist(BrowsableMedia):
     picture = None
@@ -160,7 +162,7 @@ class Artist(BrowsableMedia):
     def fanart(self):
         if self.picture:
             return IMG_URL.format(picture=self.picture.replace('-', '/'), size='1080x720')
-        return ARTIST_IMAGE_URL.format(width=1080, height=720, artistid=self.id)
+        return None
 
 
 class Mix(BrowsableMedia):
@@ -261,9 +263,11 @@ class PlayableMedia(BrowsableMedia):
     title = 'Unknown'
     artist = None
     artists = []
+    album = None
     version = None
     explicit = False
     duration = 30
+    audioQuality = Quality.lossless
     allowStreaming = True
     streamReady = True
     streamStartDate = None
@@ -295,13 +299,11 @@ class PlayableMedia(BrowsableMedia):
 class Track(PlayableMedia):
     trackNumber = 1
     volumeNumber = 1
-    album = None
     popularity = 0
     isrc = None
     premiumStreamingOnly = False
     replayGain = 0.0
     peak = 1.0
-    audioQuality = Quality.lossless
     editable = False
 
     # Internal Properties
@@ -338,7 +340,7 @@ class Video(PlayableMedia):
     releaseDate = None
     quality = None
     imageId = None
-    imagePath = None
+    squareImage = None
     popularity = 0
 
     # Internal Properties
@@ -358,18 +360,16 @@ class Video(PlayableMedia):
 
     @property
     def image(self):
-        if self.imageId:
+        if self.squareImage:
+            return IMG_URL.format(picture=self.squareImage.replace('-', '/'), size='320x320')
+        elif self.imageId:
             return IMG_URL.format(picture=self.imageId.replace('-', '/'), size='320x214')
-        elif self.imagePath:
-            return VIDEO_IMAGE_URL.format(width=320, height=214, imagepath=self.imagePath)
         return IMG_URL.format(picture=DEFAULT_VIDEO_IMB.replace('-', '/'), size='320x214')
 
     @property
     def fanart(self):
         if self.artist and isinstance(self.artist, Artist):
             return self.artist.fanart
-        elif self.imagePath:
-            return VIDEO_IMAGE_URL.format(width=320, height=214, imagepath=self.imagePath)
         return None
 
     def getFtArtistsText(self):

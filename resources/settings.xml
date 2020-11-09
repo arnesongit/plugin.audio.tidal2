@@ -21,8 +21,7 @@
     <setting label="30017" id="user_playlists_in_labels" type="bool" default="true"/>
     <setting label="30023" id="album_year_in_labels" type="bool" default="true"/>
     <setting label="30024" id="mqa_in_labels" type="bool" default="true"/>
-    <setting label="30503" id="album_cache" type="bool" default="false"/>
-    <setting label="30507" id="reset_album_cache" type="action" action="RunPlugin(plugin://plugin.audio.tidal2/cache_reset_confirmed)" visible="eq(-1,true)"/>
-    <setting label="30506" id="max_http_requests" type="slider" default="10" range="1,1,20" option="int"  visible="eq(-2,true)"/>
+    <setting label="30511" id="fanart_server_enabled" type="bool" default="true"/>
+    <setting label="30512" id="fanart_server_port" type="number" default="5555" visible="eq(-1,true)"/>
   </category>
 </settings>

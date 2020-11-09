@@ -33,13 +33,16 @@ except ImportError:
 
 log = logging.getLogger(__name__.split('.')[-1])
 
+ALL_SAERCH_FIELDS = ['ARTISTS','ALBUMS','PLAYLISTS','TRACKS','VIDEOS']
+
 
 class Config(object):
     def __init__(self, quality=Quality.high):
         self.quality = quality
         self.api_location = 'https://api.tidal.com/v1/'
         self.api_token = 'kgsOOmYk3zShYrNP'     # Android Token that works for everything
-        self.preview_token = "8C7kRFdkaRp0dLBp" # Token for Preview Mode
+        # self.preview_token = "8C7kRFdkaRp0dLBp" # Token for Preview Mode
+        self.preview_token = "CzET4vdadNUFQ5JU" # Browser-Token for Preview 
         self.debug_json = False
 
 
@@ -455,15 +458,18 @@ class Session(object):
         return self._map_request(url,  ret='video_url', params=params)
 
     def search(self, field, value, limit=50):
+        search_field = field
+        if isinstance(search_field, basestring) and search_field.upper() == 'ALL':
+            search_field = ALL_SAERCH_FIELDS
         params = {
             'query': value,
             'limit': limit,
         }
-        if isinstance(field, basestring):
-            what = field.upper()
+        if isinstance(search_field, basestring):
+            what = search_field.upper()
             params.update({'types': what if what == 'ALL' or what.endswith('S') else what + 'S'})
-        elif isinstance(field, Iterable):
-            params.update({'types': ','.join(field)})
+        elif isinstance(search_field, Iterable):
+            params.update({'types': ','.join(search_field)})
         return self._map_request('search', params=params, ret='search')
 
 #------------------------------------------------------------------------------
@@ -594,6 +600,8 @@ class Session(object):
         else:
             video.artists = [video.artist]
             video._ftArtists = []
+        if 'album' in json_obj and json_obj['album']:
+            video.album = self._parse_album(json_obj['album'], artist=video.artist)
         if self.is_logged_in and self.user.favorites:
             video._isFavorite = self.user.favorites.isFavoriteVideo(video.id)
         return video

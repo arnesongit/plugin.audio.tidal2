@@ -31,7 +31,7 @@ import requests
 from xbmcgui import ListItem
 from routing import Plugin
 from tidalapi import Config, Session, User, Favorites
-from tidalapi.models import Quality, SubscriptionType, AlbumType, BrowsableMedia, Artist, Album, PlayableMedia, Track, Video, Mix, Playlist, Promotion, Category, CutInfo
+from tidalapi.models import Quality, SubscriptionType, AlbumType, BrowsableMedia, Artist, Album, PlayableMedia, Track, Video, Mix, Playlist, Promotion, Category, CutInfo, IMG_URL
 from m3u8 import load as m3u8_load
 from debug import DebugHelper
 
@@ -65,6 +65,7 @@ except:
 
 CACHE_DIR = xbmc.translatePath(addon.getAddonInfo('profile')).decode('utf-8')
 FAVORITES_FILE = os.path.join(CACHE_DIR, 'favorites.cfg')
+LOCKED_ARTISTS_FILE = os.path.join(CACHE_DIR, 'locked_artists.cfg')
 PLAYLISTS_FILE = os.path.join(CACHE_DIR, 'playlists.cfg')
 ALBUM_PLAYLIST_TAG = 'ALBUM'
 VARIOUS_ARTIST_ID = '2935'
@@ -105,18 +106,33 @@ class HasListItem(object):
     def setLabelFormat(self):
         self._favorites_in_labels = True if addon.getSetting('favorites_in_labels') == 'true' else False
         self._user_playlists_in_labels = True if addon.getSetting('user_playlists_in_labels') == 'true' else False
-        self.FOLDER_MASK = '{label}'
-        if self._favorites_in_labels:
-            self.FAVORITE_MASK = '<{label}>'
+        self._colored_labels = True if addon.getSetting('color_mode') == 'true' else False
+        if self._colored_labels:
+            self.FOLDER_MASK = '[COLOR blue]{label}[/COLOR]'
+            if self._favorites_in_labels:
+                self.FAVORITE_MASK = '[COLOR yellow]{label}[/COLOR]'
+            else:
+                self.FAVORITE_MASK = '{label}'
+            self.STREAM_LOCKED_MASK = '[COLOR maroon]{label} ({info})[/COLOR]'
+            if self._user_playlists_in_labels:
+                self.USER_PLAYLIST_MASK = '{label} [COLOR limegreen][{userpl}][/COLOR]'
+            else:
+                self.USER_PLAYLIST_MASK = '{label}'
+            self.DEFAULT_PLAYLIST_MASK = '[COLOR limegreen]{label} ({mediatype})[/COLOR]'
+            self.MASTER_AUDIO_MASK = '{label} [COLOR blue]MQA[/COLOR]'
         else:
-            self.FAVORITE_MASK = '{label}'
-        self.STREAM_LOCKED_MASK = '{label} ({info})'
-        if self._user_playlists_in_labels:
-            self.USER_PLAYLIST_MASK = '{label} [{userpl}]'
-        else:
-            self.USER_PLAYLIST_MASK = '{label}'
-        self.DEFAULT_PLAYLIST_MASK = '{label} ({mediatype})'
-        self.MASTER_AUDIO_MASK = '{label} (MQA)'
+            self.FOLDER_MASK = '{label}'
+            if self._favorites_in_labels:
+                self.FAVORITE_MASK = '<{label}>'
+            else:
+                self.FAVORITE_MASK = '{label}'
+            self.STREAM_LOCKED_MASK = '{label} ({info})'
+            if self._user_playlists_in_labels:
+                self.USER_PLAYLIST_MASK = '{label} [{userpl}]'
+            else:
+                self.USER_PLAYLIST_MASK = '{label}'
+            self.DEFAULT_PLAYLIST_MASK = '{label} ({mediatype})'
+            self.MASTER_AUDIO_MASK = '{label} (MQA)'
 
     def getLabel(self, extended=True):
         return self.name
@@ -280,6 +296,14 @@ class ArtistItem(Artist, HasListItem):
                 else:
                     cm.append((_T(30261), 'RunPlugin(%s)' % plugin.url_for_path('/lock_artist/%s' % self.id)))
         return cm
+
+    @property
+    def fanart(self):
+        if self.picture:
+            return IMG_URL.format(picture=self.picture.replace('-', '/'), size='1080x720')
+        if addon.getSetting('fanart_server_enabled') == 'true':
+            return 'http://localhost:%s/artist_fanart?id=%s' % (addon.getSetting('fanart_server_port'), self.id)
+        return None
 
 
 class MixItem(Mix, HasListItem):
@@ -456,7 +480,13 @@ class TrackItem(Track, HasListItem):
         return text
 
     def getComment(self):
-        return self.getFtArtistsText()
+        txt = self.getFtArtistsText()
+        comments = ['track_id=%s' % self.id]
+        if txt:
+            comments.append(txt)
+        #if self.replayGain <> 0:
+        #    comments.append("gain:%0.3f, peak:%0.3f" % (self.replayGain, self.peak))
+        return ', '.join(comments)
 
     def getListItem(self):
         li = HasListItem.getListItem(self)
@@ -532,6 +562,7 @@ class VideoItem(Video, HasListItem):
         self.artist = ArtistItem(self.artist)
         self.artists = [ArtistItem(artist) for artist in self.artists]
         self._ftArtists = [ArtistItem(artist) for artist in self._ftArtists]
+        self.album = AlbumItem(self.album) if self.album else None
         self._userplaylists = {} # Filled by parser
 
     def getLabel(self, extended=True):
@@ -573,7 +604,11 @@ class VideoItem(Video, HasListItem):
         return text
 
     def getComment(self):
-        return self.getFtArtistsText()
+        txt = self.getFtArtistsText()
+        comments = ['video_id=%s' % self.id]
+        if txt:
+            comments.append(txt)
+        return ', '.join(comments)
 
     def getListItem(self):
         li = HasListItem.getListItem(self)
@@ -823,7 +858,6 @@ class FolderItem(BrowsableMedia, HasListItem):
 class LoginToken(object):
 
     browser =   'wdgaB1CilGA-S_s2' # Streams HIGH/LOW Quality over RTMP, FLAC and Videos over HTTP, but many Lossless Streams are encrypted.
-    browser2 =  'CzET4vdadNUFQ5JU' # All Streams encrypted (widevine ?)
     android =   'kgsOOmYk3zShYrNP' # All Streams are HTTP Streams. Correct numberOfVideos in Playlists (best Token to use)
     ios =       '_DSTon1kC8pABnTw' # Same as Android Token, but uses ALAC instead of FLAC
     native =    '4zx46pyr9o8qZNRw' # Same as Android Token, but FLAC streams are encrypted
@@ -833,6 +867,18 @@ class LoginToken(object):
     token1 =    'P5Xbeo5LFvESeDy6' # Like Android Token, but returns 'numberOfVideos = 0' in Playlists
     token2 =    'oIaGpqT_vQPnTr0Q' # Like token1, but uses RTMP for HIGH/LOW Quality
     token3 =    '_KM2HixcUBZtmktH' # Same as token1
+    token4 =    'pl4Vc0hemlAXD0mN' # ??
+    token5 =    'hZ9wuySZCmpLLiui' # New IOS token with ALAC wihout MQA and returns 'numberOfVideos = 0' in Playlists
+    token6 =    'CLGLE93UA5gm42Og' # New IOS Token ??
+
+    # From web app js:
+    token7 =    'y3Ab6MUg5bjjofvu'
+    browser2 =  'CzET4vdadNUFQ5JU' # All Streams encrypted (widevine ?) 
+    tizen  =    'M6ztoSvmny6alVCD'
+    vizio  =    'Y40WSvVnnG0ql0L0'
+    tv     =    'NIh99tUmaAyLNmEA'
+    windowsStore1 = 'jdDuod31BUA6qXXq'
+    windowsStore2 = 'VGGyfsDBQnKqz0W3'
 
     features = {
         # token: Login-Token to get a Session-ID
@@ -849,10 +895,12 @@ class LoginToken(object):
         # Unknown working Tokens
         'token1':    { 'token': token1,    'codecs': ['AAC', 'FLAC'],        'rtmp': False, 'videoMode': 'HTTP','videosInPlaylists': False, 'user-agent': None },
         'token2':    { 'token': token2,    'codecs': ['AAC', 'FLAC'],        'rtmp': True,  'videoMode': 'HLS', 'videosInPlaylists': False, 'user-agent': None },
-        'token3':    { 'token': token3,    'codecs': ['AAC', 'FLAC'],        'rtmp': False, 'videoMode': 'HTTP','videosInPlaylists': False, 'user-agent': None }
+        'token3':    { 'token': token3,    'codecs': ['AAC', 'FLAC'],        'rtmp': False, 'videoMode': 'HTTP','videosInPlaylists': False, 'user-agent': None },
+        'token4':    { 'token': token4,    'codecs': ['AAC', 'FLAC'],        'rtmp': False, 'videoMode': 'HLS', 'videosInPlaylists': True,  'user-agent': None },
+        'token5':    { 'token': token5,    'codecs': ['AAC', 'ALAC'],        'rtmp': False, 'videoMode': 'HLS', 'videosInPlaylists': False, 'user-agent': None }
     }
 
-    priority = ['android', 'ios', 'audirvana', 'browser', 'native', 'amarra', 'token1', 'token2', 'token3']
+    priority = ['android', 'ios', 'audirvana', 'browser', 'native', 'amarra', 'token1', 'token2', 'token3', 'token4', 'token5']
 
     @staticmethod
     def getFeatures(tokenName='android'):
@@ -942,6 +990,10 @@ class TidalConfig(Config):
             apiFeatures = LoginToken.getFeatures(self.session_token_name)
             if apiFeatures and apiFeatures.get('videoMode') == 'HTTP':
                 self.http_video_session_id = self.session_id
+        self.mqa_in_labels = True if addon.getSetting('mqa_in_labels') == 'true' and self.codec == 'MQA' else False
+        self.fanart_server_enabled = True if addon.getSetting('fanart_server_enabled') == 'true' else False
+        self.fanart_server_port = int('0%s' % addon.getSetting('fanart_server_port'))
+
 
 class TidalSession(Session):
 
@@ -1094,14 +1146,12 @@ class TidalSession(Session):
             album._userplaylists = self.user.playlists_of_id(None, album.id)
             # Track-ID in TIDAL-Playlist
             album._playlist_track_id = item.id
-            # Album Quality = Track Quality if Album Cache is disabled
-            if not self._config.cache_albums:
-                album.audioQuality = item.audioQuality
+            album.audioQuality = item.audioQuality
             albums.append(album)
         return albums
 
     def get_playlist_albums(self, playlist, offset=0, limit=9999):
-        return self.get_item_albums(self.get_playlist_tracks(self, playlist, offset=offset, limit=limit))
+        return self.get_item_albums(self.get_playlist_items(playlist, offset=offset, limit=limit))
 
     def get_artist_top_tracks(self, artist_id, offset=0, limit=999):
         items = Session.get_artist_top_tracks(self, artist_id, offset=offset, limit=limit)
@@ -1184,7 +1234,7 @@ class TidalSession(Session):
         video = VideoItem(Session._parse_video(self, json_obj))
         video._is_logged_in = self.is_logged_in
         if self.is_logged_in:
-            video._userplaylists = self.user.playlists_of_id(video.id)
+            video._userplaylists = self.user.playlists_of_id(video.id, video.album.id if video.album else None)
         elif video.duration > 30:
             # 30 Seconds Limit in Trial Mode
             video.duration = 30
@@ -1201,7 +1251,12 @@ class TidalSession(Session):
         return CategoryItem(Session._parse_category(self, json_obj))
 
     def get_media_url(self, track_id, quality=None, cut_id=None, fallback=False):
-        return Session.get_media_url(self, track_id, quality=quality, cut_id=cut_id, fallback=fallback)
+        # return Session.get_media_url(self, track_id, quality=quality, cut_id=cut_id, fallback=fallback)
+        soundQuality = quality if quality else self._config.quality
+        media = self.get_track_url(track_id, quality=soundQuality, cut_id=cut_id, fallback=True)
+        if not media:
+            return None
+        return media.url
 
     def get_track_url(self, track_id, quality=None, cut_id=None, fallback=True):
         oldSessionId = self.session_id
@@ -1316,12 +1371,50 @@ class TidalSession(Session):
             xbmcplugin.addDirectoryItems(plugin.handle, list_items)
         if end:
             xbmcplugin.endOfDirectory(plugin.handle)
+            try:
+                kodiVersion = xbmc.getInfoLabel('System.BuildVersion').split()[0]
+                kodiVersion = kodiVersion.split('.')[0]
+                skinTheme = xbmc.getSkinDir().lower()
+                if 'onfluence' in skinTheme:
+                    if kodiVersion <= '16':
+                        xbmc.executebuiltin('Container.SetViewMode(506)')
+                    elif content == 'musicvideos':
+                        xbmc.executebuiltin('Container.SetViewMode(511)')
+                    elif content == 'artists':
+                        xbmc.executebuiltin('Container.SetViewMode(512)')
+                    else:
+                        xbmc.executebuiltin('Container.SetViewMode(506)')
+                elif 'estuary' in skinTheme:
+                    xbmc.executebuiltin('Container.SetViewMode(55)')
+            except:
+                pass
 
-    def add_directory_item(self, title, endpoint, thumb=None, fanart=None, end=False, isFolder=True):
+    def add_directory_item(self, title, endpoint, thumb=None, fanart=None, end=False, isFolder=True, label=None):
         if callable(endpoint):
             endpoint = plugin.url_for(endpoint)
-        item = FolderItem(title, endpoint, thumb, fanart, isFolder)
+        item = FolderItem(title, endpoint, thumb, fanart, isFolder, label)
         self.add_list_items([item], end=end)
+
+    def master_albums(self, offset=0, limit=999):
+        items = self.get_category_content('master', 'recommended', 'albums', offset=offset, limit=limit)
+        return items
+
+    def master_playlists(self, offset=0, limit=999):
+        items = self.get_category_content('master', 'recommended', 'playlists', offset=offset, limit=limit)
+        return items
+
+    def show_busydialog(self, headline='', textline=''):
+        self.progressWindow = xbmcgui.DialogProgressBG()
+        self.progressWindow.create(heading=headline, message=textline)
+        self.progressWindow.update(percent=50)
+
+    def hide_busydialog(self):
+        try:
+            if self.progressWindow:
+                self.progressWindow.close()
+        except:
+            pass
+        self.progressWindow = None
 
 
 class TidalFavorites(Favorites):
@@ -1335,7 +1428,12 @@ class TidalFavorites(Favorites):
             self.ids_content = fd.read()
             self.ids = eval(self.ids_content)
             if not 'locked_artists' in self.ids:
-                self.ids['locked_artists'] = [VARIOUS_ARTIST_ID]
+                try:
+                    fd2 = xbmcvfs.File(LOCKED_ARTISTS_FILE, 'r')
+                    self.ids['locked_artists'] = eval(fd2.read())
+                    fd2.close()
+                except:
+                    self.ids['locked_artists'] = [VARIOUS_ARTIST_ID]
             fd.close()
             self.ids_loaded = not (self.ids['artists'] == None or self.ids['albums'] == None or
                                    self.ids['playlists'] == None or self.ids['tracks'] == None or
@@ -1356,6 +1454,10 @@ class TidalFavorites(Favorites):
                     fd.write(new_ids)
                     fd.close()
                     log('Saved %s Favorites to disk.' % sum(len(self.ids[content]) for content in ['artists', 'albums', 'playlists', 'tracks', 'videos']))
+                    if 'locked_artists' in self.ids:
+                        fd = xbmcvfs.File(LOCKED_ARTISTS_FILE, 'w')
+                        fd.write(repr(self.ids['locked_artists']))
+                        fd.close()
         except:
             return False
         return True
@@ -1481,7 +1583,7 @@ class TidalUser(User):
         items = self._session.get_playlist_items(playlist)
         album_ids = []
         if ALBUM_PLAYLIST_TAG in playlist.description:
-            album_ids = ['%s' % item.album.id for item in items if isinstance(item, TrackItem)]
+            album_ids = ['%s' % item.album.id for item in items if (isinstance(item, TrackItem) or (isinstance(item, VideoItem) and item.album))]
         # Save Track-IDs into Buffer
         self.playlists_cache.update({playlist.id: {'title': playlist.title,
                                                    'description': playlist.description,
@@ -1495,6 +1597,8 @@ class TidalUser(User):
             if xbmcvfs.exists(PLAYLISTS_FILE):
                 xbmcvfs.delete(PLAYLISTS_FILE)
                 log('Deleted Playlists file.')
+                self.playlists_loaded = False
+                self.playlists_cache = {}
         except:
             return False
         return True

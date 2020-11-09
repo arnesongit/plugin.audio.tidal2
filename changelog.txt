@@ -1,3 +1,9 @@
+v2.0.0-beta21 (2020-11-09)
+- Removed Album Cache because it isn't necessary anymore
+- Code cleanup in TIDAL api classes
+- Fixed problem with videos in album playlists
+- Now using an internal HTTP server to retrieve Artist Fanart from TIDAL server
+
 v2.0.0-beta20 (2020-04-18)
 - Added Videos to "Suggestions for me"
 - Fixed missing "Explicit" status in Album Playlists
