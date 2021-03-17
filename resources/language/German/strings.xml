@@ -3,7 +3,7 @@
     <string id="30001">Benutzerdaten</string>
     <string id="30002">Erweitert</string>
     <string id="30004">Musik-Qualität</string>
-    <string id="30005">Lossless (FLAC,ALAC,MQA)</string>
+    <string id="30005">Lossless (FLAC,ALAC)</string>
     <string id="30006">High (320 kBit/s)</string>
     <string id="30007">Low (96 kBit/s)</string>
     <string id="30008">Benutzername</string>
@@ -16,15 +16,15 @@
     <string id="30015">Eindeutige Geräte-ID</string>
     <string id="30016">Favoriten in Label markieren</string>
     <string id="30017">User-Paylist-Namen zum Label hinzufügen</string>
-    <string id="30018">Musik-Streaming-Option</string>
+    <string id="30018">Lossless-Streaming-Option</string>
     <string id="30019">FLAC 16-Bit</string>
     <string id="30020">ALAC 16-Bit (Apple Lossless)</string>
-    <string id="30021">FLAC/MQA 24-Bit (Master Audio)</string>
-    <string id="30022">RTMP-Protokoll für High/Low Qualität</string>
+    <string id="30021">FLAC/MQA 24-Bit (Master Audio)</string> <!-- Old -->
+    <string id="30022">RTMP-Protokoll für High/Low Qualität</string> <!-- Old -->
     <string id="30023">Album-Jahr im Label anzeigen</string>
     <string id="30024">Master-Alben mit (MQA) kennzeichnen</string>
     <string id="30025">Optionen</string>
-    <string id="30026">HTTP statt HLS-Steaming benutzen (max. 720p)</string>
+    <string id="30026">HTTP statt HLS-Steaming benutzen (max. 720p)</string> <!-- Old -->
     <string id="30027">Addon-Einstellungen</string>
 
     <!-- Video Settings -->
@@ -137,7 +137,7 @@
     <string id="30507">Album-Cache löschen</string>
     <string id="30508">Soll der Album-Cache wirklich gelöscht werden ?</string>
     <string id="30509">Alben mit Videos (im Album-Cache)</string>
-    <string id="30510">Kein HTTP-Stream, verwende HLS ...</string>
+    <string id="30510">Kein HTTP-Stream, verwende HLS ...</string> <!-- Old -->
     <string id="30511">Fanart-HTTP-Server aktivieren</string>
     <string id="30512">IP-Port für Fanart-HTTP-Server</string>
 

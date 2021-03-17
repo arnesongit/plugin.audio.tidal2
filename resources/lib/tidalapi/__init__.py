@@ -17,6 +17,7 @@
 
 from __future__ import unicode_literals
 
+import sys
 import re
 import datetime
 import random
@@ -24,6 +25,7 @@ import json
 import logging
 import requests
 from collections import Iterable
+
 from models import UserInfo, Subscription, SubscriptionType, Quality, AlbumType, TrackUrl, VideoUrl, CutInfo
 from models import Artist, Album, Track, Video, Mix, Playlist, BrowsableMedia, PlayableMedia, Promotion, SearchResult, Category
 try:
@@ -31,9 +33,16 @@ try:
 except ImportError:
     from urllib.parse import urljoin
 
+PY3 = sys.version_info[0] == 3
+
+if PY3:
+    string_types = str
+else:
+    string_types = basestring
+
 log = logging.getLogger(__name__.split('.')[-1])
 
-ALL_SAERCH_FIELDS = ['ARTISTS','ALBUMS','PLAYLISTS','TRACKS','VIDEOS']
+ALL_SAERCH_FIELDS = ['ARTISTS', 'ALBUMS', 'PLAYLISTS', 'TRACKS', 'VIDEOS']
 
 
 class Config(object):
@@ -201,11 +210,11 @@ class Session(object):
         if not playlist or playlist.numberOfItems == 0:
             return []
         itemCount = playlist.numberOfItems - offset
-        remaining = min(itemCount,limit)
+        remaining = min(itemCount, limit)
         result = []
         # Number of Items is limited to 100, so read multiple times if more than 100 entries are requested
         while remaining > 0:
-            nextLimit = min(100,remaining)
+            nextLimit = min(100, remaining)
             items = self._map_request('playlists/%s/items' % playlist.id, params={'offset': offset, 'limit': nextLimit}, ret='playlistitems')
             if items:
                 track_no = offset
@@ -459,13 +468,13 @@ class Session(object):
 
     def search(self, field, value, limit=50):
         search_field = field
-        if isinstance(search_field, basestring) and search_field.upper() == 'ALL':
+        if isinstance(search_field, string_types) and search_field.upper() == 'ALL':
             search_field = ALL_SAERCH_FIELDS
         params = {
             'query': value,
             'limit': limit,
         }
-        if isinstance(search_field, basestring):
+        if isinstance(search_field, string_types):
             what = search_field.upper()
             params.update({'types': what if what == 'ALL' or what.endswith('S') else what + 'S'})
         elif isinstance(search_field, Iterable):
@@ -527,7 +536,7 @@ class Session(object):
         for item in json_obj:
             nextArtist = self._parse_artist(item)
             allArtists.append(nextArtist)
-            if nextArtist.id <> artist_id:
+            if nextArtist.id != artist_id:
                 ftArtists.append(nextArtist)
         return (allArtists, ftArtists)
 
@@ -671,12 +680,12 @@ class Favorites(object):
         return self.ids
 
     def get(self, content_type, limit=9999):
-        items = self._session._map_request(self._base_url + '/%s' % content_type, params={'limit': limit if content_type <> 'videos' else min(limit, 100)}, ret=content_type)
+        items = self._session._map_request(self._base_url + '/%s' % content_type, params={'limit': limit if content_type != 'videos' else min(limit, 100)}, ret=content_type)
         self.ids[content_type] = ['%s' % item.id for item in items]
         return items
 
     def add(self, content_type, item_ids):
-        if isinstance(item_ids, basestring):
+        if isinstance(item_ids, string_types):
             ids = [item_ids]
         else:
             ids = item_ids

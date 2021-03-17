@@ -17,6 +17,7 @@
 
 from __future__ import unicode_literals
 
+import os
 import sys
 import traceback
 import urllib
@@ -26,7 +27,7 @@ import xbmcplugin
 from xbmcgui import ListItem
 from requests import HTTPError
 from resources.lib.tidalapi.models import Quality, Category, SubscriptionType
-from resources.lib.koditidal import plugin, addon, _addon_id, _T, _P, log, ALBUM_PLAYLIST_TAG, KODI_VERSION
+from resources.lib.koditidal import plugin, addon, _addon_id, _T, _P, log, ALBUM_PLAYLIST_TAG
 from resources.lib.koditidal import FolderItem, TidalSession
 
 # This is the Tidal Session
@@ -110,7 +111,7 @@ def homepage_items():
 def homepage_item(item_type, path):
     path = urllib.unquote_plus(path).decode('utf-8').strip()
     rettype = HOMEPAGE_ITEM_TYPES.get(item_type, 'NONE')
-    if rettype <> 'NONE':
+    if rettype != 'NONE':
         params = { 'locale': session._config.locale, 'deviceType': 'BROWSER', 'offset': 0, 'limit': 50 }
         items = session._map_request(url=path, method='GET', params=params, ret=rettype)
         session.add_list_items(items, content=CONTENT_FOR_TYPE.get(rettype, 'files'), end=True)
@@ -354,7 +355,7 @@ def user_playlist_clear(playlist_id):
         session.show_busydialog(_T(30258), playlist.name)
         try:
             session.user.remove_all_playlist_entries(playlist_id)
-        except Exception, e:
+        except Exception as e:
             log(str(e), level=xbmc.LOGERROR)
             traceback.print_exc()
         session.hide_busydialog()
@@ -370,7 +371,7 @@ def user_playlist_delete(playlist_id):
         session.show_busydialog(_T(30235), playlist.name)
         try:
             session.user.delete_playlist(playlist_id)
-        except Exception, e:
+        except Exception as e:
             log(str(e), level=xbmc.LOGERROR)
             traceback.print_exc()
         session.hide_busydialog()
@@ -403,7 +404,7 @@ def user_playlist_add_item(item_type, item_id):
         session.show_busydialog(_T(30263), playlist.name)
         try:
             session.user.add_playlist_entries(playlist=playlist, item_ids=items)
-        except Exception, e:
+        except Exception as e:
             log(str(e), level=xbmc.LOGERROR)
             traceback.print_exc()
         session.hide_busydialog()
@@ -419,7 +420,7 @@ def user_playlist_remove_item(playlist_id, entry_no):
         session.show_busydialog(_T(30264), playlist.name)
         try:
             session.user.remove_playlist_entry(playlist, entry_no=entry_no)
-        except Exception, e:
+        except Exception as e:
             log(str(e), level=xbmc.LOGERROR)
             traceback.print_exc()
         session.hide_busydialog()
@@ -434,7 +435,7 @@ def user_playlist_remove_id(playlist_id, item_id):
         session.show_busydialog(_T(30264), playlist.name)
         try:
             session.user.remove_playlist_entry(playlist, item_id=item_id)
-        except Exception, e:
+        except Exception as e:
             log(str(e), level=xbmc.LOGERROR)
             traceback.print_exc()
         session.hide_busydialog()
@@ -455,7 +456,7 @@ def user_playlist_remove_album(playlist_id, item_id, dialog=True):
                 if '%s' % item.album.id == '%s' % item_id:
                     session.user.remove_playlist_entry(playlist, entry_no=item._playlist_pos)
                     break # Remove only one Item
-        except Exception, e:
+        except Exception as e:
             log(str(e), level=xbmc.LOGERROR)
             traceback.print_exc()
         session.hide_busydialog()
@@ -466,7 +467,7 @@ def user_playlist_remove_album(playlist_id, item_id, dialog=True):
 def user_playlist_move_entry(playlist_id, entry_no, item_id):
     dialog = xbmcgui.Dialog()
     playlist = session.user.selectPlaylistDialog(headline=_T(30248), allowNew=True)
-    if playlist and playlist.id <> playlist_id:
+    if playlist and playlist.id != playlist_id:
         session.show_busydialog(_T(30265), playlist.name)
         try:
             ok = session.user.add_playlist_entries(playlist=playlist, item_ids=[item_id])
@@ -474,7 +475,7 @@ def user_playlist_move_entry(playlist_id, entry_no, item_id):
                 ok = session.user.remove_playlist_entry(playlist_id, entry_no=entry_no)
             else:
                 dialog.notification(plugin.name, _T('API Call Failed'), xbmcgui.NOTIFICATION_ERROR)
-        except Exception, e:
+        except Exception as e:
             log(str(e), level=xbmc.LOGERROR)
             traceback.print_exc()
         session.hide_busydialog()
@@ -561,7 +562,7 @@ def user_playlist_toggle():
         else:
             session.show_busydialog(_T(30263), userpl_name)
             session.user.add_playlist_entries(playlist=userpl_id, item_ids=['%s' % item.id])
-    except Exception, e:
+    except Exception as e:
         log(str(e), level=xbmc.LOGERROR)
         traceback.print_exc()
     session.hide_busydialog()
@@ -692,7 +693,7 @@ def search():
 def search_type(field):
     last_field = addon.getSetting('last_search_field').decode('utf-8')
     search_text = addon.getSetting('last_search_text').decode('utf-8')
-    if last_field <> field or not search_text:
+    if last_field != field or not search_text:
         addon.setSetting('last_search_field', field)
         keyboard = xbmc.Keyboard('', _T(30206))
         keyboard.doModal()
@@ -755,59 +756,79 @@ def logout():
 
 @plugin.route('/play_track/<track_id>/<album_id>')
 def play_track(track_id, album_id):
-    media_url = session.get_media_url(track_id)
-    log("Playing: %s" % media_url)
-    disableInputstreamAddon = False
-    if not media_url.startswith('http://') and not media_url.startswith('https://') and \
-        not 'app=' in media_url.lower() and not 'playpath=' in media_url.lower():
-        # Rebuild RTMP URL
-        if KODI_VERSION >= (17, 0):
-            media_url = 'rtmp://%s' % media_url
-            disableInputstreamAddon = True
+    try:
+        media_url = session.get_media_url(track_id)
+        mimetype = 'audio/flac' if session._config.quality == Quality.lossless and session.is_logged_in else 'audio/mpeg'
+    except HTTPError as e:
+        r = e.response
+        if r.status_code in [401, 403]:
+            msg = _T(30210)
         else:
-            host, tail = media_url.split('/', 1)
-            app, playpath = tail.split('/mp4:', 1)
-            media_url = 'rtmp://%s app=%s playpath=mp4:%s' % (host, app, playpath)
+            msg = r.reason
+        try:
+            msg = r.json().get('userMessage')
+        except:
+            pass
+        xbmcgui.Dialog().notification('%s Error %s' % (plugin.name, r.status_code), msg, xbmcgui.NOTIFICATION_WARNING)
+        log("Playing silence for unplayable track %s to avoid kodi crash" % track_id)
+        media_url = os.path.join(addon.getAddonInfo('path').decode('utf-8'), 'resources', 'media', 'unplayable.m4a')
+        mimetype = 'audio/mpeg'
+    log("Playing: %s" % media_url)
     li = ListItem(path=media_url)
-    if disableInputstreamAddon:
-        # Krypton can play RTMP Audio Streams without inputstream.rtmp Addon
-        li.setProperty('inputstreamaddon', '')
-    mimetype = 'audio/flac' if session._config.quality == Quality.lossless and session.is_logged_in else 'audio/mpeg'
     li.setProperty('mimetype', mimetype)
     xbmcplugin.setResolvedUrl(plugin.handle, True, li)
 
 
 @plugin.route('/play_track_cut/<track_id>/<cut_id>/<album_id>')
 def play_track_cut(track_id, cut_id, album_id):
-    media_url = session.get_media_url(track_id, cut_id=cut_id)
-    log("Playing Cut %s: %s" % (cut_id, media_url))
-    disableInputstreamAddon = False
-    if not media_url.startswith('http://') and not media_url.startswith('https://') and \
-        not 'app=' in media_url.lower() and not 'playpath=' in media_url.lower():
-        # Rebuild RTMP URL
-        if KODI_VERSION >= (17, 0):
-            media_url = 'rtmp://%s' % media_url
-            disableInputstreamAddon = True
+    try:
+        media_url = session.get_media_url(track_id, cut_id=cut_id)
+        mimetype = 'audio/flac' if session._config.quality == Quality.lossless and session.is_logged_in else 'audio/mpeg'
+    except HTTPError as e:
+        r = e.response
+        if r.status_code in [401, 403]:
+            msg = _T(30210)
         else:
-            host, tail = media_url.split('/', 1)
-            app, playpath = tail.split('/mp4:', 1)
-            media_url = 'rtmp://%s app=%s playpath=mp4:%s' % (host, app, playpath)
+            msg = r.reason
+        try:
+            msg = r.json().get('userMessage')
+        except:
+            pass
+        xbmcgui.Dialog().notification('%s Error %s' % (plugin.name, r.status_code), msg, xbmcgui.NOTIFICATION_WARNING)
+        log("Playing silence for unplayable track %s to avoid kodi crash" % track_id)
+        media_url = os.path.join(addon.getAddonInfo('path').decode('utf-8'), 'resources', 'media', 'unplayable.m4a')
+        mimetype = 'audio/mpeg'
+    log("Playing Cut %s: %s" % (cut_id, media_url))
     li = ListItem(path=media_url)
-    if disableInputstreamAddon:
-        # Krypton can play RTMP Audio Streams without inputstream.rtmp Addon
-        li.setProperty('inputstreamaddon', '')
-    mimetype = 'audio/flac' if session._config.quality == Quality.lossless and session.is_logged_in else 'audio/mpeg'
     li.setProperty('mimetype', mimetype)
     xbmcplugin.setResolvedUrl(plugin.handle, True, li)
 
 
 @plugin.route('/play_video/<video_id>')
 def play_video(video_id):
-    media = session.get_video_url(video_id)
-    if media:
-        log("Playing: %s" % media.url)
-        li = ListItem(path=media.url)
-        li.setProperty('mimetype', 'video/mp4')
+    try:
+        media = session.get_video_url(video_id)
+        if media:
+            log("Playing: %s" % media.url)
+            li = ListItem(path=media.url)
+            li.setProperty('mimetype', 'video/mp4')
+            xbmcplugin.setResolvedUrl(plugin.handle, True, li)
+    except HTTPError as e:
+        r = e.response
+        if r.status_code in [401, 403]:
+            msg = _T(30210)
+        else:
+            msg = r.reason
+        try:
+            msg = r.json().get('userMessage')
+        except:
+            pass
+        xbmcgui.Dialog().notification('%s Error %s' % (plugin.name, r.status_code), msg, xbmcgui.NOTIFICATION_WARNING)
+        log("Playing silence for unplayable video %s to avoid kodi crash" % video_id)
+        media_url = os.path.join(addon.getAddonInfo('path').decode('utf-8'), 'resources', 'media', 'unplayable.m4a')
+        mimetype = 'audio/mpeg'
+        li = ListItem(path=media_url)
+        li.setProperty('mimetype', mimetype)
         xbmcplugin.setResolvedUrl(plugin.handle, True, li)
 
 

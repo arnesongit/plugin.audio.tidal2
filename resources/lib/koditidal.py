@@ -27,9 +27,17 @@ import xbmcvfs
 import xbmcgui
 import xbmcaddon
 import xbmcplugin
-import requests
 from xbmcgui import ListItem
 from routing import Plugin
+
+PY3 = sys.version_info[0] == 3
+
+if PY3:
+    string_types = str
+else:
+    string_types = basestring
+
+
 from tidalapi import Config, Session, User, Favorites
 from tidalapi.models import Quality, SubscriptionType, AlbumType, BrowsableMedia, Artist, Album, PlayableMedia, Track, Video, Mix, Playlist, Promotion, Category, CutInfo, IMG_URL
 from m3u8 import load as m3u8_load
@@ -72,7 +80,7 @@ VARIOUS_ARTIST_ID = '2935'
 
 
 def _T(txtid):
-    if isinstance(txtid, basestring):
+    if isinstance(txtid, string_types):
         # Map TIDAL texts to Text IDs
         newid = {'artist':  30101, 'album':  30102, 'playlist':  30103, 'track':  30104, 'video':  30105,
                  'artists': 30101, 'albums': 30102, 'playlists': 30103, 'tracks': 30104, 'videos': 30105,
@@ -184,9 +192,9 @@ class AlbumItem(Album, HasListItem):
             label = self.FAVORITE_MASK.format(label=label)
         label = '%s - %s' % (self.artist.getLabel(extended), label)
         txt = []
-        plids = self._userplaylists.keys()
+        plids = list(self._userplaylists.keys())
         for plid in plids:
-            if plid <> self._playlist_id:
+            if plid != self._playlist_id:
                 txt.append('%s' % self._userplaylists.get(plid).get('title'))
         if extended and txt:
             label = self.USER_PLAYLIST_MASK.format(label=label, userpl=', '.join(txt))
@@ -249,9 +257,9 @@ class AlbumItem(Album, HasListItem):
                 cm.append((_T(30240), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove/%s/%s' % (self._playlist_id, self._playlist_pos))))
                 cm.append((_T(30248), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/move/%s/%s/%s' % (self._playlist_id, self._playlist_pos, self._playlist_track_id))))
             cm.append((_T(30239), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/add/album/%s' % self.id)))
-            plids = self._userplaylists.keys()
+            plids = list(self._userplaylists.keys())
             for plid in plids:
-                if plid <> self._playlist_id:
+                if plid != self._playlist_id:
                     cm.append(((_T(30247).format(name=self._userplaylists[plid].get('title')), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_album/%s/%s' % (plid, self.id)))))
             cm.append((_T(30221), 'Container.Update(%s)' % plugin.url_for_path('/artist/%s' % self.artist.id)))
         return cm
@@ -442,9 +450,9 @@ class TrackItem(Track, HasListItem):
         if extended and not self.available:
             label = self.STREAM_LOCKED_MASK.format(label=label, info=_T(30242))
         txt = []
-        plids = self._userplaylists.keys()
+        plids = list(self._userplaylists.keys())
         for plid in plids:
-            if plid <> self._playlist_id:
+            if plid != self._playlist_id:
                 txt.append('%s' % self._userplaylists.get(plid).get('title'))
         if extended and txt:
             label = self.USER_PLAYLIST_MASK.format(label=label, userpl=', '.join(txt))
@@ -484,7 +492,7 @@ class TrackItem(Track, HasListItem):
         comments = ['track_id=%s' % self.id]
         if txt:
             comments.append(txt)
-        #if self.replayGain <> 0:
+        #if self.replayGain != 0:
         #    comments.append("gain:%0.3f, peak:%0.3f" % (self.replayGain, self.peak))
         return ', '.join(comments)
 
@@ -540,9 +548,9 @@ class TrackItem(Track, HasListItem):
                 cm.append((_T(30248), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/move/%s/%s/%s' % (self._playlist_id, self._playlist_pos, item_id))))
             else:
                 cm.append((_T(30239), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/add/track/%s' % self.id)))
-            plids = self._userplaylists.keys()
+            plids = list(self._userplaylists.keys())
             for plid in plids:
-                if plid <> self._playlist_id:
+                if plid != self._playlist_id:
                     playlist = self._userplaylists[plid]
                     if '%s' % self.album.id in playlist.get('album_ids', []):
                         cm.append(((_T(30247).format(name=playlist.get('title')), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_album/%s/%s' % (plid, self.album.id)))))
@@ -577,9 +585,9 @@ class VideoItem(Video, HasListItem):
         if extended and not self.available:
             label = self.STREAM_LOCKED_MASK.format(label=label, info=_T(30242))
         txt = []
-        plids = self._userplaylists.keys()
+        plids = list(self._userplaylists.keys())
         for plid in plids:
-            if plid <> self._playlist_id:
+            if plid != self._playlist_id:
                 txt.append('%s' % self._userplaylists.get(plid).get('title'))
         if extended and txt:
             label = self.USER_PLAYLIST_MASK.format(label=label, userpl=', '.join(txt))
@@ -666,9 +674,9 @@ class VideoItem(Video, HasListItem):
                 cm.append((_T(30248), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/move/%s/%s/%s' % (self._playlist_id, self._playlist_pos, self.id))))
             else:
                 cm.append((_T(30239), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/add/video/%s' % self.id)))
-            plids = self._userplaylists.keys()
+            plids = list(self._userplaylists.keys())
             for plid in plids:
-                if plid <> self._playlist_id:
+                if plid != self._playlist_id:
                     cm.append(((_T(30247).format(name=self._userplaylists[plid].get('title')), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_id/%s/%s' % (plid, self.id)))))
         cm.append((_T(30221), 'Container.Update(%s)' % plugin.url_for_path('/artist/%s' % self.artist.id)))
         cm.append((_T(30224), 'Container.Update(%s)' % plugin.url_for_path('/recommended/videos/%s' % self.id)))
@@ -692,7 +700,7 @@ class PromotionItem(Promotion, HasListItem):
         if extended and self._isFavorite:
             label = self.FAVORITE_MASK.format(label=label)
         txt = []
-        plids = self._userplaylists.keys()
+        plids = list(self._userplaylists.keys())
         for plid in plids:
             txt.append('%s' % self._userplaylists.get(plid).get('title'))
         if extended and txt:
@@ -767,7 +775,7 @@ class PromotionItem(Promotion, HasListItem):
                 else:
                     cm.append((_T(30219), 'RunPlugin(%s)' % plugin.url_for_path('/favorites/add/videos/%s' % self.id)))
                 cm.append((_T(30239), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/add/video/%s' % self.id)))
-            plids = self._userplaylists.keys()
+            plids = list(self._userplaylists.keys())
             for plid in plids:
                 cm.append(((_T(30247).format(name=self._userplaylists[plid].get('title')), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_id/%s/%s' % (plid, self.id)))))
             cm.append((_T(30224), 'Container.Update(%s)' % plugin.url_for_path('/recommended/videos/%s' % self.id)))
@@ -857,83 +865,69 @@ class FolderItem(BrowsableMedia, HasListItem):
 
 class LoginToken(object):
 
-    browser =   'wdgaB1CilGA-S_s2' # Streams HIGH/LOW Quality over RTMP, FLAC and Videos over HTTP, but many Lossless Streams are encrypted.
-    android =   'kgsOOmYk3zShYrNP' # All Streams are HTTP Streams. Correct numberOfVideos in Playlists (best Token to use)
-    ios =       '_DSTon1kC8pABnTw' # Same as Android Token, but uses ALAC instead of FLAC
-    native =    '4zx46pyr9o8qZNRw' # Same as Android Token, but FLAC streams are encrypted
-    audirvana = 'MbjR4DLXz1ghC4rV' # Like Android Token, supports MQA, but returns 'numberOfVideos = 0' in Playlists
-    amarra =    'wc8j_yBJd20zOmx0' # Like Android Token, but returns 'numberOfVideos = 0' in Playlists
+    ios    = '_DSTon1kC8pABnTw' # Apple IOS Token with AAC, ALAC with MQA and videos (best token so far)
+    native = '4zx46pyr9o8qZNRw' # Token from native TIDAL app, but FLAC streams are encrypted
+    amarra = 'wc8j_yBJd20zOmx0' # Plays AAC, FLAC and with MQA but no video (only audio of videos)
     # Unkown working Tokens
-    token1 =    'P5Xbeo5LFvESeDy6' # Like Android Token, but returns 'numberOfVideos = 0' in Playlists
-    token2 =    'oIaGpqT_vQPnTr0Q' # Like token1, but uses RTMP for HIGH/LOW Quality
-    token3 =    '_KM2HixcUBZtmktH' # Same as token1
-    token4 =    'pl4Vc0hemlAXD0mN' # ??
-    token5 =    'hZ9wuySZCmpLLiui' # New IOS token with ALAC wihout MQA and returns 'numberOfVideos = 0' in Playlists
-    token6 =    'CLGLE93UA5gm42Og' # New IOS Token ??
-
-    # From web app js:
-    token7 =    'y3Ab6MUg5bjjofvu'
-    browser2 =  'CzET4vdadNUFQ5JU' # All Streams encrypted (widevine ?) 
-    tizen  =    'M6ztoSvmny6alVCD'
-    vizio  =    'Y40WSvVnnG0ql0L0'
-    tv     =    'NIh99tUmaAyLNmEA'
-    windowsStore1 = 'jdDuod31BUA6qXXq'
-    windowsStore2 = 'VGGyfsDBQnKqz0W3'
+    ios2   = 'hZ9wuySZCmpLLiui' # Same as ios Token but returns 'numberOfVideos = 0' in Playlists
+    tizen  = 'M6ztoSvmny6alVCD' # Only AAC no Lossless but HLS Video and numberOfVideos in Playlists ok.
+    vizio  = 'Y40WSvVnnG0ql0L0' # No music but HLS Video and numberOfVideos in Playlists ok.
+    tv     = 'NIh99tUmaAyLNmEA' # No music but HLS Video and numberOfVideos in Playlists ok.
 
     features = {
         # token: Login-Token to get a Session-ID
-        # codecs: Supported Audio Codecs without encryption
-        # rtmp: Uses RTMP Protocol for HIGH/LOW Quality Audio Streams
-        # videosInPlaylists: True: numberOfVideos in Playlists is correct, False: returns 'numberOfVideos = 0' in Playlists
+        # codecs: Supported Audio Codecs without encryption (ALAC_MQA and FLAC_MQA plays music in master quality)
+        # videoOk: True: play music videos as HLS streams, False: only audio of videos is played
+        # apiOk: True: numberOfVideos in Playlists is correct, False: returns 'numberOfVideos = 0' in Playlists
         # user-agent: Special User-Agent in HTTP-Request-Header
-        'browser':   { 'token': browser,   'codecs': ['AAC'],                'rtmp': True,  'videoMode': 'HLS', 'videosInPlaylists': True,  'user-agent': None },
-        'android':   { 'token': android,   'codecs': ['AAC', 'FLAC'],        'rtmp': False, 'videoMode': 'HTTP','videosInPlaylists': True,  'user-agent': 'TIDAL_ANDROID/686 okhttp/3.3.1' },
-        'ios':       { 'token': ios,       'codecs': ['AAC', 'ALAC'],        'rtmp': False, 'videoMode': 'HLS', 'videosInPlaylists': True,  'user-agent': 'TIDAL/546 CFNetwork/808.2.16 Darwin/16.3.0' },
-        'native':    { 'token': native,    'codecs': ['AAC'],                'rtmp': False, 'videoMode': 'HLS', 'videosInPlaylists': True,  'user-agent': 'TIDAL_NATIVE_PLAYER/OSX/2.3.20' },
-        'audirvana': { 'token': audirvana, 'codecs': ['AAC', 'FLAC', 'MQA'], 'rtmp': False, 'videoMode': 'HLS', 'videosInPlaylists': False, 'user-agent': 'Audirvana/3550 CFNetwork/897.15 Darwin/17.5.0 (x86_64)' },
-        'amarra':    { 'token': amarra,    'codecs': ['AAC', 'FLAC'],        'rtmp': False, 'videoMode': 'HLS', 'videosInPlaylists': False, 'user-agent': 'Amarra for TIDAL/2.2.1261 CFNetwork/807.2.14 Darwin/16.3.0 (x86_64)' },
+        'ios':    { 'token': ios,    'codecs': ['AAC', 'ALAC'], 'mqaOk': True,  'videoOk': True,  'apiOk': True,  'user-agent': 'TIDAL/546 CFNetwork/808.2.16 Darwin/16.3.0' },
+        'ios2':   { 'token': ios2,   'codecs': ['AAC', 'ALAC'], 'mqaOk': True,  'videoOk': True,  'apiOk': False, 'user-agent': 'TIDAL/546 CFNetwork/808.2.16 Darwin/16.3.0' },
+        'native': { 'token': native, 'codecs': ['AAC'],         'mqaOk': False, 'videoOk': True,  'apiOk': True,  'user-agent': 'TIDAL_NATIVE_PLAYER/OSX/2.3.20' },
+        'amarra': { 'token': amarra, 'codecs': ['AAC', 'FLAC'], 'mqaOk': True,  'videoOk': False, 'apiOk': False, 'user-agent': 'Amarra for TIDAL/2.2.1261 CFNetwork/807.2.14 Darwin/16.3.0 (x86_64)' },
         # Unknown working Tokens
-        'token1':    { 'token': token1,    'codecs': ['AAC', 'FLAC'],        'rtmp': False, 'videoMode': 'HTTP','videosInPlaylists': False, 'user-agent': None },
-        'token2':    { 'token': token2,    'codecs': ['AAC', 'FLAC'],        'rtmp': True,  'videoMode': 'HLS', 'videosInPlaylists': False, 'user-agent': None },
-        'token3':    { 'token': token3,    'codecs': ['AAC', 'FLAC'],        'rtmp': False, 'videoMode': 'HTTP','videosInPlaylists': False, 'user-agent': None },
-        'token4':    { 'token': token4,    'codecs': ['AAC', 'FLAC'],        'rtmp': False, 'videoMode': 'HLS', 'videosInPlaylists': True,  'user-agent': None },
-        'token5':    { 'token': token5,    'codecs': ['AAC', 'ALAC'],        'rtmp': False, 'videoMode': 'HLS', 'videosInPlaylists': False, 'user-agent': None }
+        'tizen':  { 'token': tizen,  'codecs': ['AAC'],         'mqaOk': False, 'videoOk': True,  'apiOk': True,  'user-agent': None },
+        'vizio':  { 'token': vizio,  'codecs': [],              'mqaOk': False, 'videoOk': True,  'apiOk': True,  'user-agent': None },
+        'tv':     { 'token': tv,     'codecs': [],              'mqaOk': False, 'videoOk': True,  'apiOk': True,  'user-agent': None }
     }
 
-    priority = ['android', 'ios', 'audirvana', 'browser', 'native', 'amarra', 'token1', 'token2', 'token3', 'token4', 'token5']
+    priority = ['ios', 'ios2', 'native', 'amarra', 'tizen', 'vizio', 'tv']
 
     @staticmethod
-    def getFeatures(tokenName='android'):
+    def getFeatures(tokenName='ios'):
         return LoginToken.features.get(tokenName, None)
 
     @staticmethod
-    def getToken(tokenName='android'):
+    def getToken(tokenName='ios'):
         return LoginToken.getFeatures(tokenName).get('token')
 
     @staticmethod
-    def select(codec, rtmp=False, api=True, forceHttpVideo=False):
-        primary_tokens = []
-        secondary_tokens = []
-        lossless = codec in ['FLAC', 'ALAC', 'MQA']
-        rtmp_relevant = False if api or lossless else True
-        video_modes = ['HTTP'] if api and forceHttpVideo else ['HLS', 'HTTP'] if api or forceHttpVideo else ['HLS']
+    def select(codec):
+        tokens1 = [] # perfect tokens
+        tokens2 = [] # tokens for everything but MQA
+        tokens3 = [] # tokens for right codec
+        tokens4 = [] # tokens for api and videos
+        tokens5 = [] # tokens for api only
+        tokens6 = [] # everything else
+        ignoreMqa = True if codec == 'AAC' else False
         for tokenName in LoginToken.priority:
             token = LoginToken.getFeatures(tokenName)
-            if codec in token.get('codecs') and \
-               (token.get('videoMode') in video_modes) and \
-               (not rtmp_relevant or token.get('rtmp') == rtmp) and \
-               (not api or token.get('videosInPlaylists') == api):
-                if api and token.get('videoMode') == 'HTTP' and not forceHttpVideo:
-                    secondary_tokens.append(tokenName)
-                else:
-                    primary_tokens.append(tokenName)
-        tokens = primary_tokens + secondary_tokens
+            if codec in token.get('codecs') and (token.get('mqaOk') or ignoreMqa) and token.get('apiOk') and token.get('videoOk'):
+                tokens1.append(tokenName)
+            elif codec in token.get('codecs') and token.get('apiOk') and token.get('videoOk'):
+                tokens2.append(tokenName)
+            elif codec in token.get('codecs'):
+                tokens3.append(tokenName)
+            elif token.get('apiOk') and token.get('videoOk'):
+                tokens4.append(tokenName)
+            elif token.get('apiOk'):
+                tokens5.append(tokenName)
+            else:
+                tokens6.append(tokenName)
+        tokens = tokens1 + tokens2 + tokens3 + tokens4 + tokens5 + tokens6
         if not tokens:
-            log('No Token found for Codec:%s, RTMP:%s, API:%s, HTTP:%s' % (codec, rtmp, api, forceHttpVideo) )
+            log('No Token found for Codec:%s' % codec)
         return tokens
 
-
-# Session from the TIDAL-API to parse Items into Kodi List Items
 
 class TidalConfig(Config):
 
@@ -949,6 +943,11 @@ class TidalConfig(Config):
         if not self.stream_session_id:
             self.stream_session_id = self.session_id
             self.stream_token_name = self.session_token_name
+        self.video_session_id = addon.getSetting('video_session_id')
+        self.video_token_name = addon.getSetting('video_token_name')
+        if not self.video_session_id:
+            self.video_session_id = self.stream_session_id
+            self.video_token_name = self.stream_token_name
         self.country_code = addon.getSetting('country_code')
         # Determine the locale of the system
         self.locale = None
@@ -974,22 +973,13 @@ class TidalConfig(Config):
         self.subscription_type = [SubscriptionType.hifi, SubscriptionType.premium][min(1, int('0' + addon.getSetting('subscription_type')))]
         self.client_unique_key = addon.getSetting('client_unique_key')
         self.quality = [Quality.lossless, Quality.high, Quality.low][min(2, int('0' + addon.getSetting('quality')))]
-        self.use_rtmp = True if addon.getSetting('music_option') == '3' and self.quality <> Quality.lossless else False
         self.codec = ['FLAC', 'AAC', 'AAC'][min([2, int('0' + addon.getSetting('quality'))])]
         if addon.getSetting('music_option') == '1' and self.quality == Quality.lossless:
             self.codec = 'ALAC'
-        elif addon.getSetting('music_option') == '2' and self.quality == Quality.lossless:
-            self.codec = 'MQA'
         self.maxVideoHeight = [9999, 1080, 720, 540, 480, 360, 240][min(6, int('0%s' % addon.getSetting('video_quality')))]
         self.pageSize = max(10, min(9999, int('0%s' % addon.getSetting('page_size'))))
         self.debug = True if addon.getSetting('debug_log') == 'true' else False
         self.debug_json = True if addon.getSetting('debug_json') == 'true' else False
-        self.forceHttpVideo = True if addon.getSetting('http_for_videos') == 'true' else False
-        self.http_video_session_id = self.stream_session_id
-        if self.forceHttpVideo:
-            apiFeatures = LoginToken.getFeatures(self.session_token_name)
-            if apiFeatures and apiFeatures.get('videoMode') == 'HTTP':
-                self.http_video_session_id = self.session_id
         self.mqa_in_labels = True if addon.getSetting('mqa_in_labels') == 'true' and self.codec == 'MQA' else False
         self.fanart_server_enabled = True if addon.getSetting('fanart_server_enabled') == 'true' else False
         self.fanart_server_port = int('0%s' % addon.getSetting('fanart_server_port'))
@@ -1015,7 +1005,7 @@ class TidalSession(Session):
         Session.load_session(self, self._config.session_id, self._config.country_code, self._config.user_id,
                              self._config.subscription_type, self._config.client_unique_key)
         self.stream_session_id = self._config.stream_session_id
-        self.http_video_session_id = self._config.http_video_session_id
+        self.video_session_id = self._config.video_session_id
 
     def generate_client_unique_key(self):
         unique_key = addon.getSetting('client_unique_key')
@@ -1023,19 +1013,16 @@ class TidalSession(Session):
             unique_key = Session.generate_client_unique_key(self)
         return unique_key
 
-    def login_with_token(self, username, password, subscription_type, tokenName, api=True):
+    def login_with_token(self, username, password, subscription_type, tokenName):
         old_token = self._config.api_token
         old_session_id = self.session_id
         self._config.api_token = LoginToken.getToken(tokenName)
         self.session_id = None
         Session.login(self, username, password, subscription_type)
-        success = True if self.session_id else False
-        if not api:
-            self.stream_session_id = self.session_id
-            if old_session_id:
-                self.session_id = old_session_id
+        retval = self.session_id
+        self.session_id = old_session_id
         self._config.api_token = old_token
-        return success
+        return retval
 
     def login(self, username, password, subscription_type=None):
         if not username or not password:
@@ -1048,39 +1035,55 @@ class TidalSession(Session):
             self.client_unique_key = self.generate_client_unique_key()
         api_token = ''
         stream_token = ''
-        # Get working Tokens with correct numberOfVideos in Playlists which can be used for API calls and for Streaming
-        tokenNames = LoginToken.select(codec=self._config.codec, rtmp=self._config.use_rtmp, api=True, forceHttpVideo=self._config.forceHttpVideo)
+        video_token = ''
+        fallback_token = ''
+        fallback_session_id = None
+        # Get tokens in an order to try login with
+        tokenNames = LoginToken.select(codec=self._config.codec)
         if not tokenNames:
-            # Get a default API Token
-            tokenNames = LoginToken.select(codec='AAC', rtmp=self._config.use_rtmp, api=True, forceHttpVideo=self._config.forceHttpVideo)
-        # if not tokenNames:
+            # Get tokens for default playback
+            tokenNames = LoginToken.select(codec='AAC')
+        # Try login with everey token until all playback features are ok.
         for tokenName in tokenNames:
-            log('Try Login for API Session with %s Token %s ...' % (tokenName, LoginToken.getToken(tokenName)))
-            loginOk = self.login_with_token(username, password, subscription_type, tokenName, api=True)
-            if loginOk:
-                api_token = tokenName
-                # Use the API Session also for Streaming as default
-                stream_token = api_token
-                self.stream_session_id = self.session_id
-                break
-        # Get Tokens which are necessary for Streaming
-        tokenNames = LoginToken.select(codec=self._config.codec, rtmp=self._config.use_rtmp, api=False, forceHttpVideo=False)
-        if api_token in tokenNames:
-            log('Using API Session also for Streaming.')
-        else:
-            # Get Session-ID for Streaming
-            for tokenName in tokenNames:
-                log('Try Login for Stream Session with %s Token %s ...' % (tokenName, LoginToken.getToken(tokenName)))
-                loginOk = self.login_with_token(username, password, subscription_type, tokenName, api=False)
-                if loginOk:
+            log('Try Login with %s Token %s ...' % (tokenName, LoginToken.getToken(tokenName)))
+            new_session_id = self.login_with_token(username, password, subscription_type, tokenName)
+            if new_session_id:
+                token = LoginToken.getFeatures(tokenName)
+                if not fallback_session_id or self._config.codec in token.get('codecs'):
+                    fallback_token = tokenName
+                    fallback_session_id = new_session_id
+                if token.get('apiOk') and not api_token:
+                    log('Token is ok for API')
+                    api_token = tokenName
+                    self.session_id = new_session_id
+                if self._config.codec in token.get('codecs') and not stream_token:
+                    log('Token is ok for %s music playback' % self._config.codec)
                     stream_token = tokenName
+                    self.stream_session_id = new_session_id
+                if token.get('videoOk') and not video_token:
+                    log('Token is ok for video playback')
+                    video_token = tokenName
+                    self.video_session_id = new_session_id
+                if api_token and stream_token and video_token:
                     break
+        # Set fallback session
+        if not api_token:
+            api_token = fallback_token
+            self.session_id = fallback_session_id
+        if not stream_token:
+            stream_token = fallback_token
+            self.stream_session_id = fallback_session_id
+        if not video_token:
+            video_token = fallback_token
+            self.video_session_id = fallback_session_id
         # Save Session Data into Addon-Settings
         if self.is_logged_in:
             addon.setSetting('session_id', self.session_id)
             addon.setSetting('session_token_name', api_token)
             addon.setSetting('stream_session_id', self.stream_session_id)
             addon.setSetting('stream_token_name', stream_token)
+            addon.setSetting('video_session_id', self.video_session_id)
+            addon.setSetting('video_token_name', video_token)
             addon.setSetting('country_code', self.country_code)
             addon.setSetting('user_id', unicode(self.user.id))
             addon.setSetting('subscription_type', '0' if self.user.subscription.type == SubscriptionType.hifi else '1')
@@ -1088,15 +1091,17 @@ class TidalSession(Session):
             # Reload the Configuration after Settings are saved.
             self._config.load()
             self.load_session()
-            if self._config.forceHttpVideo and self.http_video_session_id == self.session_id and self.session_id <> self.stream_session_id:
-                log('Using API Session for HTTP Video Streaming. Videos are limited to 720p !')
         return self.is_logged_in
 
     def logout(self):
         Session.logout(self)
         self.stream_session_id = None
         addon.setSetting('session_id', '')
+        addon.setSetting('session_token_name', '')
         addon.setSetting('stream_session_id', '')
+        addon.setSetting('stream_token_name', '')
+        addon.setSetting('video_session_id', '')
+        addon.setSetting('video_token_name', '')
         addon.setSetting('user_id', '')
         self._config.load()
 
@@ -1274,41 +1279,20 @@ class TidalSession(Session):
             media = self.get_track_url(track_id, quality=Quality.high, cut_id=cut_id, fallback=False)
         if media:
             if quality == Quality.lossless and media.codec not in ['FLAC', 'ALAC', 'MQA']:
-                xbmcgui.Dialog().notification(plugin.name, _T(30504) , icon=xbmcgui.NOTIFICATION_WARNING)
+                xbmcgui.Dialog().notification(plugin.name, _T(30504), icon=xbmcgui.NOTIFICATION_WARNING)
             log('Got stream with soundQuality:%s, codec:%s' % (media.soundQuality, media.codec))
         self.session_id = oldSessionId
         return media
 
     def get_video_url(self, video_id, maxHeight=-1):
         oldSessionId = self.session_id
-        self.session_id = self.http_video_session_id
+        self.session_id = self.video_session_id
         maxVideoHeight = maxHeight if maxHeight > 0 else self._config.maxVideoHeight
-        media = None
-        try:
-            if self._config.forceHttpVideo:
-                quality = 'LOW' if self._config.maxVideoHeight < 480 else 'MEDIUM' if self._config.maxVideoHeight < 720 else 'HIGH'
-                media = Session.get_video_url(self, video_id, quality=quality)
-        except requests.HTTPError as e:
-            r = e.response
-            msg = _T(30505)
-            try:
-                msg = r.reason
-                msg = r.json().get('userMessage')
-            except:
-                pass
-            log('HTTP-Error: ' + msg, xbmc.LOGERROR)
-            log('Got no HTTP Stream for Video ID %s, using HLS Stream ...' % video_id, xbmc.LOGERROR)
-            xbmcgui.Dialog().notification(plugin.name, _T(30510), xbmcgui.NOTIFICATION_WARNING)
-        if not media:
-            # Using HLS-Stream 
-            self.session_id = self.stream_session_id
-            media = Session.get_video_url(self, video_id, quality=None)
-        if maxVideoHeight <> 9999 and media.url.lower().find('.m3u8') > 0:
+        media = Session.get_video_url(self, video_id, quality=None)
+        if maxVideoHeight != 9999 and media.url.lower().find('.m3u8') > 0:
             log('Parsing M3U8 Playlist: %s' % media.url)
             m3u8obj = m3u8_load(media.url)
-            if m3u8obj.is_variant and not m3u8obj.cookies:
-                # Variant Streams with Cookies have to be played without stream selection.
-                # You can change the Bandwidth Limit in Kodi Settings to select other streams !
+            if m3u8obj.is_variant:
                 # Select stream with highest resolution <= maxVideoHeight
                 selected_height = 0
                 selected_bandwidth = -1
@@ -1449,7 +1433,7 @@ class TidalFavorites(Favorites):
         try:
             if self.ids_loaded:
                 new_ids = repr(self.ids)
-                if new_ids <> self.ids_content:
+                if new_ids != self.ids_content:
                     fd = xbmcvfs.File(FAVORITES_FILE, 'w')
                     fd.write(new_ids)
                     fd.close()
@@ -1529,7 +1513,7 @@ class TidalFavorites(Favorites):
         self.load_all()
         actually_locked = self.isLockedArtist(artist_id)
         ok = True
-        if lock <> actually_locked:
+        if lock != actually_locked:
             try:
                 if lock:
                     self.ids['locked_artists'].append('%s' % artist_id)
@@ -1686,7 +1670,7 @@ class TidalUser(User):
             item_list = [item.title for item in items]
             if allowNew:
                 item_list.append(_T(30237))
-        except Exception, e:
+        except Exception as e:
             log(str(e), level=xbmc.LOGERROR)
             return None
         selected = dialog.select(headline, item_list)

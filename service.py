@@ -43,7 +43,6 @@ class MyHttpRequestHandler(BaseHTTPRequestHandler):
             url = urlparse(self.path)
             params = parse_qs(url.query)
             if 'id' not in params:
-                debug.halt()
                 self.send_error(404, 'No id')
             elif url.path == '/artist_fanart':
                 artist = Session().get_artist(params['id'][0])
@@ -115,7 +114,7 @@ class MyMonitor(xbmc.Monitor):
 
     def _stop_servers(self):
         try:
-            if self.http_server <> None and self.http_thread <> None:
+            if self.http_server != None and self.http_thread != None:
                 #self.http_server.server_close()
                 self.http_server.shutdown()
                 self.http_thread.join()
@@ -130,9 +129,7 @@ class MyMonitor(xbmc.Monitor):
         self.last_session_token_name = self.config.session_token_name
         self.last_stream_token_name = self.config.stream_token_name
         self.last_codec = self.config.codec
-        self.last_rtmp = self.config.use_rtmp
         self.last_quality = self.config.quality
-        self.last_force_http = self.config.forceHttpVideo
 
     def reloginNeeded(self):
         # Check if the login session tokens matches to the Streaming Settings
@@ -141,7 +138,7 @@ class MyMonitor(xbmc.Monitor):
             fanart_server_port = self.config.fanart_server_port
             self.config.load()
             if self.config.fanart_server_enabled:
-                if self.config.fanart_server_port <> fanart_server_port or not fanart_server_enabled:
+                if self.config.fanart_server_port != fanart_server_port or not fanart_server_enabled:
                     self._stop_servers()
                     self._start_servers()
             else:
@@ -149,9 +146,7 @@ class MyMonitor(xbmc.Monitor):
             if self.last_session_token_name == self.config.session_token_name and \
                self.last_stream_token_name == self.config.stream_token_name and \
                self.last_codec == self.config.codec and \
-               self.last_rtmp == self.config.use_rtmp and \
-               self.last_quality == self.config.quality and \
-               self.last_force_http == self.config.forceHttpVideo:
+               self.last_quality == self.config.quality:
                 log('No Streaming Options changed.')
                 return False
             self.setLastSettings()
@@ -161,20 +156,10 @@ class MyMonitor(xbmc.Monitor):
             if not self.config.session_id or not self.config.user_id or not self.config.session_token_name or not self.config.stream_token_name:
                 log('Not logged in.')
                 return False
-            api_features = LoginToken.getFeatures(self.config.session_token_name)
             stream_features = LoginToken.getFeatures(self.config.stream_token_name)
-            if self.config.forceHttpVideo and api_features.get('videoMode') <> 'HTTP':
-                log('Changed HTTP Streaming mode. Relogin needed.')
-                return True
-            codec = 'AAC' if self.config.quality <> Quality.lossless else self.config.codec
+            codec = 'AAC' if self.config.quality != Quality.lossless else self.config.codec
             if codec not in stream_features.get('codecs'):
                 log('Changes to Codec needs Relogin.')
-                return True
-            if self.config.use_rtmp and self.config.codec == 'AAC' and not stream_features.get('rtmp'):
-                log('RTMP-Protocol needs Relogin to work.')
-                return True
-            if not self.config.use_rtmp and self.config.codec == 'AAC' and stream_features.get('rtmp'):
-                log('Relogin needed to switch off RTMP-Protocol.')
                 return True
         except:
             pass

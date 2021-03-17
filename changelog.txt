@@ -1,3 +1,21 @@
+v2.0.0-beta22 (2021-03-17)
+- Removed unusable login tokens
+- Removed RTMP music playback and HTTP video playback
+- Modified the login process to use up to three login session simultanously
+  (for browsing, music playback and video playback)
+- A Bug in Kodi causes a crash if the player tries to resolve the next playback URL 
+  while playing the current track. And the parameter "succeeded=False" semms not to work properly.
+  Example:
+     xbmcplugin.setResolvedUrl(plugin.handle, succeeded=False, li)
+  Some tracks in TIDAL are not marked correctly as "unplayable" and a HTTP error occurs
+  if the Addon wants to retrieve the playback URL.
+  Workaround: The Addon plays a short "unplayable.m4a" file from the addon resources folder
+  which contains 1.5 seconds of silence.
+- First modifications to move to Python3:
+  - Removed internal m3u8 library
+  - Now using script.module.m3u8 addon as dependency
+  - Addon script.module.iso8601 is installed automatically
+
 v2.0.0-beta21 (2020-11-09)
 - Removed Album Cache because it isn't necessary anymore
 - Code cleanup in TIDAL api classes
