@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import sys
 import re
@@ -24,35 +24,27 @@ import random
 import json
 import logging
 import requests
-from collections import Iterable
 
-from models import UserInfo, Subscription, SubscriptionType, Quality, AlbumType, TrackUrl, VideoUrl, CutInfo
-from models import Artist, Album, Track, Video, Mix, Playlist, BrowsableMedia, PlayableMedia, Promotion, SearchResult, Category
+from .models import Config, UserInfo, Subscription, SubscriptionType, Quality, AlbumType, TrackUrl, VideoUrl, CutInfo
+from .models import Artist, Album, Track, Video, Mix, Playlist, BrowsableMedia, PlayableMedia, Promotion, SearchResult, Category
 try:
     from urlparse import urljoin
 except ImportError:
     from urllib.parse import urljoin
 
-PY3 = sys.version_info[0] == 3
+PY2 = sys.version_info[0] == 2
 
-if PY3:
-    string_types = str
-else:
+if PY2:
     string_types = basestring
+    from collections import Iterable
+else:
+    string_types = str
+    from collections.abc import Iterable
 
-log = logging.getLogger(__name__.split('.')[-1])
+# log = logging.getLogger(__name__.split('.')[-1])
+from ..debug import log
 
 ALL_SAERCH_FIELDS = ['ARTISTS', 'ALBUMS', 'PLAYLISTS', 'TRACKS', 'VIDEOS']
-
-
-class Config(object):
-    def __init__(self, quality=Quality.high):
-        self.quality = quality
-        self.api_location = 'https://api.tidal.com/v1/'
-        self.api_token = 'kgsOOmYk3zShYrNP'     # Android Token that works for everything
-        # self.preview_token = "8C7kRFdkaRp0dLBp" # Token for Preview Mode
-        self.preview_token = "CzET4vdadNUFQ5JU" # Browser-Token for Preview 
-        self.debug_json = False
 
 
 class Session(object):
@@ -175,7 +167,7 @@ class Session(object):
             except:
                 log.error(r.reason)
         r.raise_for_status()
-        if self._config.debug_json and r.content and log.isEnabledFor(logging.DEBUG):
+        if self._config.debug_json:
             log.debug("response: %s" % json.dumps(r.json(), indent=4))
         return r
 
@@ -321,7 +313,7 @@ class Session(object):
         return [self._parse_promotion(item) for item in items if item['type'] in types]
 
     def get_category_items(self, group):
-        items = map(self._parse_category, self.request('GET', group).json())
+        items = list(map(self._parse_category, self.request('GET', group).json()))
         for item in items:
             item._group = group
         return items
@@ -861,3 +853,5 @@ class User(object):
             entries.append('%s' % i)
             i = i + 1
         return self.remove_playlist_entry(playlist, entry_no=','.join(entries))
+
+# End of File

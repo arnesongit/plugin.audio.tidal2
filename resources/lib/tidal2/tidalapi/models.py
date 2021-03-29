@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import re
 import datetime
@@ -26,6 +26,8 @@ DEFAULT_ARTIST_IMG = '1e01cdb6-f15d-4d8b-8440-a047976c1cac'
 DEFAULT_ALBUM_IMG = '0dfd3368-3aa1-49a3-935f-10ffb39803c0'
 DEFAULT_PLAYLIST_IMG = '443331e2-0421-490c-8918-5a4867949589' 
 DEFAULT_VIDEO_IMB = 'fa6f0650-76ac-41d1-a4a3-7fe4c89fca90'
+
+VARIOUS_ARTIST_ID = '2935'
 
 CATEGORY_IMAGE_SIZES = {'genres': '460x306', 'moods': '342x342'}
 
@@ -44,6 +46,16 @@ class SubscriptionType(object):
     premium = 'PREMIUM'
     hifi = 'HIFI'
     free = 'FREE'
+
+
+class Config(object):
+    def __init__(self, quality=Quality.high):
+        self.quality = quality
+        self.api_location = 'https://api.tidal.com/v1/'
+        self.api_token = 'kgsOOmYk3zShYrNP'     # Android Token that works for everything
+        # self.preview_token = "8C7kRFdkaRp0dLBp" # Token for Preview Mode
+        self.preview_token = "CzET4vdadNUFQ5JU" # Browser-Token for Preview 
+        self.debug_json = False
 
 
 class AlbumType(object):
@@ -169,27 +181,30 @@ class Mix(BrowsableMedia):
     title = 'Unknown'
     subTitle = ''
     _image = None
+    _fanart = None
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         super(Mix, self).__init__()
         self.name = self.title
         try:
-            self._image = kwargs['graphic']['images'][0]['id']
+            self._image = kwargs['images']['MEDIUM']['url']
+            # self._image = kwargs['graphic']['images'][0]['id']
         except:
-            self._image = DEFAULT_PLAYLIST_IMG
+            self._image = IMG_URL.format(picture=DEFAULT_PLAYLIST_IMG.replace('-', '/'), size='320x214')
+        try:
+            self._fanart = kwargs['images']['LARGE']['url']
+            # self._image = kwargs['graphic']['images'][0]['id']
+        except:
+            self._image = IMG_URL.format(picture=DEFAULT_PLAYLIST_IMG.replace('-', '/'), size='1080x720')
 
     @property
     def image(self):
-        if self._image:
-            return IMG_URL.format(picture=self._image.replace('-', '/'), size='320x214')
-        return IMG_URL.format(picture=DEFAULT_PLAYLIST_IMG.replace('-', '/'), size='320x214')
+        return self._image
 
     @property
     def fanart(self):
-        if self._image:
-            return IMG_URL.format(picture=self._image.replace('-', '/'), size='1080x720')
-        return None
+        return self._fanart
 
 
 class Playlist(BrowsableMedia):

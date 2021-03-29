@@ -1,0 +1,546 @@
+# XBMC Media Center language file
+# Addon Name: TIDAL2
+# Addon id: plugin.audio.tidal2
+# Addon version: 2.0.1-beta1
+# Addon Provider: arneson
+msgid ""
+msgstr ""
+"Project-Id-Version: XBMC-Addons\n"
+"Report-Msgid-Bugs-To: alanwww1@xbmc.org\n"
+"POT-Creation-Date: 2021-03-29 18:19+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: de\n"
+"Plural-Forms: nplurals=2; plural=(n != 1)\n"
+
+msgctxt "#30001"
+msgid "User Account"
+msgstr "Benutzerdaten"
+
+msgctxt "#30002"
+msgid "Extended"
+msgstr "Erweitert"
+
+msgctxt "#30004"
+msgid "Music Quality"
+msgstr "Musik-Qualität"
+
+msgctxt "#30005"
+msgid "Lossless (FLAC,ALAC)"
+msgstr "Lossless (FLAC,ALAC)"
+
+msgctxt "#30006"
+msgid "High (320 kBit/s)"
+msgstr "High (320 kBit/s)"
+
+msgctxt "#30007"
+msgid "Low (96 kBit/s)"
+msgstr "Low (96 kBit/s)"
+
+msgctxt "#30008"
+msgid "Username"
+msgstr "Benutzername"
+
+msgctxt "#30009"
+msgid "Password"
+msgstr "Passwort"
+
+msgctxt "#30010"
+msgid "Subscription Type"
+msgstr "Abonnement-Typ"
+
+msgctxt "#30011"
+msgid "Country for Local Media"
+msgstr "Land für lokale Inhalte"
+
+msgctxt "#30012"
+msgid "Hifi"
+msgstr "HiFi"
+
+msgctxt "#30013"
+msgid "Premium"
+msgstr "Premium"
+
+msgctxt "#30014"
+msgid "Max. number of list items per page"
+msgstr "Max. Anzahl Einträge pro Seite"
+
+msgctxt "#30015"
+msgid "Unique Client Key"
+msgstr "Eindeutige Geräte-ID"
+
+msgctxt "#30016"
+msgid "Mark Favorites in Labels"
+msgstr "Favoriten in Label markieren"
+
+msgctxt "#30017"
+msgid "Append User Paylist Names to Labels"
+msgstr "User-Paylist-Namen zum Label hinzufügen"
+
+msgctxt "#30018"
+msgid "Lossless Streaming Option"
+msgstr "Lossless-Streaming-Option"
+
+msgctxt "#30019"
+msgid "FLAC 16-Bit"
+msgstr "FLAC 16-Bit"
+
+msgctxt "#30020"
+msgid "ALAC 16-Bit (Apple Lossless)"
+msgstr "ALAC 16-Bit (Apple Lossless)"
+
+msgctxt "#30021"
+msgid "FLAC/MQA 24-Bit (Master Audio)"
+msgstr "FLAC/MQA 24-Bit (Master Audio)"
+
+msgctxt "#30022"
+msgid "RTMP-Protocol for High/Low Quality"
+msgstr "RTMP-Protokoll für High/Low Qualität"
+
+msgctxt "#30023"
+msgid "Show Album Year in Labels"
+msgstr "Album-Jahr im Label anzeigen"
+
+msgctxt "#30024"
+msgid "Add (MQA) to Master Album Labels"
+msgstr "Master-Alben mit (MQA) kennzeichnen"
+
+msgctxt "#30025"
+msgid "Options"
+msgstr "Optionen"
+
+msgctxt "#30026"
+msgid "Use HTTP instead of HLS Steaming (max. 720p)"
+msgstr "HTTP statt HLS-Steaming benutzen (max. 720p)"
+
+msgctxt "#30027"
+msgid "Addon-Settings"
+msgstr "Addon-Einstellungen"
+
+msgctxt "#30040"
+msgid "Video Quality"
+msgstr "Video-Qualität"
+
+msgctxt "#30041"
+msgid "Max Bandwidth"
+msgstr "Max. Bandbreite"
+
+msgctxt "#30042"
+msgid "Video (1080p)"
+msgstr "Video (1080p)"
+
+msgctxt "#30043"
+msgid "Video (720p)"
+msgstr "Video (720p)"
+
+msgctxt "#30044"
+msgid "Video (540p)"
+msgstr "Video (540p)"
+
+msgctxt "#30045"
+msgid "Video (480p)"
+msgstr "Video (480p)"
+
+msgctxt "#30046"
+msgid "Video (360p)"
+msgstr "Video (360p)"
+
+msgctxt "#30047"
+msgid "Video (240p)"
+msgstr "Video (240p)"
+
+msgctxt "#30101"
+msgid "Artist"
+msgstr "Künstler"
+
+msgctxt "#30102"
+msgid "Album"
+msgstr "Album"
+
+msgctxt "#30103"
+msgid "Playlist"
+msgstr "Playliste"
+
+msgctxt "#30104"
+msgid "Track"
+msgstr "Titel"
+
+msgctxt "#30105"
+msgid "Video"
+msgstr "Video"
+
+msgctxt "#30106"
+msgid "Artists"
+msgstr "Künstler"
+
+msgctxt "#30107"
+msgid "Albums"
+msgstr "Alben"
+
+msgctxt "#30108"
+msgid "Playlists"
+msgstr "Playlisten"
+
+msgctxt "#30109"
+msgid "Tracks"
+msgstr "Titel"
+
+msgctxt "#30110"
+msgid "Videos"
+msgstr "Videos"
+
+msgctxt "#30111"
+msgid "New"
+msgstr "Neue"
+
+msgctxt "#30112"
+msgid "Local"
+msgstr "Lokale"
+
+msgctxt "#30113"
+msgid "Exclusive"
+msgstr "Exklusive"
+
+msgctxt "#30114"
+msgid "Recommended"
+msgstr "Empfohlene"
+
+msgctxt "#30115"
+msgid "Movies"
+msgstr "Filme"
+
+msgctxt "#30116"
+msgid "Shows"
+msgstr "Serien"
+
+msgctxt "#30117"
+msgid "Genres"
+msgstr "Genres"
+
+msgctxt "#30118"
+msgid "Moods"
+msgstr "Stimmungen"
+
+msgctxt "#30119"
+msgid "Top 20"
+msgstr "Top 20"
+
+msgctxt "#30120"
+msgid "Promotions"
+msgstr "Promotionen"
+
+msgctxt "#30201"
+msgid "My Music"
+msgstr "Meine Musiksammlung"
+
+msgctxt "#30202"
+msgid "Featured Playlists"
+msgstr "Empfohlene Playlisten"
+
+msgctxt "#30203"
+msgid "What's New"
+msgstr "Neuheiten"
+
+msgctxt "#30206"
+msgid "Search"
+msgstr "Suchen"
+
+msgctxt "#30207"
+msgid "Logout"
+msgstr "Abmelden"
+
+msgctxt "#30208"
+msgid "Login (Trial-Mode is active !)"
+msgstr "Anmelden (Demo-Modus ist aktiv !)"
+
+msgctxt "#30209"
+msgid "Remember login details ?"
+msgstr "Anmeldedaten merken ?"
+
+msgctxt "#30210"
+msgid "Authorization problem"
+msgstr "Anmeldefehler !"
+
+msgctxt "#30211"
+msgid "TIDAL Rising"
+msgstr "TIDAL Rising"
+
+msgctxt "#30212"
+msgid "Suggestions for me"
+msgstr "Vorschläge für mich"
+
+msgctxt "#30213"
+msgid "My Playlists"
+msgstr "Meine Playlisten"
+
+msgctxt "#30214"
+msgid "Favorite Artists"
+msgstr "Favorisierte Künstler"
+
+msgctxt "#30215"
+msgid "Favorite Albums"
+msgstr "Favorisierte Alben"
+
+msgctxt "#30216"
+msgid "Favorite Playlists"
+msgstr "Favorisierte Playlisten"
+
+msgctxt "#30217"
+msgid "Favorite Tracks"
+msgstr "Favorisierte Titel"
+
+msgctxt "#30218"
+msgid "Favorite Videos"
+msgstr "Favorisierte Videos"
+
+msgctxt "#30219"
+msgid "Add to TIDAL Favorites"
+msgstr "Hinzufügen zu TIDAL-Favoriten"
+
+msgctxt "#30220"
+msgid "Remove from TIDAL Favorites"
+msgstr "Entfernen aus TIDAL-Favoriten"
+
+msgctxt "#30221"
+msgid "Show Artist"
+msgstr "Künstler anzeigen"
+
+msgctxt "#30222"
+msgid "Track Radio"
+msgstr "Titel-Radio"
+
+msgctxt "#30223"
+msgid "Recomended Tracks"
+msgstr "Titel-Empfehlungen"
+
+msgctxt "#30224"
+msgid "Recomended Videos"
+msgstr "Video-Empfehlungen"
+
+msgctxt "#30225"
+msgid "Artist Bio"
+msgstr "Biografie"
+
+msgctxt "#30226"
+msgid "Top Tracks"
+msgstr "Beliebte Titel"
+
+msgctxt "#30227"
+msgid "Artist Radio"
+msgstr "Künstler-Radio"
+
+msgctxt "#30228"
+msgid "Playlists from Artist"
+msgstr "Playlisten vom Künstler"
+
+msgctxt "#30229"
+msgid "Similar Artists"
+msgstr "Ähnliche Künstler"
+
+msgctxt "#30230"
+msgid "Summary"
+msgstr "Zusammenfassung"
+
+msgctxt "#30231"
+msgid "Added {what}"
+msgstr "{what} hinzugefügt"
+
+msgctxt "#30232"
+msgid "Removed {what}"
+msgstr "{what} entfernt"
+
+msgctxt "#30233"
+msgid "Name of the Playlist"
+msgstr "Name der Playliste"
+
+msgctxt "#30234"
+msgid "Description (optional)"
+msgstr "Beschreibung (optional)"
+
+msgctxt "#30235"
+msgid "Delete Playlist"
+msgstr "Playliste löschen"
+
+msgctxt "#30236"
+msgid "Playlist \"{name}\" contains {count} items. Are you sure to delete this playlist ?"
+msgstr "Die Playliste \"{name}\" enthält {count} Elemente. Soll diese Playliste wirklich gelöscht werden ?"
+
+msgctxt "#30237"
+msgid "Create new Playlist"
+msgstr "Neue Playliste erstellen"
+
+msgctxt "#30238"
+msgid "Choose Playlist"
+msgstr "Playliste auswählen"
+
+msgctxt "#30239"
+msgid "Add to Playlist ..."
+msgstr "Zur Playliste hinzufügen..."
+
+msgctxt "#30240"
+msgid "Remove from Playlist"
+msgstr "Aus Playliste entfernen"
+
+msgctxt "#30241"
+msgid "Are you sure to remove item number {entry} from this playlist ?"
+msgstr "Soll Eintrag Nr. {entry} aus der Playliste entfernt werden ?"
+
+msgctxt "#30242"
+msgid "Stream locked"
+msgstr "Stream gesperrt"
+
+msgctxt "#30243"
+msgid "Tracks:{tracks} / Videos:{videos}"
+msgstr "Tracks:{tracks} / Videos:{videos}"
+
+msgctxt "#30244"
+msgid "Next Page ({pos1}-{pos2})"
+msgstr "Nächste Seite ({pos1}-{pos2})"
+
+msgctxt "#30245"
+msgid "Show Album"
+msgstr "Album anzeigen"
+
+msgctxt "#30246"
+msgid "Are you sure to remove the item from this playlist ?"
+msgstr "Soll dieser Eintrag aus der Playliste entfernt werden ?"
+
+msgctxt "#30247"
+msgid "Remove from '{name}'"
+msgstr "Aus '{name}' entfernen"
+
+msgctxt "#30248"
+msgid "Move to Playlist ..."
+msgstr "Verschieben nach Playliste ..."
+
+msgctxt "#30249"
+msgid "Set as Default {what} Playlist"
+msgstr "Als Default-{what}-Playliste setzen"
+
+msgctxt "#30250"
+msgid "Reset Default {what} Playlist"
+msgstr "Default-{what}-Playliste zurücksetzen"
+
+msgctxt "#30251"
+msgid "Rename Playlist"
+msgstr "Playliste umbenennen"
+
+msgctxt "#30252"
+msgid "Open Playlist (Audio only)\""
+msgstr "Playliste öffnen (nur Audio)"
+
+msgctxt "#30253"
+msgid "Login failed !!"
+msgstr "Login fehlgeschlagen !!"
+
+msgctxt "#30254"
+msgid "Open as Track/Video Playlist"
+msgstr "Als Track-/Video-Playliste öffnen"
+
+msgctxt "#30255"
+msgid "Open as Album Playlist"
+msgstr "Als Album-Playliste öffnen"
+
+msgctxt "#30256"
+msgid "Streaming Options changed. Please re-login !"
+msgstr "Streaming-Optionen verändert. Bitte neu einloggen !"
+
+msgctxt "#30257"
+msgid "Execute the re-login now ?"
+msgstr "Neuen Login jetzt durchführen ?"
+
+msgctxt "#30258"
+msgid "Clear Playlist"
+msgstr "Playliste leeren"
+
+msgctxt "#30259"
+msgid "Playlist \"{name}\" contains {count} items. Are you sure to remove all items from this playlist ?"
+msgstr "Die Playliste \"{name}\" enthält {count} Elemente. Sollen alle Elemente aus der Playliste entfernt werden ?"
+
+msgctxt "#30260"
+msgid "Locked"
+msgstr "gesperrt"
+
+msgctxt "#30261"
+msgid "Lock \"Search for New Music\""
+msgstr "Für autom. Suche sperren"
+
+msgctxt "#30262"
+msgid "Enable \"Search for New Music\""
+msgstr "Für autom. Suche freigeben"
+
+msgctxt "#30263"
+msgid "Adding to Playlist ..."
+msgstr "Hinzufügen zur Playliste ..."
+
+msgctxt "#30264"
+msgid "Removing from Playlist ..."
+msgstr "Entfernen aus Playliste ..."
+
+msgctxt "#30265"
+msgid "Moving to Playlist ..."
+msgstr "Verschieben nach Playliste ..."
+
+msgctxt "#30266"
+msgid "Deleting from Playlist ..."
+msgstr "Löschen aus Playliste ..."
+
+msgctxt "#30267"
+msgid "Please wait ..."
+msgstr "Bitte warten ..."
+
+msgctxt "#30268"
+msgid "Release Date: {:%m/%d/%Y}"
+msgstr "Veröffentlichung: {:%d.%m.%Y}"
+
+msgctxt "#30501"
+msgid "Use Colors in Labels"
+msgstr "Farben in Label verwenden"
+
+msgctxt "#30502"
+msgid "Enable Debug-Logging"
+msgstr "Debug-Logging aktivieren"
+
+msgctxt "#30503"
+msgid "Read Album Data for every Track (Album Cache)"
+msgstr "Album-Daten aller Titel lesen (Album-Cache)"
+
+msgctxt "#30504"
+msgid "Not a FLAC Stream !"
+msgstr "Kein FLAC-Stream !"
+
+msgctxt "#30505"
+msgid "Album Cache Error !"
+msgstr "Album-Cache-Fehler !"
+
+msgctxt "#30506"
+msgid "Max. number of parallel HTTP requests"
+msgstr "Max. Anzahl paralleler HTTP-Requests"
+
+msgctxt "#30507"
+msgid "Delete Album Cache"
+msgstr "Album-Cache löschen"
+
+msgctxt "#30508"
+msgid "Are you sure to delete the Album Cache Database ?"
+msgstr "Soll der Album-Cache wirklich gelöscht werden ?"
+
+msgctxt "#30509"
+msgid "Cached Albums with Videos"
+msgstr "Alben mit Videos (im Album-Cache)"
+
+msgctxt "#30510"
+msgid "Got no HTTP Stream, using HLS ..."
+msgstr "Kein HTTP-Stream, verwende HLS ..."
+
+msgctxt "#30511"
+msgid "Activate Fanart HTTP Server"
+msgstr "Fanart-HTTP-Server aktivieren"
+
+msgctxt "#30512"
+msgid "IP-Port for Fanart HTTP Server"
+msgstr "IP-Port für Fanart-HTTP-Server"

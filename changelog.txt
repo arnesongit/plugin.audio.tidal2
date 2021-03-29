@@ -1,3 +1,8 @@
+v2.0.1-beta1 (2021-03-19)
+- Removed unidecode script addon
+- Use kodi-six script module
+- Code cleanup for Kodi 19 compatibility
+
 v2.0.0-beta22 (2021-03-17)
 - Removed unusable login tokens
 - Removed RTMP music playback and HTTP video playback

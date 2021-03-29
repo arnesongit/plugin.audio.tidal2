@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.audio.tidal2" name="TIDAL2" version="2.0.0-beta22" provider-name="arneson">
+<addon id="plugin.audio.tidal2" name="TIDAL2" version="2.0.1-beta1" provider-name="arneson">
   <requires>
-    <import addon="xbmc.python" version="2.14.0"/>
+    <import addon="xbmc.python" version="2.20.0"/>
     <import addon="script.module.requests"/>
     <import addon="script.module.routing"/>
-    <import addon="script.module.unidecode"/>
     <import addon="script.module.m3u8"/>
+    <import addon="script.module.kodi-six"/>
   </requires>
   <extension point="xbmc.python.pluginsource" library="addon.py">
     <provides>audio</provides>
@@ -13,18 +13,19 @@
   <extension point="xbmc.python.module" library="resources/lib"/>
   <extension point="xbmc.service" library="service.py" start="login"/>
   <extension point="xbmc.addon.metadata">
-    <summary lang="en">Extended version of the TIDAL music add-on</summary>
-    <summary lang="de">Erweiterte Version des TIDAL Music-Addons</summary>
-    <description lang="en">Play music and video from TIDAL music streaming service.
+    <platform>all</platform>
+    <language>de en</language>
+    <summary lang="en_GB">Extended version of the TIDAL music add-on</summary>
+    <summary lang="de_DE">Erweiterte Version des TIDAL Music-Addons</summary>
+    <description lang="en_GB">Play music and video from TIDAL music streaming service.
 
 Requires subscription. Visit tidal.com for details.</description>
-    <description lang="de">Spielt Music und Videos vom Streaming-Dienst TIDAL.
+    <description lang="de_DE">Spielt Music und Videos vom Streaming-Dienst TIDAL.
 
 Es wird ein Abbonement benötigt. Siehe tidal.com für Details.</description>
-    <disclaimer lang="en">This is an unofficial client and is not supported nor endorsed by TIDAL.</disclaimer>
-    <disclaimer lang="de">Dies ist eine inoffizieller Client, der von TIDAL nicht unterstützt wird.</disclaimer>
+    <disclaimer lang="en_GB">This is an unofficial client and is not supported nor endorsed by TIDAL.</disclaimer>
+    <disclaimer lang="de_DE">Dies ist eine inoffizieller Client, der von TIDAL nicht unterstützt wird.</disclaimer>
     <license>GNU GENERAL PUBLIC LICENSE. Version 3, 29 June 2007</license>
-    <platform>all</platform>
     <forum>http://forum.xbmc.org/showthread.php?tid=200555</forum>
     <source>https://github.com/arnesongit/plugin.audio.tidal2</source>
     <news>
