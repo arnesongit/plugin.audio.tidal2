@@ -93,7 +93,7 @@
     <string id="30233">Nazwa Playlisty</string>
     <string id="30234">Opis (opcjonalne)</string>
     <string id="30235">Usuń Playlistę</string>
-    <string id="30236">Playlista "{name}" zawiera {count} utworów. Na pewno usunąć wszystkie utwory ?</string>
+    <string id="30236">Playlista '{name}' zawiera {count} utworów. Na pewno usunąć wszystkie utwory ?</string>
     <string id="30237">Utwórz nową Playlistę</string>
     <string id="30238">Wybierz Playlistę</string>
     <string id="30239">Dodaj do Playlisty ...</string>
@@ -116,7 +116,7 @@
     <string id="30256">Ustawienia Strumieniowania Zmienione. Przeloguj się</string>
     <string id="30257">Przelogować teraz ?</string>
     <string id="30258">Wyczyść Playlistę</string>
-    <string id="30259">Playlista "{name}" zawiera {count} utworów. Na pewno usunąć wszystkie utwory? ?</string>
+    <string id="30259">Playlista '{name}' zawiera {count} utworów. Na pewno usunąć wszystkie utwory? ?</string>
     <string id="30260">Zablokowane</string>
     <string id="30261">Zablokuj dla "Szukaj Nowej Muzyki"</string>
     <string id="30262">Aktywuj dla "Szukaj Nowej Muzyki"</string>

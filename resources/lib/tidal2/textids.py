@@ -142,7 +142,7 @@ class Msg(object):
     i30257 = 30257 # Execute the re-login now ?
     i30258 = 30258 # Clear Playlist
     i30259 = 30259 # Playlist "{name}" contains {count} items. Are you sure to remove all items from this playlist ?
-    i30260 = 30260 # Locked
+    i30260 = 30260 # No auto search
     i30261 = 30261 # Lock "Search for New Music"
     i30262 = 30262 # Enable "Search for New Music"
     i30263 = 30263 # Adding to Playlist ...

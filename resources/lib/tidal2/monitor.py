@@ -20,16 +20,18 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import requests
 from threading import Thread
 try:
-    from urlparse import urlparse, parse_qs
-except:
-    # for Python 3
+    # Python 3
     from urllib.parse import urlparse, parse_qs
+except:
+    # Python 2.7
+    from urlparse import urlparse, parse_qs
 
 try:
-    from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-except:
     # for Python 3
     from http.server import BaseHTTPRequestHandler, HTTPServer
+except:
+    # Python 2.7
+    from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 from kodi_six import xbmc, xbmcgui
 
@@ -101,7 +103,7 @@ class TidalMonitor(xbmc.Monitor):
         self.http_thread = None
 
     def __del__(self):
-        log.debug('TidalMonitor() Object destroyed.')
+        log.info('TidalMonitor() Object destroyed.')
 
     def _start_servers(self):
         if self.http_server == None and self.http_thread == None:
@@ -125,7 +127,7 @@ class TidalMonitor(xbmc.Monitor):
                 #self.http_server.server_close()
                 self.http_server.shutdown()
                 self.http_thread.join()
-                log.debug('Stopped Fanart Server')
+                log.info('Stopped Fanart Server')
         except:
             log.error('Failed to stop Fanart Server')
         finally:
@@ -154,41 +156,41 @@ class TidalMonitor(xbmc.Monitor):
                self.last_stream_token_name == self.config.stream_token_name and \
                self.last_codec == self.config.codec and \
                self.last_quality == self.config.quality:
-                log.debug('No Streaming Options changed.')
+                log.info('No Streaming Options changed.')
                 return False
             self.setLastSettings()
             if self.config.session_id and self.config.user_id and not self.config.session_token_name and not self.config.stream_token_name:
-                log.debug('Old Version < 2.0.0-beta13 without Token Names. Relogin needed.')
+                log.info('Old Version < 2.0.0-beta13 without Token Names. Relogin needed.')
                 return True
             if not self.config.session_id or not self.config.user_id or not self.config.session_token_name or not self.config.stream_token_name:
-                log.debug('Not logged in.')
+                log.info('Not logged in.')
                 return False
             stream_features = LoginToken.getFeatures(self.config.stream_token_name)
             codec = 'AAC' if self.config.quality != Quality.lossless else self.config.codec
             if codec not in stream_features.get('codecs'):
-                log.debug('Changes to Codec needs Relogin.')
+                log.info('Changes to Codec needs Relogin.')
                 return True
         except:
             pass
-        log.debug('No Relogin needed.')
+        log.info('No Relogin needed.')
         return False
 
     def onSettingsChanged(self):
         xbmc.Monitor.onSettingsChanged(self)
         if self.reloginNeeded():
             if xbmcgui.Dialog().yesno(heading=self.config.getAddonInfo('name'), line1=_T(Msg.i30256), line2=_T(Msg.i30257)):
-                xbmc.executebuiltin('XBMC.RunPlugin(plugin://%s/login)' % self.config.getAddonInfo('id'))
+                xbmc.executebuiltin('RunPlugin(plugin://%s/login)' % self.config.getAddonInfo('id'))
             pass
 
     def run(self):
-        log.debug('TidalMonitor: Service Started')
+        log.info('TidalMonitor: Service Started')
         self._start_servers()
         wait_time = 5
         while not self.abortRequested():
             if self.waitForAbort(wait_time):
                 break
         self._stop_servers()
-        log.debug('TidalMonitor: Service Terminated')
+        log.info('TidalMonitor: Service Terminated')
         # Cleanup for Garbage Collector
         self.config = None
 

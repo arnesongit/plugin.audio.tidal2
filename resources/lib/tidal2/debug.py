@@ -19,11 +19,12 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import sys
 import os
+import threading
 import traceback
 
-from kodi_six import xbmc
+from kodi_six import xbmc, xbmcaddon
 
-from .common import addon, toUnicode
+from .common import addon, toUnicode, PY2
 
 try:
     # LOGNOTICE not available in Kodi 19
@@ -32,27 +33,28 @@ except:
     # Use LOGINFO in Kodi 19
     LOGNOTICE = xbmc.LOGINFO
 
+
 #------------------------------------------------------------------------------
 # Debug class
 #------------------------------------------------------------------------------
 
 class DebugHelper(object):
 
-    def __init__(self, enableDebugLog=True, enableInfoLog=False ):
+    def __init__(self, pluginName=None, enableInfoLog=False, enableDebugLog=True, enableDebugger=False):
         ''' Initialize Error Logging with a given Log Level
             enableDebugLog = True : enable debug messages  (normal logging)
             enableInfoLog = True :  enable info messages   (full logging)
         '''
-        self.pluginName = addon.getAddonInfo('name')
-        self.debugEnabled = enableDebugLog
-        self.infosEnabled = enableInfoLog
+        self.pluginName = pluginName if pluginName != None else addon.getAddonInfo('name')
+        self.debugLogEnabled = enableDebugLog
+        self.infoLogEnabled = enableInfoLog
+        self.debuggerEnabled = enableDebugger
         self.debugServer = 'localhost'
+        self.debugPort = 5678
 
     def log(self, txt = '', level=xbmc.LOGDEBUG):
         ''' Log a text into the Kodi-Logfile '''
         try:
-            if (level == xbmc.LOGINFO and self.infosEnabled) or (level == xbmc.LOGDEBUG and self.debugEnabled):
-                level = LOGNOTICE
             txt = toUnicode(txt)
             xbmc.log("[%s] %s" % (self.pluginName, txt), level) 
         except:
@@ -60,10 +62,11 @@ class DebugHelper(object):
             traceback.print_exc()
 
     def debug(self, txt):
-        self.log(txt, level=xbmc.LOGDEBUG)
+        self.log(txt, level=xbmc.LOGINFO if self.debugLogEnabled else xbmc.LOGDEBUG)
 
     def info(self, txt):
-        self.log(txt, level=xbmc.LOGINFO)
+        if self.infoLogEnabled:
+            self.log(txt, level=LOGNOTICE)
 
     def warning(self, txt):
         self.log(txt, level=xbmc.LOGWARNING)
@@ -77,31 +80,35 @@ class DebugHelper(object):
             if txt:
                 txt = toUnicode(txt)
                 xbmc.log("[%s] %s\n%s" % (self.pluginName, txt, str(e)), level=xbmc.LOGERROR) 
-            # logging.exception(str(e))
         except:
             pass
 
     def updatePath(self):
         ''' Update the path to find pydevd Package '''
-        # For PyCharm:
-        # sys.path.append("/Applications/PyCharm.app/Contents/helpers/pydev")
-        # For LiClipse:
-        # sys.path.append("/Applications/LiClipse.app/Contents/liclipse/plugins/org.python.pydev_4.4.0.201510052047/pysrc")
+        # check is pydevd is in the search path
+        pydevd_found = False
         for comp in sys.path:
-            if comp.find('addons') != -1:
-                pydevd_path = os.path.normpath(os.path.join(comp, os.pardir, 'script.module.pydevd', 'lib'))
-                sys.path.append(pydevd_path)
+            if comp.find('script.module.pydevd') != -1:
+                pydevd_found = True
                 break
-            pass
+        if pydevd_found:
+            log.debug('Found pydevd in path: %s' % comp)
+        else:
+            pydevd_path = os.path.join(xbmcaddon.Addon('script.module.pydevd').getAddonInfo('path'), 'lib')
+            log.debug('Adding pydev to path: %s' % pydevd_path)
+            sys.path.append(pydevd_path)
 
     def halt(self):
         ''' This is the Break-Point-Function '''
         try:
             self.updatePath()
+            log.debug('Starting Remote Debugger')
             import pydevd
-            pydevd.settrace(self.debugServer, stdoutToServer=True, stderrToServer=True)
+            pydevd.settrace(host=self.debugServer, port=self.debugPort, stdoutToServer=True, stderrToServer=True, 
+                            suspend=True, wait_for_ready_to_run=True, trace_only_current_thread=True)
+            log.debug('Remote Debugger started')
         except:
-            pass
+            self.error('pydevd library not found')
 
     def killDebugThreads(self):
         ''' This kills all PyDevd Remote Debugger Threads '''
@@ -109,10 +116,25 @@ class DebugHelper(object):
             # self.updatePath()
             import pydevd
             pydevd.stoptrace()
+            log.debug("pydevd Debugger Threads stopped")
         except:
             pass
 
+    def runDebugged(self, funcName, *args, **kwargs):
+        if PY2 or not self.debuggerEnabled:
+            funcName(*args, **kwargs)
+        else:
+            log.info('Starting Debugging Thread')
+            thread = threading.Thread(target=funcName, name='Debug.%s' % self.pluginName, *args, **kwargs)
+            thread.start()
+            cnt = 1
+            while not xbmc.Monitor().waitForAbort(timeout=0.25) and thread.is_alive():
+                cnt = cnt + 1
+                log.info('Debugging Thread stopped')
 
-log = DebugHelper(enableDebugLog = True if addon.getSetting('debug_log') == 'true' else False,
-                  enableInfoLog = True if addon.getSetting('debug_json') == 'true' else False)
+
+log = DebugHelper(enableInfoLog = True if addon.getSetting('debug_log') == 'true' else False,
+                  enableDebugLog = True if addon.getSetting('debug_json') == 'true' else False,
+                  enableDebugger = True if addon.getSetting('debug_with_new_thread') == 'true' else False)
+
 # End of File

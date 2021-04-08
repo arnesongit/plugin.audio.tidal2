@@ -23,17 +23,19 @@ import traceback
 from kodi_six import xbmc, xbmcgui, xbmcplugin, py2_decode
 from requests import HTTPError
 
-from .common import Const, plugin, PY2
+from .common import Const, plugin
 from .textids import Msg, _T, _P
 from .debug import log
 from .tidalapi.models import Quality, Category, SubscriptionType
 from .config import settings
 from .koditidal import TidalSession, FolderItem
 
-if PY2:
-    from urllib import quote_plus, unquote_plus
-else:
+try:
+    # Python 3
     from urllib.parse import quote_plus, unquote_plus
+except:
+    # Python 2.7
+    from urllib import quote_plus, unquote_plus
 
 CONTENT_FOR_TYPE = {'artists': 'artists', 'albums': 'albums', 'playlists': 'albums', 'tracks': 'songs', 'videos': 'musicvideos', 'files': 'files'}
 HOMEPAGE_ITEM_TYPES = {'PLAYLIST_LIST': 'playlists', 'ALBUM_LIST': 'albums', 'ARTIST_LIST': 'artists', 'TRACK_LIST': 'tracks', 'VIDEO_LIST': 'videos', 'MIX_LIST': 'mix'}
@@ -92,7 +94,7 @@ def homepage_items():
                         items.append(item)
                         apiPaths.append(apiPath)
                     else:
-                        log.debug('Unknown Homepage Item "%s": %s' % (item_type, module.get('title', 'Unknown')))
+                        log.info('Unknown Homepage Item "%s": %s' % (item_type, module.get('title', 'Unknown')))
                 except:
                     pass
     r = session.request('GET', 'pages/videos', params=params)
@@ -113,7 +115,7 @@ def homepage_items():
                                 items.append(item)
                             apiPaths.append(apiPath)
                     else:
-                        log.debug('Unknown Homepage Item "%s": %s' % (item_type, module.get('title', 'Unknown')))
+                        log.info('Unknown Homepage Item "%s": %s' % (item_type, module.get('title', 'Unknown')))
                 except:
                     pass
     session.add_list_items(items, end=True)
@@ -785,7 +787,7 @@ def play_track(track_id, album_id):
         log.warning("Playing silence for unplayable track %s to avoid kodi crash" % track_id)
         media_url = settings.unplayable_m4a
         mimetype = 'audio/mpeg'
-    log.debug("Playing: %s" % media_url)
+    log.info("Playing: %s" % media_url)
     li = xbmcgui.ListItem(path=media_url)
     li.setProperty('mimetype', mimetype)
     xbmcplugin.setResolvedUrl(plugin.handle, True, li)
@@ -810,7 +812,7 @@ def play_track_cut(track_id, cut_id, album_id):
         log.warning("Playing silence for unplayable track %s to avoid kodi crash" % track_id)
         media_url = settings.unplayable_m4a
         mimetype = 'audio/mpeg'
-    log.debug("Playing Cut %s: %s" % (cut_id, media_url))
+    log.info("Playing Cut %s: %s" % (cut_id, media_url))
     li = xbmcgui.ListItem(path=media_url)
     li.setProperty('mimetype', mimetype)
     xbmcplugin.setResolvedUrl(plugin.handle, True, li)
@@ -821,7 +823,7 @@ def play_video(video_id):
     try:
         media = session.get_video_url(video_id)
         if media:
-            log.debug("Playing: %s" % media.url)
+            log.info("Playing: %s" % media.url)
             li = xbmcgui.ListItem(path=media.url)
             li.setProperty('mimetype', 'video/mp4')
             xbmcplugin.setResolvedUrl(plugin.handle, True, li)

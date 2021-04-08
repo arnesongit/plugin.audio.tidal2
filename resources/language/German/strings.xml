@@ -93,7 +93,7 @@
     <string id="30233">Name der Playliste</string>
     <string id="30234">Beschreibung (optional)</string>
     <string id="30235">Playliste löschen</string>
-    <string id="30236">Die Playliste "{name}" enthält {count} Elemente. Soll diese Playliste wirklich gelöscht werden ?</string>
+    <string id="30236">Die Playliste '{name}' enthält {count} Elemente. Soll diese Playliste wirklich gelöscht werden ?</string>
     <string id="30237">Neue Playliste erstellen</string>
     <string id="30238">Playliste auswählen</string>
     <string id="30239">Zur Playliste hinzufügen...</string>
@@ -116,8 +116,8 @@
     <string id="30256">Streaming-Optionen verändert. Bitte neu einloggen !</string>
     <string id="30257">Neuen Login jetzt durchführen ?</string>
     <string id="30258">Playliste leeren</string>
-    <string id="30259">Die Playliste "{name}" enthält {count} Elemente. Sollen alle Elemente aus der Playliste entfernt werden ?</string>
-    <string id="30260">gesperrt</string>
+    <string id="30259">Die Playliste '{name}' enthält {count} Elemente. Sollen alle Elemente aus der Playliste entfernt werden ?</string>
+    <string id="30260">keine autom. Suche</string>
     <string id="30261">Für autom. Suche sperren</string>
     <string id="30262">Für autom. Suche freigeben</string>
     <string id="30263">Hinzufügen zur Playliste ...</string>

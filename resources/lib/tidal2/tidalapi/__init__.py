@@ -97,7 +97,7 @@ class Session(object):
             'password': password,
             'clientUniqueKey': self.client_unique_key
         }
-        log.debug('Using Token "%s" with clientUniqueKey "%s"' % (self._config.api_token, self.client_unique_key))
+        log.info('Using Token "%s" with clientUniqueKey "%s"' % (self._config.api_token, self.client_unique_key))
         r = requests.post(url, data=payload, headers=headers)
         if not r.ok:
             try:
@@ -159,7 +159,7 @@ class Session(object):
             request_headers.pop('X-Tidal-SessionId', None)
             request_params.update({'token': self._config.preview_token})
         r = requests.request(method, url, params=request_params, data=data, headers=request_headers)
-        log.debug("%s %s" % (method, r.request.url))
+        log.info("%s %s" % (method, r.request.url))
         if not r.ok:
             log.error(r.url)
             try:
@@ -168,7 +168,7 @@ class Session(object):
                 log.error(r.reason)
         r.raise_for_status()
         if self._config.debug_json:
-            log.debug("response: %s" % json.dumps(r.json(), indent=4))
+            log.info("response: %s" % json.dumps(r.json(), indent=4))
         return r
 
     def get_user(self, user_id):
@@ -383,7 +383,7 @@ class Session(object):
                 numberOfItems = int('0%s' % json_obj.get('totalNumberOfItems')) if 'totalNumberOfItems' in json_obj else 9999
             except:
                 numberOfItems = 9999
-            log.debug('NumberOfItems=%s, %s items in list' % (numberOfItems, len(items)))
+            log.info('NumberOfItems=%s, %s items in list' % (numberOfItems, len(items)))
             for item in items:
                 retType = ret
                 if 'type' in item and ret.startswith('playlistitem'):
@@ -420,7 +420,7 @@ class Session(object):
         soundQuality = quality if quality else self._config.quality
         media = self.get_track_url(track_id, quality=soundQuality, cut_id=cut_id)
         if fallback and soundQuality == Quality.lossless and (media == None or media.isEncrypted):
-            log.debug(media.url)
+            log.info(media.url)
             if media:
                 # Got Encrypted Stream. Retry with HIGH Quality
                 log.warning('Got encryptionKey "%s" for track %s, trying HIGH Quality ...' % (media.encryptionKey, track_id))

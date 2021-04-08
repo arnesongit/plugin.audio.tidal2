@@ -42,18 +42,17 @@ except:
 
 if PY2:
     xbmc_translatePath = xbmc.translatePath
+    integer_types = (int, long)
+    unicode_types = (unicode,)
 else:
     xbmc_translatePath = xbmcvfs.translatePath
+    integer_types = (int,)
+    unicode_types = (str,)
 
-# Py3 compat - alias unicode to str, and xrange to range
-try:
-    unicode  # noqa
-except NameError:
-    unicode = str
-try:
-    xrange  # noqa
-except NameError:
-    xrange = range
+#try:
+#    xrange  # noqa
+#except NameError:
+#    xrange = range
 
 def getLocale():
     lo = None
@@ -86,9 +85,9 @@ class Const(object):
     addon_fanart = os.path.join(addon_path, 'fanart.jpg')
     addon_icon = os.path.join(addon_path, 'icon.png')
     basestring_types = str if PY2 else bytes
-    string_types = (str, unicode) if PY2 else (str, bytes)
+    string_types = (str, unicode_types) if PY2 else (str, bytes)
     bytes = str if PY2 else bytes
-    int_types = (int, long) if PY2 else (int,)
+    int_types = integer_types
     locale = getLocale()
 
 class KodiPlugin(Plugin):

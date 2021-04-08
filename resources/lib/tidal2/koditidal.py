@@ -20,10 +20,11 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import sys, re
 import datetime
 try:
-    from urlparse import urlsplit
-except:
-    # For Python 3
+    # Python 3
     from urllib.parse import urlsplit
+except:
+    # Python 2.7
+    from urlparse import urlsplit
 
 from kodi_six import xbmc, xbmcvfs, xbmcgui, xbmcplugin
 from m3u8 import load as m3u8_load
@@ -930,7 +931,7 @@ class TidalSession(Session):
             tokenNames = LoginToken.select(codec='AAC')
         # Try login with everey token until all playback features are ok.
         for tokenName in tokenNames:
-            log.debug('Try Login with %s Token %s ...' % (tokenName, LoginToken.getToken(tokenName)))
+            log.info('Try Login with %s Token %s ...' % (tokenName, LoginToken.getToken(tokenName)))
             new_session_id = self.login_with_token(username, password, subscription_type, tokenName)
             if new_session_id:
                 token = LoginToken.getFeatures(tokenName)
@@ -938,15 +939,15 @@ class TidalSession(Session):
                     fallback_token = tokenName
                     fallback_session_id = new_session_id
                 if token.get('apiOk') and not api_token:
-                    log.debug('Token is ok for API')
+                    log.info('Token is ok for API')
                     api_token = tokenName
                     self.session_id = new_session_id
                 if self._config.codec in token.get('codecs') and not stream_token:
-                    log.debug('Token is ok for %s music playback' % self._config.codec)
+                    log.info('Token is ok for %s music playback' % self._config.codec)
                     stream_token = tokenName
                     self.stream_session_id = new_session_id
                 if token.get('videoOk') and not video_token:
-                    log.debug('Token is ok for video playback')
+                    log.info('Token is ok for video playback')
                     video_token = tokenName
                     self.video_session_id = new_session_id
                 if api_token and stream_token and video_token:
@@ -970,7 +971,7 @@ class TidalSession(Session):
             settings.setSetting('video_session_id', self.video_session_id)
             settings.setSetting('video_token_name', video_token)
             settings.setSetting('country_code', self.country_code)
-            settings.setSetting('user_id', unicode(self.user.id))
+            settings.setSetting('user_id', '%s' % self.user.id)
             settings.setSetting('subscription_type', '0' if self.user.subscription.type == SubscriptionType.hifi else '1')
             settings.setSetting('client_unique_key', self.client_unique_key)
             # Reload the Configuration after Settings are saved.
@@ -1165,7 +1166,7 @@ class TidalSession(Session):
         if media:
             if quality == Quality.lossless and media.codec not in ['FLAC', 'ALAC', 'MQA']:
                 xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30504), icon=xbmcgui.NOTIFICATION_WARNING)
-            log.debug('Got stream with soundQuality:%s, codec:%s' % (media.soundQuality, media.codec))
+            log.info('Got stream with soundQuality:%s, codec:%s' % (media.soundQuality, media.codec))
         self.session_id = oldSessionId
         return media
 
@@ -1175,7 +1176,7 @@ class TidalSession(Session):
         maxVideoHeight = maxHeight if maxHeight > 0 else self._config.maxVideoHeight
         media = Session.get_video_url(self, video_id, quality=None)
         if maxVideoHeight != 9999 and media.url.lower().find('.m3u8') > 0:
-            log.info('Parsing M3U8 Playlist: %s' % media.url)
+            log.debug('Parsing M3U8 Playlist: %s' % media.url)
             m3u8obj = m3u8_load(media.url)
             if m3u8obj.is_variant:
                 # Select stream with highest resolution <= maxVideoHeight
@@ -1195,15 +1196,15 @@ class TidalSession(Session):
                             else:
                                 media.url = m3u8obj.base_uri + playlist.uri
                             if height == selected_height and bandwidth > selected_bandwidth:
-                                log.info('Bandwidth %s > %s' % (bandwidth, selected_bandwidth))
-                            log.info('Selected %sx%s %s: %s' % (width, height, bandwidth, playlist.uri.split('?')[0].split('/')[-1]))
+                                log.debug('Bandwidth %s > %s' % (bandwidth, selected_bandwidth))
+                            log.debug('Selected %sx%s %s: %s' % (width, height, bandwidth, playlist.uri.split('?')[0].split('/')[-1]))
                             selected_height = height
                             selected_bandwidth = bandwidth
                             media.width = width
                             media.height = height
                             media.bandwidth = bandwidth
                         elif height > maxVideoHeight:
-                            log.info('Skipped %sx%s %s: %s' % (width, height, bandwidth, playlist.uri.split('?')[0].split('/')[-1]))
+                            log.debug('Skipped %sx%s %s: %s' % (width, height, bandwidth, playlist.uri.split('?')[0].split('/')[-1]))
                     except:
                         pass
         self.session_id = oldSessionId
@@ -1308,7 +1309,7 @@ class TidalFavorites(Favorites):
                                    self.ids['playlists'] == None or self.ids['tracks'] == None or
                                    self.ids['videos'] == None)
             if self.ids_loaded:
-                log.info('Loaded %s Favorites from disk.' % sum(len(self.ids[content]) for content in ['artists', 'albums', 'playlists', 'tracks', 'videos']))
+                log.debug('Loaded %s Favorites from disk.' % sum(len(self.ids[content]) for content in ['artists', 'albums', 'playlists', 'tracks', 'videos']))
         except:
             self.ids_loaded = False
             self.reset()
@@ -1322,7 +1323,7 @@ class TidalFavorites(Favorites):
                     fd = xbmcvfs.File(settings.favorites_file, 'w')
                     fd.write(new_ids)
                     fd.close()
-                    log.info('Saved %s Favorites to disk.' % sum(len(self.ids[content]) for content in ['artists', 'albums', 'playlists', 'tracks', 'videos']))
+                    log.debug('Saved %s Favorites to disk.' % sum(len(self.ids[content]) for content in ['artists', 'albums', 'playlists', 'tracks', 'videos']))
                     if 'locked_artists' in self.ids:
                         fd = xbmcvfs.File(settings.locked_artist_file, 'w')
                         fd.write(repr(self.ids['locked_artists']))
@@ -1335,7 +1336,7 @@ class TidalFavorites(Favorites):
         try:
             if xbmcvfs.exists(settings.favorites_file):
                 xbmcvfs.delete(settings.favorites_file)
-                log.info('Deleted Favorites file.')
+                log.debug('Deleted Favorites file.')
         except:
             return False
         return True
@@ -1425,7 +1426,7 @@ class TidalUser(User):
             self.playlists_cache = eval(fd.read())
             fd.close()
             self.playlists_loaded = True
-            log.info('Loaded %s Playlists from disk.' % len(list(self.playlists_cache.keys())))
+            log.debug('Loaded %s Playlists from disk.' % len(list(self.playlists_cache.keys())))
         except:
             self.playlists_loaded = False
             self.playlists_cache = {}
@@ -1437,7 +1438,7 @@ class TidalUser(User):
                 fd = xbmcvfs.File(settings.playlist_file, 'w')
                 fd.write(repr(self.playlists_cache))
                 fd.close()
-                log.info('Saved %s Playlists to disk.' % len(list(self.playlists_cache.keys())))
+                log.debug('Saved %s Playlists to disk.' % len(list(self.playlists_cache.keys())))
         except:
             return False
         return True
@@ -1465,7 +1466,7 @@ class TidalUser(User):
         try:
             if xbmcvfs.exists(settings.playlist_file):
                 xbmcvfs.delete(settings.playlist_file)
-                log.info('Deleted Playlists file.')
+                log.debug('Deleted Playlists file.')
                 self.playlists_loaded = False
                 self.playlists_cache = {}
         except:

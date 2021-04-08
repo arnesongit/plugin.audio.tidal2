@@ -1,3 +1,7 @@
+v2.0.1 (2021-04-08)
+- First working version for Kodi 19
+- Base code ist still compatible with Kodi 18
+
 v2.0.1-beta1 (2021-03-19)
 - Removed unidecode script addon
 - Use kodi-six script module
