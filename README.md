@@ -25,6 +25,7 @@ With this method you will get updates automatically.
 ## Update from Kodi 18 to Kodi 19
 
 If you use my TIDAL2 repository, please uninstall this repository before upgrading to Kodi 19.
-After the Kodi 19 update can install the new TIDAL addon from zip file as described above
+
+After the Kodi 19 update you can install the new TIDAL addon from zip file as described above
 or you can install my [new TIDAL2 Repository for Kodi 19](https://github.com/arnesongit/repository.tidal2/blob/main/repository.tidal2/repository.tidal2-0.2.0.zip?raw=true)
 and upgrade the TIDAL2 addon from this repository.
