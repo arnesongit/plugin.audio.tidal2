@@ -1,18 +1,19 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <settings>
   <category label="30001">
-    <setting label="30008" id="username" type="text" default=""/>
-    <setting label="30009" id="password" type="text" option="hidden" default=""/>
+    <setting label="30026" id="client_id" type="text" default=""/>
+    <setting label="30009" id="client_secret" type="text" default=""/>
     <setting label="30011" id="country_code" type="text" default=""/>
-    <setting label="30010" id="subscription_type" type="select" lvalues="30012|30013" default="0"/>
-    <setting label="30015" id="client_unique_key" type="text" default=""/>
+    <setting label="30008" id="user_id" type="text" default="" enable="false"/>
+    <setting label="30010" id="subscription_type" type="text" default="" enable="false"/>
+    <setting label="30022" id="expire_time" type="time" default="" enable="false"/>
   </category>
   <category label="30025">
-    <setting label="30004" id="quality" type="select" lvalues="30005|30006|30007" default="1"/>
-    <setting label="30018" id="music_option" type="select" lvalues="30019|30020" default="0"/>
+    <setting label="30004" id="quality" type="select" lvalues="30021|30005|30006|30007" default="0"/>
     <setting label="30040" id="video_quality" type="select" lvalues="30041|30042|30043|30044|30045|30046|30047" default="1" />
     <setting label="30014" id="page_size" type="number" default="999"/>
     <setting label="30502" id="debug_log" type="bool" default="false" />
+    <setting label="30510" id="debug_json" type="bool" default="false" visible="eq(-1,true)"/>
   </category>
   <category label="30002">
     <setting label="30501" id="color_mode" type="bool" default="true"/>
@@ -20,6 +21,7 @@
     <setting label="30017" id="user_playlists_in_labels" type="bool" default="true"/>
     <setting label="30023" id="album_year_in_labels" type="bool" default="true"/>
     <setting label="30024" id="mqa_in_labels" type="bool" default="true"/>
+    <setting label="30503" id="set_playback_info" type="bool" default="false"/>
     <setting label="30511" id="fanart_server_enabled" type="bool" default="true"/>
     <setting label="30512" id="fanart_server_port" type="number" default="5555" visible="eq(-1,true)"/>
   </category>

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Thomas Amland, Arne Svenson
+# Copyright (C) 2016-2021 arneson
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import sys
 import traceback
+import json
 
 from kodi_six import xbmc, xbmcgui, xbmcplugin, py2_decode
 from requests import HTTPError
@@ -26,9 +27,9 @@ from requests import HTTPError
 from .common import Const, plugin
 from .textids import Msg, _T, _P
 from .debug import log
-from .tidalapi.models import Quality, Category, SubscriptionType
+from .tidalapi.models import Category, TrackUrl, VideoUrl, DeviceCode
 from .config import settings
-from .koditidal import TidalSession, FolderItem
+from .koditidal import TidalSession, DirectoryItem
 
 try:
     # Python 3
@@ -78,46 +79,29 @@ def settings_dialog():
 
 @plugin.route('/homepage_items')
 def homepage_items():
-    params = { 'locale': session._config.locale, 'deviceType': 'BROWSER' }
+    params = { 'locale': settings.locale, 'deviceType': 'BROWSER' }
     apiPaths = []
     items = []
-    r = session.request('GET', 'pages/home', params=params)
-    if r.ok:
-        json_obj = r.json()
-        for row in json_obj['rows']:
-            for module in row['modules']:
-                try:
-                    item_type = module['type']
-                    if item_type in HOMEPAGE_ITEM_TYPES:
-                        apiPath = module['pagedList']['dataApiPath']
-                        item = FolderItem(module['title'], plugin.url_for(homepage_item, item_type, quote_plus(apiPath)))
-                        items.append(item)
-                        apiPaths.append(apiPath)
-                    else:
-                        log.info('Unknown Homepage Item "%s": %s' % (item_type, module.get('title', 'Unknown')))
-                except:
-                    pass
-    r = session.request('GET', 'pages/videos', params=params)
-    if r.ok:
-        json_obj = r.json()
-        for row in json_obj['rows']:
-            for module in row['modules']:
-                try:
-                    item_type = module['type']
-                    if item_type in HOMEPAGE_ITEM_TYPES:
-                        apiPath = module['pagedList']['dataApiPath']
-                        item = FolderItem(module['title'], plugin.url_for(homepage_item, item_type, quote_plus(apiPath)))
-                        if not apiPath in apiPaths:
-                            if item_type == 'MIX_LIST':
-                                item.name = item.name + ' (' + _P('videos') + ')'
-                                items.insert(1, item)
-                            else:
+    for page_type in ['explore', 'home', 'videos']:
+        r = session.request('GET', path='pages/%s' % page_type, params=params)
+        if r.ok:
+            json_obj = r.json()
+            for row in json_obj['rows']:
+                for module in row['modules']:
+                    try:
+                        item_type = module['type']
+                        if item_type in HOMEPAGE_ITEM_TYPES:
+                            apiPath = module['pagedList']['dataApiPath']
+                            item = DirectoryItem(module['title'], plugin.url_for(homepage_item, item_type, quote_plus(apiPath)))
+                            if not apiPath in apiPaths:
+                                if item_type == 'MIX_LIST' and page_type == 'videos':
+                                    item.name = item.name + ' (' + _P('videos') + ')'
                                 items.append(item)
-                            apiPaths.append(apiPath)
-                    else:
-                        log.info('Unknown Homepage Item "%s": %s' % (item_type, module.get('title', 'Unknown')))
-                except:
-                    pass
+                                apiPaths.append(apiPath)
+                        else:
+                            log.info('Unknown Homepage Item "%s": %s' % (item_type, module.get('title', 'Unknown')))
+                    except:
+                        pass
     session.add_list_items(items, end=True)
 
 
@@ -126,9 +110,16 @@ def homepage_item(item_type, path):
     path = py2_decode(unquote_plus(path)).strip()
     rettype = HOMEPAGE_ITEM_TYPES.get(item_type, 'NONE')
     if rettype != 'NONE':
-        params = { 'locale': session._config.locale, 'deviceType': 'BROWSER', 'offset': 0, 'limit': 50 }
-        items = session._map_request(url=path, method='GET', params=params, ret=rettype)
-        session.add_list_items(items, content=CONTENT_FOR_TYPE.get(rettype, 'files'), end=True)
+        params = { 'locale': settings.locale, 'deviceType': 'BROWSER', 'offset': plugin.qs_offset, 'limit': min(50, settings.pageSize) }
+        items = session._map_request(path=path, method='GET', params=params, ret=rettype)
+        session.add_list_items(items, content=CONTENT_FOR_TYPE.get(rettype, 'files'), end=True, withNextPage=True)
+
+
+@plugin.route('/category')
+def category_list():
+    categories = Category.groups()
+    for item in categories:
+        add_directory(_T(item), plugin.url_for(category, group=item), end=True if item == categories[-1] else False)
 
 
 @plugin.route('/category/<group>')
@@ -143,7 +134,7 @@ def category(group):
         for item in items:
             content_types = item.content_types
             for content_type in content_types:
-                category_content(group, item.path, content_type, offset=0)
+                category_content(group, item.path, content_type)
                 return
     xbmcplugin.setContent(plugin.handle, CONTENT_FOR_TYPE.get('files'))
     if promoGroup and totalCount > 10:
@@ -155,9 +146,10 @@ def category(group):
     add_items(items, content=None, end=not(promoGroup and totalCount <= 10))
     if promoGroup and totalCount <= 10:
         # Show up to 10 Promotions as single Items
-        promoItems = session.get_featured(promoGroup, types=['ALBUM', 'PLAYLIST', 'VIDEO'])
+        promoItems = session.get_featured(promoGroup, types=['ALBUM', 'PLAYLIST', 'VIDEO'], limit=min(settings.pageSize, 999))
         if promoItems:
             add_items(promoItems, end=True)
+
 
 @plugin.route('/category/<group>/<path>')
 def category_item(group, path):
@@ -170,59 +162,64 @@ def category_item(group, path):
     add_items(path_items, content=CONTENT_FOR_TYPE.get('files'))
 
 
-@plugin.route('/category/<group>/<path>/<content_type>/<offset>')
-def category_content(group, path, content_type, offset):
-    items = session.get_category_content(group, path, content_type, offset=int('0%s' % offset), limit=session._config.pageSize)
+@plugin.route('/category/<group>/<path>/<content_type>')
+def category_content(group, path, content_type):
+    items = session.get_category_content(group, path, content_type, offset=int('%s' % plugin.qs_offset), limit=settings.pageSize)
     add_items(items, content=CONTENT_FOR_TYPE.get(content_type, 'songs'), withNextPage=True)
 
 
-@plugin.route('/master_albums/<offset>')
-def master_albums(offset):
-    items = session.master_albums(offset=int('0%s' % offset), limit=session._config.pageSize)
+@plugin.route('/master_albums')
+def master_albums():
+    items = session.master_albums(offset=int('%s' % plugin.qs_offset), limit=settings.pageSize)
     add_items(items, content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True)
 
 
-@plugin.route('/master_playlists/<offset>')
-def master_playlists(offset):
-    items = session.master_playlists(offset=int('0%s' % offset), limit=session._config.pageSize)
+@plugin.route('/master_playlists')
+def master_playlists():
+    items = session.master_playlists(offset=int('%s' % plugin.qs_offset), limit=settings.pageSize)
     add_items(items, content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True)
 
 
 @plugin.route('/track_radio/<track_id>')
 def track_radio(track_id):
-    add_items(session.get_track_radio(track_id, limit=session._config.pageSize), content=CONTENT_FOR_TYPE.get('tracks'))
+    add_items(session.get_track_radio(track_id, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('tracks'))
 
 
 @plugin.route('/recommended/tracks/<track_id>')
 def recommended_tracks(track_id):
-    add_items(session.get_recommended_items('tracks', track_id, limit=session._config.pageSize), content=CONTENT_FOR_TYPE.get('tracks'))
+    add_items(session.get_recommended_items('tracks', track_id, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('tracks'))
 
 
 @plugin.route('/recommended/videos/<video_id>')
 def recommended_videos(video_id):
-    add_items(session.get_recommended_items('videos', video_id, limit=session._config.pageSize), content=CONTENT_FOR_TYPE.get('videos'))
+    add_items(session.get_recommended_items('videos', video_id, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('videos'))
 
 
 @plugin.route('/featured/<group>')
 def featured(group):
-    items = session.get_featured(group, types=['ALBUM', 'PLAYLIST', 'VIDEO'])
+    items = session.get_featured(group, types=['ALBUM', 'PLAYLIST', 'VIDEO'], limit=min(settings.pageSize, 999))
     add_items(items, content=CONTENT_FOR_TYPE.get('files'))
 
 
 @plugin.route('/featured_playlists')
 def featured_playlists():
-    items = session.get_featured()
+    items = session.get_featured(limit=min(settings.pageSize, 999))
     add_items(items, content=CONTENT_FOR_TYPE.get('albums'))
 
 
 @plugin.route('/my_music')
 def my_music():
+    session.user.update_caches()
+    add_directory(_T(Msg.i30273), user_folders)
     add_directory(_T(Msg.i30213), user_playlists)
     add_directory(_T(Msg.i30214), plugin.url_for(favorites, content_type='artists'))
     add_directory(_T(Msg.i30215), plugin.url_for(favorites, content_type='albums'))
     add_directory(_T(Msg.i30216), plugin.url_for(favorites, content_type='playlists'))
     add_directory(_T(Msg.i30217), plugin.url_for(favorites, content_type='tracks'))
-    add_directory(_T(Msg.i30218), plugin.url_for(favorites, content_type='videos'), end=True)
+    add_directory(_T(Msg.i30218), plugin.url_for(favorites, content_type='videos'))
+    add_directory(_T(Msg.i30275), plugin.url_for(favorites, content_type='mixes'))
+    add_directory(_T(Msg.i30271), plugin.url_for(session_info))
+    add_directory(_T(Msg.i30272), plugin.url_for(refresh_token), end=True)
 
 
 @plugin.route('/album/<album_id>')
@@ -248,6 +245,9 @@ def artist_view(artist_id):
     xbmcplugin.setContent(plugin.handle, 'albums')
     add_directory(_T(Msg.i30225), plugin.url_for(artist_bio, artist_id), thumb=artist.image, fanart=artist.fanart, isFolder=False)
     add_directory(_T(Msg.i30226), plugin.url_for(top_tracks, artist_id), thumb=artist.image, fanart=artist.fanart)
+    add_directory(_P('albums'), plugin.url_for(artist_albums, artist_id), thumb=artist.image, fanart=artist.fanart)
+    add_directory(_T(Msg.i30267), plugin.url_for(artist_singles, artist_id), thumb=artist.image, fanart=artist.fanart)
+    add_directory(_T(Msg.i30270), plugin.url_for(artist_compilations, artist_id), thumb=artist.image, fanart=artist.fanart)
     add_directory(_T(Msg.i30110), plugin.url_for(artist_videos, artist_id), thumb=artist.image, fanart=artist.fanart)
     add_directory(_T(Msg.i30227), plugin.url_for(artist_radio, artist_id), thumb=artist.image, fanart=artist.fanart)
     add_directory(_T(Msg.i30228), plugin.url_for(artist_playlists, artist_id), thumb=artist.image, fanart=artist.fanart)
@@ -257,9 +257,8 @@ def artist_view(artist_id):
             add_directory(_T(Msg.i30220), plugin.url_for(favorites_remove, content_type='artists', item_id=artist_id), thumb=artist.image, fanart=artist.fanart, isFolder=False)
         else:
             add_directory(_T(Msg.i30219), plugin.url_for(favorites_add, content_type='artists', item_id=artist_id), thumb=artist.image, fanart=artist.fanart, isFolder=False)
-    albums = session.get_artist_albums(artist_id) + \
-             session.get_artist_albums_ep_singles(artist_id) + \
-             session.get_artist_albums_other(artist_id)
+    albums = session.get_artist_albums(artist_id, limit=min(settings.pageSize, 50)) + \
+             session.get_artist_albums_ep_singles(artist_id, limit=min(settings.pageSize, 50))
     add_items(albums, content=None)
 
 
@@ -278,17 +277,32 @@ def artist_bio(artist_id):
 
 @plugin.route('/artist/<artist_id>/top')
 def top_tracks(artist_id):
-    add_items(session.get_artist_top_tracks(artist_id, limit=session._config.pageSize), content=CONTENT_FOR_TYPE.get('tracks'))
+    add_items(session.get_artist_top_tracks(artist_id, offset=plugin.qs_offset, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('tracks'), withNextPage=True)
 
 
 @plugin.route('/artist/<artist_id>/radio')
 def artist_radio(artist_id):
-    add_items(session.get_artist_radio(artist_id, limit=session._config.pageSize), content=CONTENT_FOR_TYPE.get('tracks'))
+    add_items(session.get_artist_radio(artist_id, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('tracks'))
+
+
+@plugin.route('/artist/<artist_id>/albums')
+def artist_albums(artist_id):
+    add_items(session.get_artist_albums(artist_id, offset=plugin.qs_offset, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True)
+
+
+@plugin.route('/artist/<artist_id>/singles')
+def artist_singles(artist_id):
+    add_items(session.get_artist_albums_ep_singles(artist_id, offset=plugin.qs_offset, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True)
+
+
+@plugin.route('/artist/<artist_id>/compilations')
+def artist_compilations(artist_id):
+    add_items(session.get_artist_albums_other(artist_id, offset=plugin.qs_offset, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True)
 
 
 @plugin.route('/artist/<artist_id>/videos')
 def artist_videos(artist_id):
-    add_items(session.get_artist_videos(artist_id), content=CONTENT_FOR_TYPE.get('videos'))
+    add_items(session.get_artist_videos(artist_id, offset=plugin.qs_offset, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('videos'), withNextPage=True)
 
 
 @plugin.route('/artist/<artist_id>/playlists')
@@ -303,8 +317,8 @@ def similar_artists(artist_id):
 
 @plugin.route('/mix/<mix_id>')
 def mix_view(mix_id):
-    params = { 'locale': session._config.locale, 'deviceType': 'BROWSER', 'mixId': mix_id }
-    r = session.request('GET', 'pages/mix', params=params)
+    params = { 'locale': settings.locale, 'deviceType': 'BROWSER', 'mixId': mix_id }
+    r = session.request('GET', path='pages/mix', params=params)
     if r.ok:
         json_obj = r.json()
         for row in json_obj['rows']:
@@ -319,36 +333,25 @@ def mix_view(mix_id):
                     pass
 
 
-@plugin.route('/playlist/<playlist_id>/items/<offset>')
-def playlist_view(playlist_id, offset):
-    add_items(session.get_playlist_items(playlist_id, offset=int('0%s' % offset), limit=session._config.pageSize), content=CONTENT_FOR_TYPE.get('tracks'), withNextPage=True)
+@plugin.route('/playlist/<playlist_id>/items')
+def playlist_view(playlist_id):
+    add_items(session.get_playlist_items(playlist_id, offset=int('0%s' % plugin.qs_offset), limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('tracks'), withNextPage=True)
 
 
-@plugin.route('/playlist/<playlist_id>/tracks/<offset>')
-def playlist_tracks(playlist_id, offset):
-    add_items(session.get_playlist_tracks(playlist_id, offset=int('0%s' % offset), limit=session._config.pageSize), content=CONTENT_FOR_TYPE.get('tracks'), withNextPage=True)
+@plugin.route('/playlist/<playlist_id>/tracks')
+def playlist_tracks(playlist_id):
+    add_items(session.get_playlist_tracks(playlist_id, offset=int('0%s' % plugin.qs_offset), limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('tracks'), withNextPage=True)
 
 
-@plugin.route('/playlist/<playlist_id>/albums/<offset>')
-def playlist_albums(playlist_id, offset):
-    add_items(session.get_playlist_albums(playlist_id, offset=int('0%s' % offset), limit=session._config.pageSize), content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True)
+@plugin.route('/playlist/<playlist_id>/albums')
+def playlist_albums(playlist_id):
+    add_items(session.get_playlist_albums(playlist_id, offset=int('0%s' % plugin.qs_offset), limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True)
 
 
 @plugin.route('/user_playlists')
 def user_playlists():
-    items = session.user.playlists()
-    # Find Default Playlists via title if ID is not available anymore
-    all_ids = list(session.user.playlists_cache.keys())
-    for what in ['track', 'album', 'video']:
-        playlist_id = settings.getSetting('default_%splaylist_id' % what)
-        playlist_title = settings.getSetting('default_%splaylist_title' % what)
-        if playlist_id and playlist_title and playlist_id not in all_ids:
-            for playlist_id in all_ids:
-                if session.user.playlists_cache.get(playlist_id).get('title', '') == playlist_title:
-                    settings.setSetting('default_%splaylist_id' % what, playlist_id)
-                    settings.setSetting('default_%splaylist_title' % what, playlist_title)
-                    break
-    add_items(items, content=CONTENT_FOR_TYPE.get('albums'))
+    items = session.user.playlists(flattened=True, allPlaylists=False)
+    add_items(items, content=CONTENT_FOR_TYPE.get('albums'), withNextPage=False)
 
 
 @plugin.route('/user_playlist/rename/<playlist_id>')
@@ -363,9 +366,9 @@ def user_playlist_rename(playlist_id):
 def user_playlist_clear(playlist_id):
     dialog = xbmcgui.Dialog()
     playlist = session.get_playlist(playlist_id)
-    ok = dialog.yesno(_T(Msg.i30258), _T(Msg.i30259).format(name=playlist.title, count=playlist.numberOfItems))
+    ok = dialog.yesno(_T(Msg.i30258).format(what=_T('playlist')), _T(Msg.i30259).format(name=playlist.title, count=playlist.numberOfItems))
     if ok:
-        session.show_busydialog(_T(Msg.i30258), playlist.name)
+        session.show_busydialog(_T(Msg.i30258).format(what=_T('playlist')), playlist.name)
         try:
             session.user.remove_all_playlist_entries(playlist_id)
         except Exception as e:
@@ -379,14 +382,15 @@ def user_playlist_clear(playlist_id):
 def user_playlist_delete(playlist_id):
     dialog = xbmcgui.Dialog()
     playlist = session.get_playlist(playlist_id)
-    ok = dialog.yesno(_T(Msg.i30235), _T(Msg.i30236).format(name=playlist.title, count=playlist.numberOfItems))
+    ok = dialog.yesno(_T(Msg.i30235).format(what=_T('playlist')), _T(Msg.i30236).format(name=playlist.title, count=playlist.numberOfItems))
     if ok:
-        session.show_busydialog(_T(Msg.i30235), playlist.name)
+        session.show_busydialog(_T(Msg.i30235).format(what=_T('playlist')), playlist.name)
         try:
             session.user.delete_playlist(playlist_id)
         except Exception as e:
             log.logException(e, txt='Couldn''t delete playlist %s' % playlist_id)
             traceback.print_exc()
+        xbmc.sleep(1000)
         session.hide_busydialog()
         xbmc.executebuiltin('Container.Refresh()')
 
@@ -414,7 +418,7 @@ def user_playlist_add_item(item_type, item_id):
         items = [item_id]
     playlist = session.user.selectPlaylistDialog(allowNew=True)
     if playlist:
-        session.show_busydialog(_T(Msg.i30263), playlist.name)
+        session.show_busydialog(_T(Msg.i30263).format(what=_T('playlist')), playlist.name)
         try:
             session.user.add_playlist_entries(playlist=playlist, item_ids=items)
         except Exception as e:
@@ -430,7 +434,7 @@ def user_playlist_remove_item(playlist_id, entry_no):
     playlist = session.get_playlist(playlist_id)
     ok = xbmcgui.Dialog().yesno(_T(Msg.i30247).format(name=playlist.name), _T(Msg.i30241).format(entry=item_no))
     if ok:
-        session.show_busydialog(_T(Msg.i30264), playlist.name)
+        session.show_busydialog(_T(Msg.i30264).format(what=_T('playlist')), playlist.name)
         try:
             session.user.remove_playlist_entry(playlist, entry_no=entry_no)
         except Exception as e:
@@ -445,7 +449,7 @@ def user_playlist_remove_id(playlist_id, item_id):
     playlist = session.get_playlist(playlist_id)
     ok = xbmcgui.Dialog().yesno(_T(Msg.i30247).format(name=playlist.name), _T(Msg.i30246))
     if ok:
-        session.show_busydialog(_T(Msg.i30264), playlist.name)
+        session.show_busydialog(_T(Msg.i30264).format(what=_T('playlist')), playlist.name)
         try:
             session.user.remove_playlist_entry(playlist, item_id=item_id)
         except Exception as e:
@@ -462,7 +466,7 @@ def user_playlist_remove_album(playlist_id, item_id, dialog=True):
     if dialog:
         ok = xbmcgui.Dialog().yesno(_T(Msg.i30247).format(name=playlist.name), _T(Msg.i30246))
     if ok:
-        session.show_busydialog(_T(Msg.i30264), playlist.name)
+        session.show_busydialog(_T(Msg.i30264).format(what=_T('playlist')), playlist.name)
         try:
             items = session.get_playlist_tracks(playlist)
             for item in items:
@@ -479,9 +483,9 @@ def user_playlist_remove_album(playlist_id, item_id, dialog=True):
 @plugin.route('/user_playlist/move/<playlist_id>/<entry_no>/<item_id>')
 def user_playlist_move_entry(playlist_id, entry_no, item_id):
     dialog = xbmcgui.Dialog()
-    playlist = session.user.selectPlaylistDialog(headline=_T(Msg.i30248), allowNew=True)
+    playlist = session.user.selectPlaylistDialog(headline=_T(Msg.i30248).format(what=_T('playlist')), allowNew=True)
     if playlist and playlist.id != playlist_id:
-        session.show_busydialog(_T(Msg.i30265), playlist.name)
+        session.show_busydialog(_T(Msg.i30265).format(what=_T('playlist')), playlist.name)
         try:
             ok = session.user.add_playlist_entries(playlist=playlist, item_ids=[item_id])
             if ok:
@@ -497,17 +501,23 @@ def user_playlist_move_entry(playlist_id, entry_no, item_id):
 
 @plugin.route('/user_playlist_set_default/<item_type>/<playlist_id>')
 def user_playlist_set_default(item_type, playlist_id):
-    item = session.get_playlist(playlist_id)
-    if item:
-        if item_type.lower().find('track') >= 0:
-            settings.setSetting('default_trackplaylist_id', item.id)
-            settings.setSetting('default_trackplaylist_title', item.title)
-        elif item_type.lower().find('video') >= 0:
-            settings.setSetting('default_videoplaylist_id', item.id)
-            settings.setSetting('default_videoplaylist_title', item.title)
-        elif item_type.lower().find('album') >= 0:
-            settings.setSetting('default_albumplaylist_id', item.id)
-            settings.setSetting('default_albumplaylist_title', item.title)
+    if item_type == 'folder':
+        item = session.user.folder(playlist_id)
+        if item:
+            settings.setSetting('default_folder_id', item.id)
+            settings.setSetting('default_folder_name', item.name)
+    else:
+        item = session.get_playlist(playlist_id)
+        if item:
+            if item_type.lower().find('track') >= 0:
+                settings.setSetting('default_trackplaylist_id', item.id)
+                settings.setSetting('default_trackplaylist_title', item.title)
+            elif item_type.lower().find('video') >= 0:
+                settings.setSetting('default_videoplaylist_id', item.id)
+                settings.setSetting('default_videoplaylist_title', item.title)
+            elif item_type.lower().find('album') >= 0:
+                settings.setSetting('default_albumplaylist_id', item.id)
+                settings.setSetting('default_albumplaylist_title', item.title)
     xbmc.executebuiltin('Container.Refresh()')
 
 
@@ -522,6 +532,77 @@ def user_playlist_reset_default(item_type):
     elif item_type.lower().find('album') >= 0:
         settings.setSetting('default_albumplaylist_id', '')
         settings.setSetting('default_albumplaylist_title', '')
+    elif item_type.lower().find('folder') >= 0:
+        settings.setSetting('default_folder_id', '')
+        settings.setSetting('default_folder_name', '')
+    xbmc.executebuiltin('Container.Refresh()')
+
+
+@plugin.route('/user_playlist_cm/<playlist_id>')
+def user_playlist_cm(playlist_id):
+    item = session.get_playlist(playlist_id)
+    if item.isUserPlaylist:
+        cm = []
+        cmd = []
+        cm.append(_T(Msg.i30251).format(what=_T('playlist')))
+        cmd.append('RunPlugin(%s)' % plugin.url_for_path('/user_playlist/rename/%s' % playlist_id))
+        if item.numberOfItems > 0:
+            cm.append(_T(Msg.i30258).format(what=_T('playlist')))
+            cmd.append('RunPlugin(%s)' % plugin.url_for_path('/user_playlist/clear/%s' % playlist_id))
+        cm.append(_T(Msg.i30235).format(what=_T('playlist')))
+        cmd.append('RunPlugin(%s)' % plugin.url_for_path('/user_playlist/delete/%s' % playlist_id))
+        if str(playlist_id) == settings.default_trackplaylist_id:
+            cm.append(_T(Msg.i30250).format(what=_P('Track')))
+            cmd.append('RunPlugin(%s)' % plugin.url_for_path('/user_playlist_reset_default/tracks'))
+        else:
+            cm.append(_T(Msg.i30249).format(what=_P('Track')))
+            cmd.append('RunPlugin(%s)' % plugin.url_for_path('/user_playlist_set_default/tracks/%s' % playlist_id))
+        if str(playlist_id) == settings.default_videoplaylist_id:
+            cm.append(_T(Msg.i30250).format(what=_P('Video')))
+            cmd.append('RunPlugin(%s)' % plugin.url_for_path('/user_playlist_reset_default/videos'))
+        else:
+            cm.append(_T(Msg.i30249).format(what=_P('Video')))
+            cmd.append('RunPlugin(%s)' % plugin.url_for_path('/user_playlist_set_default/videos/%s' % playlist_id))
+        if str(playlist_id) == settings.default_albumplaylist_id:
+            cm.append(_T(Msg.i30250).format(what=_P('Album')))
+            cmd.append('RunPlugin(%s)' % plugin.url_for_path('/user_playlist_reset_default/albums'))
+        else:
+            cm.append(_T(Msg.i30249).format(what=_P('Album')))
+            cmd.append('RunPlugin(%s)' % plugin.url_for_path('/user_playlist_set_default/albums/%s' % playlist_id))
+        i = xbmcgui.Dialog().contextmenu(cm)
+        if i >= 0 and i < len(cmd):
+            xbmc.executebuiltin(cmd[i])
+
+
+@plugin.route('/user_folder_toggle')
+def user_folder_toggle():
+    if not session.is_logged_in:
+        return
+    url = xbmc.getInfoLabel( "ListItem.FilenameandPath" )
+    if not Const.addon_id in url:
+        return
+    if not 'playlist/' in url:
+        user_playlist_toggle()
+        return
+    item_id = url.split('playlist/')[1].split('/')[0]
+    playlist = session.get_playlist(item_id)
+    if not playlist:
+        return
+    folder = session.user.folder(settings.default_folder_id)
+    if not folder:
+        user_folder_add(playlist.id)
+        return
+    try:
+        if playlist.parentFolderId:
+            session.show_busydialog(_T(Msg.i30264).format(what=_T('folder')), folder.name)
+            session.user.move_folder_entries(trns=playlist.trn, folder='root')
+        else:
+            session.show_busydialog(_T(Msg.i30263).format(what=_T('folder')), folder.name)
+            session.user.add_folder_entry(folder, playlist)
+    except Exception as e:
+        log.logException(e, txt='Couldn''t toggle folder for playlist %s' % playlist.id)
+        traceback.print_exc()
+    session.hide_busydialog()
     xbmc.executebuiltin('Container.Refresh()')
 
 
@@ -531,6 +612,9 @@ def user_playlist_toggle():
         return
     url = xbmc.getInfoLabel( "ListItem.FilenameandPath" )
     if not Const.addon_id in url:
+        return
+    if 'playlist/' in url:
+        user_folder_toggle()
         return
     item_type = 'unknown'
     if 'play_track/' in url:
@@ -571,10 +655,10 @@ def user_playlist_toggle():
             user_playlist_add_item(item_type, '%s' % item_id)
             return
         if item._userplaylists and userpl_id in item._userplaylists:
-            session.show_busydialog(_T(Msg.i30264), userpl_name)
+            session.show_busydialog(_T(Msg.i30264).format(what=_T('playlist')), userpl_name)
             session.user.remove_playlist_entry(playlist=userpl_id, item_id=item.id)
         else:
-            session.show_busydialog(_T(Msg.i30263), userpl_name)
+            session.show_busydialog(_T(Msg.i30263).format(what=_T('playlist')), userpl_name)
             session.user.add_playlist_entries(playlist=userpl_id, item_ids=['%s' % item.id])
     except Exception as e:
         log.logException(e, txt='Couldn''t toggle playlist for %s' % item_type)
@@ -583,29 +667,107 @@ def user_playlist_toggle():
     xbmc.executebuiltin('Container.Refresh()')
 
 
+@plugin.route('/user_folders')
+def user_folders():
+    folders = session.user.folders()
+    folder_ids = [f.id for f in folders]
+    items = session.user.playlists(flattened=False, allPlaylists=False)
+    playlists = [p for p in items if p.parentFolderId not in folder_ids]
+    add_items(folders + playlists, content=CONTENT_FOR_TYPE.get('albums'))
+
+
+@plugin.route('/user_folders/<folder_id>')
+def user_folder_items(folder_id):
+    items = session.user.folder_items(folder_id)
+    add_items(items, content=CONTENT_FOR_TYPE.get('albums'))
+
+
+@plugin.route('/user_folder/add/<playlist_id>')
+def user_folder_add(playlist_id):
+    if session.user.addToFolderDialog(playlist_id):
+        xbmc.executebuiltin('Container.Refresh()')
+
+
+@plugin.route('/user_folder/move/<playlist_id>')
+def user_folder_move(playlist_id):
+    if session.user.moveToFolderDialog(playlist_id):
+        xbmc.executebuiltin('Container.Refresh()')
+
+
+@plugin.route('/user_folder/create')
+def user_folder_create():
+    if session.user.newFolderDialog():
+        xbmc.executebuiltin('Container.Refresh()')
+
+
+@plugin.route('/user_folder/rename/<folder_id>')
+def user_folder_rename(folder_id):
+    if session.user.renameFolderDialog(folder_id):
+        xbmc.executebuiltin('Container.Refresh()')
+
+
+@plugin.route('/user_folder/remove/<folder_id>/<playlist_id>')
+def user_folder_remove(folder_id, playlist_id):
+    if session.user.removeFromFolderDialog(folder_id, playlist_id):
+        xbmc.executebuiltin('Container.Refresh()')
+
+
+@plugin.route('/user_folder/delete/<folder_id>')
+def user_folder_delete(folder_id):
+    if session.user.deleteFolderDialog(folder_id):
+        xbmc.executebuiltin('Container.Refresh()')
+
+
+@plugin.route('/favorites')
+def favorites_menu():
+    session.user.favorites.load_all(force_reload=True)
+    add_directory(_T(Msg.i30214), plugin.url_for(favorites, content_type='artists'))
+    add_directory(_T(Msg.i30215), plugin.url_for(favorites, content_type='albums'))
+    add_directory(_T(Msg.i30216), plugin.url_for(favorites, content_type='playlists'))
+    add_directory(_T(Msg.i30217), plugin.url_for(favorites, content_type='tracks'))
+    add_directory(_T(Msg.i30218), plugin.url_for(favorites, content_type='videos'))
+    add_directory(_T(Msg.i30218), plugin.url_for(favorites, content_type='mixes'), end=True)
+
+
 @plugin.route('/favorites/<content_type>')
 def favorites(content_type):
-    items = session.user.favorites.get(content_type, limit=100 if content_type == 'videos' else 9999)
-    if content_type in ['playlists', 'artists']:
+    limit = min(settings.pageSize, 100 if content_type == 'videos' else 9999)
+    if content_type in ['playlists', 'mixes']:
+        items = session.user.favorites.get(content_type, offset=0, limit=50)
+    else:
+        items = session.user.favorites.get(content_type, offset=plugin.qs_offset, limit=limit)
+    if content_type in ['playlists', 'artists', 'mixes']:
         items.sort(key=lambda line: line.name, reverse=False)
+        if content_type in ['playlists', 'mixes']:
+            items = items[plugin.qs_offset:plugin.qs_offset+limit]
     else:
         items.sort(key=lambda line: '%s - %s' % (line.artist.name, line.title), reverse=False)
-    add_items(items, content=CONTENT_FOR_TYPE.get(content_type, 'songs'))
+    add_items(items, content=CONTENT_FOR_TYPE.get(content_type, 'songs'), withNextPage=True)
 
 
 @plugin.route('/favorites/add/<content_type>/<item_id>')
 def favorites_add(content_type, item_id):
+    if 'playlist' in content_type:
+        playlist = session.get_playlist(item_id)
+        if playlist and playlist.isUserPlaylist:
+            log.error("User-Playlist '%s' can't be set as favorite" % playlist.name)
+            return
     ok = session.user.favorites.add(content_type, item_id)
     if ok:
-        xbmcgui.Dialog().notification(heading=plugin.name, message=_T(Msg.i30231).format(what=_T(content_type)), icon=xbmcgui.NOTIFICATION_INFO)
+        xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30231).format(what=_T(content_type)), icon=xbmcgui.NOTIFICATION_INFO)
     xbmc.executebuiltin('Container.Refresh()')
 
 
 @plugin.route('/favorites/remove/<content_type>/<item_id>')
 def favorites_remove(content_type, item_id):
+    if 'playlist' in content_type:
+        playlist = session.get_playlist(item_id)
+        if playlist and playlist.isUserPlaylist:
+            log.error("User-Playlist '%s' can't be set as favorite" % playlist.name)
+            return
     ok = session.user.favorites.remove(content_type, item_id)
     if ok:
-        xbmcgui.Dialog().notification(heading=plugin.name, message=_T(Msg.i30232).format(what=_T(content_type)), icon=xbmcgui.NOTIFICATION_INFO)
+        xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30232).format(what=_T(content_type)), icon=xbmcgui.NOTIFICATION_INFO)
     xbmc.executebuiltin('Container.Refresh()')
 
 
@@ -628,10 +790,12 @@ def cache_reset():
     session.user.delete_cache()
     session.user.favorites.delete_cache()
 
+
 @plugin.route('/cache_reset_confirmed')
 def cache_reset_confirmed():
     if xbmcgui.Dialog().yesno(_T(Msg.i30507), _T(Msg.i30508)):
         cache_reset()
+
 
 @plugin.route('/cache_reload')
 def cache_reload():
@@ -639,15 +803,15 @@ def cache_reload():
         return
     session.user.favorites.load_all(force_reload=True)
     session.user.load_cache()
-    session.user.playlists()
+    session.user.playlists(flattened=True, allPlaylists=True)
 
 
 @plugin.route('/favorite_toggle')
 def favorite_toggle():
     if not session.is_logged_in:
         return
-    path = xbmc.getInfoLabel('Container.FolderPath')  #.decode('utf-8')
-    url = xbmc.getInfoLabel( "ListItem.FileNameAndPath" )  #.decode('utf-8')
+    path = xbmc.getInfoLabel('Container.FolderPath')
+    url = xbmc.getInfoLabel( "ListItem.FileNameAndPath" )
     if not Const.addon_id in url or '/favorites/' in path:
         return
     try:
@@ -682,6 +846,11 @@ def favorite_toggle():
             if not '/' in item_id:
                 content_type = 'videos'
                 isFavorite = session.user.favorites.isFavoriteVideo(item_id)
+        elif 'mix/' in url:
+            item_id = url.split('mix/')[1]
+            if not '/' in item_id:
+                content_type = 'mixes'
+                isFavorite = session.user.favorites.isFavoriteMix(item_id)
         if content_type == None:
             return
         if isFavorite:
@@ -730,91 +899,89 @@ def search_type(field):
 
 @plugin.route('/login')
 def login():
-    username = settings.getSetting('username')
-    password = settings.getSetting('password')
-    subscription_type = settings.subscription_type
-
-    if not username or not password:
-        # Ask for username/password
-        dialog = xbmcgui.Dialog()
-        username = dialog.input(_T(Msg.i30008), username)
-        if not username:
-            return
-        password = dialog.input(_T(Msg.i30009), option=xbmcgui.ALPHANUM_HIDE_INPUT)
-        if not password:
-            return
-        selected = dialog.select(_T(Msg.i30010), [SubscriptionType.hifi, SubscriptionType.premium])
-        if selected < 0:
-            return
-        subscription_type = [SubscriptionType.hifi, SubscriptionType.premium][selected]
-
-    ok = session.login(username, password, subscription_type)
-    if ok and (not settings.getSetting('username') or not settings.getSetting('password')):
-        # Ask about remembering username/password
-        dialog = xbmcgui.Dialog()
-        if dialog.yesno(plugin.name, _T(Msg.i30209)):
-            settings.setSetting('username', username)
-            settings.setSetting('password', password)
+    try:
+        try:
+            args = plugin.args
+            code = None
+            if 'deviceCode' in args and '_client_id' in args:
+                # Got device code as query string from Web-GUI login page.
+                code = DeviceCode(
+                    deviceCode = args['deviceCode'][0],
+                    userCode = args['userCode'][0],
+                    verificationUri = args['verificationUri'][0],
+                    verificationUriComplete = args['verificationUriComplete'][0],
+                    expiresIn = int(args['expiresIn'][0]),
+                    interval = int(args['interval'][0]),
+                    _client_id = args['_client_id'][0],
+                    _client_secret = args['_client_secret'][0] )
+        except:
+            code = None
+        if not code and (settings.client_id == '' or settings.client_secret == ''):
+            url = 'http://{ip}:{port}/client'.format(ip=xbmc.getInfoLabel('Network.IPAddress'), port=settings.fanart_server_port)
+            xbmcgui.Dialog().ok(_T(Msg.i30281), _T(Msg.i30257).format(url=url))
+            settings_dialog()
         else:
-            settings.setSetting('password', '')
-    if not ok:
-        xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30253) , icon=xbmcgui.NOTIFICATION_ERROR)
+            session.login(device_code=code)
+    except Exception as e:
+        log.logException(e, 'Login failed !')
+        xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30253), icon=xbmcgui.NOTIFICATION_ERROR)
     xbmc.executebuiltin('Container.Refresh()')
 
 
 @plugin.route('/logout')
 def logout():
-    session.logout()
+    if xbmcgui.Dialog().yesno(_T(Msg.i30207), _T(Msg.i30256)):
+        session.logout()
     xbmc.executebuiltin('Container.Refresh()')
+
+
+@plugin.route('/session_info')
+def session_info():
+    info = session._map_request(path='sessions', method='GET', ret='json')
+    dialog = xbmcgui.Dialog()
+    dialog.ok(_T(Msg.i30271), 
+              '%s: %s\n' % (_T(Msg.i30008), info['userId']) +
+              '%s: %s\n' % (_T(Msg.i30019), info['sessionId']) +
+              '%s: %s\n' % (_T(Msg.i30020), info['client']['name']) +
+              '%s: %s' % (_T(Msg.i30022), settings.expire_time))
+
+
+@plugin.route('/refresh_token')
+def refresh_token():
+    log.info("Old Expire Time: %s" % settings.expire_time)
+    ok = session.token_refresh()
+    if ok:
+        log.info("New Expire Time: %s" % settings.expire_time)
+    else:
+        log.error('Token Refresh failed.')
+    pass
 
 
 @plugin.route('/play_track/<track_id>/<album_id>')
 def play_track(track_id, album_id):
-    try:
-        media_url = session.get_media_url(track_id)
-        mimetype = 'audio/flac' if session._config.quality == Quality.lossless and session.is_logged_in else 'audio/mpeg'
-    except HTTPError as e:
-        r = e.response
-        if r.status_code in [401, 403]:
-            msg = _T(Msg.i30210)
-        else:
-            msg = r.reason
-        try:
-            msg = r.json().get('userMessage')
-        except:
-            pass
-        xbmcgui.Dialog().notification('%s Error %s' % (plugin.name, r.status_code), msg, xbmcgui.NOTIFICATION_WARNING)
-        log.warning("Playing silence for unplayable track %s to avoid kodi crash" % track_id)
-        media_url = settings.unplayable_m4a
-        mimetype = 'audio/mpeg'
-    log.info("Playing: %s" % media_url)
-    li = xbmcgui.ListItem(path=media_url)
-    li.setProperty('mimetype', mimetype)
-    xbmcplugin.setResolvedUrl(plugin.handle, True, li)
+    play_track_cut(track_id, None, album_id)
 
 
 @plugin.route('/play_track_cut/<track_id>/<cut_id>/<album_id>')
 def play_track_cut(track_id, cut_id, album_id):
     try:
-        media_url = session.get_media_url(track_id, cut_id=cut_id)
-        mimetype = 'audio/flac' if session._config.quality == Quality.lossless and session.is_logged_in else 'audio/mpeg'
-    except HTTPError as e:
-        r = e.response
-        if r.status_code in [401, 403]:
-            msg = _T(Msg.i30210)
+        media = session.get_track_url(track_id, cut_id=cut_id)
+        if cut_id:
+            log.info("Playing Cut %s: %s with MimeType: %s" % (cut_id, media.url, media.get_mimeType()))
         else:
-            msg = r.reason
-        try:
-            msg = r.json().get('userMessage')
-        except:
-            pass
-        xbmcgui.Dialog().notification('%s Error %s' % (plugin.name, r.status_code), msg, xbmcgui.NOTIFICATION_WARNING)
-        log.warning("Playing silence for unplayable track %s to avoid kodi crash" % track_id)
-        media_url = settings.unplayable_m4a
-        mimetype = 'audio/mpeg'
-    log.info("Playing Cut %s: %s" % (cut_id, media_url))
-    li = xbmcgui.ListItem(path=media_url)
-    li.setProperty('mimetype', mimetype)
+            log.info("Playing: %s with MimeType: %s" % (media.url, media.get_mimeType()))
+        if settings.set_playback_info:
+            track = session.get_track(track_id, withAlbum=False)
+            url, li, isFolder = track.getListItem()
+            li.setPath(media.url)
+        else:
+            li = xbmcgui.ListItem(path=media.url)
+    except Exception as e:
+        xbmcgui.Dialog().notification('%s Fatal Error' % plugin.name, repr(e), xbmcgui.NOTIFICATION_ERROR)
+        traceback.print_exc()
+        media = TrackUrl(url=settings.unplayable_m4a)
+        li = xbmcgui.ListItem(path=media.url)
+    li.setProperty('mimetype', media.get_mimeType())
     xbmcplugin.setResolvedUrl(plugin.handle, True, li)
 
 
@@ -822,11 +989,17 @@ def play_track_cut(track_id, cut_id, album_id):
 def play_video(video_id):
     try:
         media = session.get_video_url(video_id)
-        if media:
-            log.info("Playing: %s" % media.url)
-            li = xbmcgui.ListItem(path=media.url)
-            li.setProperty('mimetype', 'video/mp4')
-            xbmcplugin.setResolvedUrl(plugin.handle, True, li)
+        if isinstance(media, VideoUrl) and media.url:
+            log.info("Playing: %s with MimeType: %s" % (media.url, media.get_mimeType()))
+            if settings.set_playback_info:
+                video = session.get_video(video_id)
+                url, li, isFolder = video.getListItem()
+                li.setPath(media.url)
+            else:
+                li = xbmcgui.ListItem(path=media.url)
+        else:
+            log.warning("Got no video url. Playing silence for unplayable video %s to avoid kodi crash" % video_id)
+            media = TrackUrl(url = settings.unplayable_m4a)
     except HTTPError as e:
         r = e.response
         if r.status_code in [401, 403]:
@@ -839,15 +1012,19 @@ def play_video(video_id):
             pass
         xbmcgui.Dialog().notification('%s Error %s' % (plugin.name, r.status_code), msg, xbmcgui.NOTIFICATION_WARNING)
         log.warning("Playing silence for unplayable video %s to avoid kodi crash" % video_id)
-        mimetype = 'audio/mpeg'
-        li = xbmcgui.ListItem(path=settings.unplayable_m4a)
-        li.setProperty('mimetype', mimetype)
-        xbmcplugin.setResolvedUrl(plugin.handle, True, li)
+        media = TrackUrl(url = settings.unplayable_m4a)
+    except Exception as e:
+        xbmcgui.Dialog().notification('%s Fatal Error' % plugin.name, repr(e), xbmcgui.NOTIFICATION_ERROR)
+        traceback.print_exc()
+        media = TrackUrl(url=settings.unplayable_m4a)
+    li = xbmcgui.ListItem(path=media.url)
+    li.setProperty('mimetype', media.get_mimeType())
+    xbmcplugin.setResolvedUrl(plugin.handle, True, li)
 
 
 @plugin.route('/stream_locked')
 def stream_locked():
-    xbmcgui.Dialog().notification(heading=plugin.name, message=_T(Msg.i30242), icon=xbmcgui.NOTIFICATION_INFO)
+    xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30242), icon=xbmcgui.NOTIFICATION_INFO)
 
 
 #------------------------------------------------------------------------------
@@ -856,10 +1033,7 @@ def stream_locked():
 
 def run(argv=sys.argv):
     try:
-        # Remove last slash for folder paths
-        newargv = argv
-        newargv[0] = newargv[0].rstrip('/')
-        plugin.run(argv=newargv)
+        plugin.run(argv=argv)
     except HTTPError as e:
         r = e.response
         if r.status_code in [401, 403]:
@@ -871,6 +1045,9 @@ def run(argv=sys.argv):
         except:
             pass
         xbmcgui.Dialog().notification('%s Error %s' % (plugin.name, r.status_code), msg, xbmcgui.NOTIFICATION_ERROR)
+        traceback.print_exc()
+    except Exception as e:
+        xbmcgui.Dialog().notification('%s Fatal Error' % plugin.name, repr(e), xbmcgui.NOTIFICATION_ERROR)
         traceback.print_exc()
     finally:
         session.cleanup()

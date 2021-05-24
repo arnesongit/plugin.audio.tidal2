@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2021 Arne Svenson
+# Copyright (C) 2016-2021 arneson
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,32 +25,33 @@ from .common import Const, addon
 
 class Msg(object):
     # Settings texts
-    i30001 = 30001 # User Account
+    i30001 = 30001 # Session Data
     i30002 = 30002 # Extended
     i30004 = 30004 # Music Quality
     i30005 = 30005 # Lossless (FLAC,ALAC)
     i30006 = 30006 # High (320 kBit/s)
     i30007 = 30007 # Low (96 kBit/s)
-    i30008 = 30008 # Username
-    i30009 = 30009 # Password
+    i30008 = 30008 # User ID
+    i30009 = 30009 # Client Secret
     i30010 = 30010 # Subscription Type
     i30011 = 30011 # Country for Local Media
     i30012 = 30012 # Hifi
     i30013 = 30013 # Premium
     i30014 = 30014 # Max. number of list items per page
-    i30015 = 30015 # Unique Client Key
+    i30015 = 30015 # Client Unique Key
     i30016 = 30016 # Mark Favorites in Labels
     i30017 = 30017 # Append User Paylist Names to Labels
     i30018 = 30018 # Lossless Streaming Option
-    i30019 = 30019 # FLAC 16-Bit
-    i30020 = 30020 # ALAC 16-Bit (Apple Lossless)
-    i30021 = 30021 # FLAC/MQA 24-Bit (Master Audio) <!-- Old -->
-    i30022 = 30022 # RTMP-Protocol for High/Low Quality  <!-- Old -->
+    i30019 = 30019 # Session-ID
+    i30020 = 30020 # Device
+    i30021 = 30021 # MQA (Master Audio)
+    i30022 = 30022 # Access Token expires at
     i30023 = 30023 # Show Album Year in Labels
-    i30024 = 30024 # Add (MQA) to Master Album Labels
+    i30024 = 30024 # Add MQA or Atmos to Labels
     i30025 = 30025 # Options
-    i30026 = 30026 # Use HTTP instead of HLS Steaming (max. 720p) <!-- Old -->
+    i30026 = 30026 # Client ID
     i30027 = 30027 # Addon-Settings
+    i30028 = 30028 # --
 
     # Video Settings
     i30040 = 30040 # Video Quality
@@ -83,6 +84,10 @@ class Msg(object):
     i30118 = 30118 # Moods
     i30119 = 30119 # Top 20
     i30120 = 30120 # Promotions
+    i30121 = 30121 # Folder
+    i30122 = 30122 # Folders
+    i30123 = 30123 # Mix
+    i30124 = 30124 # Mixes
 
     # Main Menu
     i30201 = 30201 # My Music
@@ -90,12 +95,12 @@ class Msg(object):
     i30203 = 30203 # What's New
     i30206 = 30206 # Search
     i30207 = 30207 # Logout
-    i30208 = 30208 # Login (Trial-Mode is active !)
-    i30209 = 30209 # Remember login details ?  
+    i30208 = 30208 # Login
+    i30209 = 30209 # Please log in via a web browser with URL:
     i30210 = 30210 # Authorization problem  
     i30211 = 30211 # TIDAL Rising  
     i30212 = 30212 # Suggestions for me
-    i30213 = 30213 # My Playlists
+    i30213 = 30213 # All my Playlists
     i30214 = 30214 # Favorite Artists
     i30215 = 30215 # Favorite Albums
     i30216 = 30216 # Favorite Playlists
@@ -117,12 +122,12 @@ class Msg(object):
     i30232 = 30232 # Removed {what}
     i30233 = 30233 # Name of the Playlist
     i30234 = 30234 # Description (optional)
-    i30235 = 30235 # Delete Playlist
+    i30235 = 30235 # Delete {what}
     i30236 = 30236 # Playlist "{name}" contains {count} items. Are you sure to delete this playlist ?
-    i30237 = 30237 # Create new Playlist
-    i30238 = 30238 # Choose Playlist
-    i30239 = 30239 # Add to Playlist ...
-    i30240 = 30240 # Remove from Playlist
+    i30237 = 30237 # Create new {what}
+    i30238 = 30238 # Choose {what}
+    i30239 = 30239 # Add to {what}
+    i30240 = 30240 # Remove from {what}
     i30241 = 30241 # Are you sure to remove item number {entry} from this playlist ?
     i30242 = 30242 # Stream locked
     i30243 = 30243 # Tracks:{tracks} / Videos:{videos}
@@ -130,41 +135,53 @@ class Msg(object):
     i30245 = 30245 # Show Album
     i30246 = 30246 # Are you sure to remove the item from this playlist ?
     i30247 = 30247 # Remove from '{name}'
-    i30248 = 30248 # Move to Playlist ...
-    i30249 = 30249 # Set as Default {what} Playlist
-    i30250 = 30250 # Reset Default {what} Playlist
-    i30251 = 30251 # Rename Playlist
+    i30248 = 30248 # Move to {what}
+    i30249 = 30249 # Set as Default for {what}
+    i30250 = 30250 # Reset default for {what}
+    i30251 = 30251 # Rename {}
     i30252 = 30252 # Open Playlist (Audio only)"
     i30253 = 30253 # Login failed !!
     i30254 = 30254 # Open as Track/Video Playlist
     i30255 = 30255 # Open as Album Playlist
-    i30256 = 30256 # Streaming Options changed. Please re-login !
-    i30257 = 30257 # Execute the re-login now ?
-    i30258 = 30258 # Clear Playlist
+    i30256 = 30256 # Do you really want to logout ?
+    i30257 = 30257 # Zdefiniuj Client-ID i Client-Secret w ustawieniach dodatku!\nNLub zaloguj się za pomocą adresu URL: {url}
+    i30258 = 30258 # Clear {what}
     i30259 = 30259 # Playlist "{name}" contains {count} items. Are you sure to remove all items from this playlist ?
     i30260 = 30260 # No auto search
     i30261 = 30261 # Lock "Search for New Music"
     i30262 = 30262 # Enable "Search for New Music"
-    i30263 = 30263 # Adding to Playlist ...
-    i30264 = 30264 # Removing from Playlist ...
-    i30265 = 30265 # Moving to Playlist ...
-    i30266 = 30266 # Deleting from Playlist ...
-    i30267 = 30267 # Please wait ...
+    i30263 = 30263 # Adding to {what} ...
+    i30264 = 30264 # Removing from {what} ...
+    i30265 = 30265 # Moving to {what} ...
+    i30266 = 30266 # Edit {what}
+    i30267 = 30267 # EPs and Singles
     i30268 = 30268 # Release Date: {:%m/%d/%Y}
-    # New IDs
     i30269 = 30269 # API Call Failed
+    i30270 = 30270 # Other Albums and Compilations
+    i30271 = 30271 # Show Session-Info
+    i30272 = 30272 # Refresh Access-Token
+    i30273 = 30273 # My Folders and Playlists
+    i30274 = 30274 # Default {what}
+    i30275 = 30275 # Favorite Mixes
+    i30276 = 30276 # The folder '{folder}' contains {count} playlists.\nUser playlists will be deleted !
+    i30277 = 30277 # Do you really want to delete the folder '{folder}' ?
+    i30278 = 30278 # Remove '{name}' from {what}
+    i30279 = 30279 # {what} is DRM protected
+    i30280 = 30280 # TIDAL2 - OAuth2 Device Login
+    i30281 = 30281 # Login-Status
+    i30282 = 30282 # Not logged in. Please login via web browser !
 
     # Extended Settings
     i30501 = 30501 # Use Colors in Labels
     i30502 = 30502 # Enable Debug-Logging
-    i30503 = 30503 # Read Album Data for every Track (Album Cache)
+    i30503 = 30503 # --
     i30504 = 30504 # Not a FLAC Stream !
-    i30505 = 30505 # Album Cache Error !
-    i30506 = 30506 # Max. number of parallel HTTP requests
+    i30505 = 30505 # --
+    i30506 = 30506 # --
     i30507 = 30507 # Delete Album Cache
     i30508 = 30508 # Are you sure to delete the Album Cache Database ?
-    i30509 = 30509 # Cached Albums with Videos
-    i30510 = 30510 # Got no HTTP Stream, using HLS ... <!-- Old -->
+    i30509 = 30509 # --
+    i30510 = 30510 # Log API JSON data
     i30511 = 30511 # Activate Fanart HTTP Server
     i30512 = 30512 # IP-Port for Fanart HTTP Server
 
@@ -174,7 +191,7 @@ def _T(txtid):
         newid = {'artist': Msg.i30101, 'album': Msg.i30102, 'playlist': Msg.i30103, 'track': Msg.i30104, 'video': Msg.i30105,
                  'artists': Msg.i30101, 'albums': Msg.i30102, 'playlists': Msg.i30103, 'tracks': Msg.i30104, 'videos': Msg.i30105,
                  'featured': Msg.i30203, 'rising': Msg.i30211, 'discovery': Msg.i30212, 'movies': Msg.i30115, 'shows': Msg.i30116, 
-                 'genres': Msg.i30117, 'moods': Msg.i30118
+                 'genres': Msg.i30117, 'moods': Msg.i30118, 'folder': Msg.i30121, 'folders': Msg.i30121, 'mix': Msg.i30123, 'mixes': Msg.i30123
                  }.get(txtid.lower(), None)
         if not newid: return txtid
         txtid = newid
@@ -189,7 +206,8 @@ def _P(key, default_txt=None):
     # Plurals of some Texts
     newid = {'new': Msg.i30111, 'local': Msg.i30112, 'exclusive': Msg.i30113, 'recommended': Msg.i30114, 'top': Msg.i30119,
              'artist': Msg.i30106, 'album': Msg.i30107, 'playlist': Msg.i30108, 'track': Msg.i30109, 'video': Msg.i30110,
-             'artists': Msg.i30106, 'albums': Msg.i30107, 'playlists': Msg.i30108, 'tracks': Msg.i30109, 'videos': Msg.i30110
+             'artists': Msg.i30106, 'albums': Msg.i30107, 'playlists': Msg.i30108, 'tracks': Msg.i30109, 'videos': Msg.i30110,
+             'folder': Msg.i30122, 'folders': Msg.i30122, 'mix': Msg.i30124, 'mixes': Msg.i30124
              }.get(key.lower(), None)
     if newid:
         return _T(newid)

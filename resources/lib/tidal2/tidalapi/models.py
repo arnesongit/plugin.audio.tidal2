@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 #
+# Copyright (C) 2016-2021 arneson
 # Copyright (C) 2014 Thomas Amland
 #
 # This program is free software: you can redistribute it and/or modify
@@ -17,8 +18,21 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import sys
+import locale
 import re
 import datetime
+import json
+import base64
+
+PY2 = sys.version_info[0] == 2
+
+if PY2:
+    string_types = basestring
+    from collections import Iterable
+else:
+    string_types = str
+    from collections.abc import Iterable
 
 IMG_URL = 'http://resources.tidal.com/images/{picture}/{size}.jpg'
 
@@ -28,6 +42,7 @@ DEFAULT_PLAYLIST_IMG = '443331e2-0421-490c-8918-5a4867949589'
 DEFAULT_VIDEO_IMB = 'fa6f0650-76ac-41d1-a4a3-7fe4c89fca90'
 
 VARIOUS_ARTIST_ID = '2935'
+TIDAL_ARTIST_ID = '6712922'
 
 CATEGORY_IMAGE_SIZES = {'genres': '460x306', 'moods': '342x342'}
 
@@ -48,14 +63,75 @@ class SubscriptionType(object):
     free = 'FREE'
 
 
+class AudioMode(object):
+    stereo = 'STEREO'
+    sony_360 = 'SONY_360RA'
+    dolby_atmos = 'DOLBY_ATMOS'
+
+
+class Codec(object):
+    MP3 = 'MP3'
+    AAC = 'AAC'
+    M4A = 'MP4A'
+    FLAC = 'FLAC'
+    MQA = 'MQA'
+    Atmos = 'EAC3'
+
+
+class ManifestMimeType(object):
+    tidal_bts = 'vnd.tidal.bts'
+    tidal_emu = 'vnd.tidal.emu'
+    apple_mpegurl = 'vnd.apple.mpegurl'
+    dash_xml = 'dash+xml'
+
+
+class MimeType(object):
+    audio_mpeg = 'audio/mpeg'
+    audio_mp3 = 'audio/mp3'
+    audio_m4a = 'audio/m4a'
+    audio_flac = 'audio/x-flac'
+    audio_eac3 = 'audio/eac3'
+    video_mp4 = 'video/mp4'
+    video_m3u8 = 'video/mpegurl'
+    audio_map = {Codec.MP3: audio_mp3, Codec.AAC: audio_m4a, Codec.M4A: audio_m4a,
+                 Codec.FLAC: audio_flac, Codec.MQA: audio_m4a, Codec.Atmos: audio_eac3}
+    @staticmethod
+    def fromAudioCodec(codec): return MimeType.audio_map.get(codec, MimeType.audio_m4a)
+
+
 class Config(object):
-    def __init__(self, quality=Quality.high):
-        self.quality = quality
-        self.api_location = 'https://api.tidal.com/v1/'
-        self.api_token = 'kgsOOmYk3zShYrNP'     # Android Token that works for everything
-        # self.preview_token = "8C7kRFdkaRp0dLBp" # Token for Preview Mode
-        self.preview_token = "CzET4vdadNUFQ5JU" # Browser-Token for Preview 
+    def __init__(self, **kwargs):
+        self.quality = Quality.lossless
+        self.country_code = 'WW'
+        self.locale = 'en_US'
+        self.preview_token = None
         self.debug_json = False
+        self.init(**kwargs)
+
+    def init(self, **kwargs):
+        self.user_agent = kwargs.get('user_agent', "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.128 Safari/537.36")
+        self.country_code = kwargs.get('country_code', self.country_code)
+        self.user_id = kwargs.get('user_id', None)
+        self.client_id = kwargs.get('client_id', None)
+        self.client_secret = kwargs.get('client_secret', None)
+        self.client_unique_key = kwargs.get('client_unique_key', None)
+        self.session_id = kwargs.get('session_id', None)
+        self.preview_token = kwargs.get('preview_token', self.preview_token)
+        self.token_type = kwargs.get('token_type', None)
+        self.access_token = kwargs.get('access_token', None)
+        self.refresh_token = kwargs.get('refresh_token', None)
+        self.login_time = kwargs.get('login_time', datetime.datetime.now())
+        self.refresh_time = kwargs.get('refresh_time', datetime.datetime.now())
+        self.expires_in = kwargs.get('expires_in', 0)
+        self.expire_time = kwargs.get('expire_time', self.refresh_time)
+        if not self.expire_time:
+            self.expire_time = self.refresh_time + datetime.timedelta(seconds=self.expires_in)
+        self.quality = kwargs.get('quality', self.quality)
+        self.debug_json = kwargs.get('debug_json', self.debug_json)
+        try:
+            self.locale = locale.locale_alias.get(self.country_code.lower()).split('.')[0]
+        except:
+            pass
 
 
 class AlbumType(object):
@@ -68,16 +144,19 @@ class Model(object):
     id = None
     name = 'Unknown'
 
-    def parse_date(self, datestring):
+    def parse_date(self, datestring, default=None):
         try:
-            d = RE_ISO8601.match(datestring).groupdict()
-            if d['hour'] and d['minute'] and d['second']:
-                return datetime.datetime(year=int(d['year']), month=int(d['month']), day=int(d['day']), hour=int(d['hour']), minute=int(d['minute']), second=int(d['second']))
-            else:
-                return datetime.datetime(year=int(d['year']), month=int(d['month']), day=int(d['day']))
+            if isinstance(datestring, datetime.datetime):
+                return datestring
+            if isinstance(datestring, string_types):
+                d = RE_ISO8601.match(datestring).groupdict()
+                if d['hour'] and d['minute'] and d['second']:
+                    return datetime.datetime(year=int(d['year']), month=int(d['month']), day=int(d['day']), hour=int(d['hour']), minute=int(d['minute']), second=int(d['second']))
+                else:
+                    return datetime.datetime(year=int(d['year']), month=int(d['month']), day=int(d['day']))
         except:
             pass
-        return None
+        return default
 
 
 class BrowsableMedia(Model):
@@ -116,14 +195,13 @@ class Album(BrowsableMedia):
     explicit = False
     version = None
     popularity = 0
+    audioModes = [AudioMode.stereo]
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         super(Album, self).__init__()
-        if self.releaseDate:
-            self.releaseDate = self.parse_date(self.releaseDate)
-        if self.streamStartDate:
-            self.streamStartDate = self.parse_date(self.streamStartDate)
+        self.releaseDate = self.parse_date(self.releaseDate)
+        self.streamStartDate = self.parse_date(self.streamStartDate)
         self.num_tracks = self.numberOfTracks # For Backward Compatibility
         self.release_date = self.releaseDate  # For Backward Compatibility
         self.name = self.title                # For Backward Compatibility
@@ -154,6 +232,13 @@ class Album(BrowsableMedia):
     def isMasterAlbum(self):
         return True if self.audioQuality == Quality.hi_res else False
 
+    @property
+    def isDolbyAtmos(self):
+        try:
+            return True if AudioMode.dolby_atmos in self.audioModes else False
+        except:
+            return False
+
 
 class Artist(BrowsableMedia):
     picture = None
@@ -180,6 +265,9 @@ class Artist(BrowsableMedia):
 class Mix(BrowsableMedia):
     title = 'Unknown'
     subTitle = ''
+    mixType = ''
+    dateAdded = None
+    updated = None
     _image = None
     _fanart = None
 
@@ -187,14 +275,17 @@ class Mix(BrowsableMedia):
         self.__dict__.update(kwargs)
         super(Mix, self).__init__()
         self.name = self.title
+        self.dateAdded = self.parse_date(self.dateAdded)
+        self.updated = self.parse_date(self.updated, default=self.dateAdded)
         try:
             self._image = kwargs['images']['MEDIUM']['url']
-            # self._image = kwargs['graphic']['images'][0]['id']
         except:
             self._image = IMG_URL.format(picture=DEFAULT_PLAYLIST_IMG.replace('-', '/'), size='320x214')
         try:
-            self._fanart = kwargs['images']['LARGE']['url']
-            # self._image = kwargs['graphic']['images'][0]['id']
+            try:
+                self._fanart = kwargs['detailImages']['LARGE']['url']
+            except:
+                self._fanart = kwargs['images']['LARGE']['url']
         except:
             self._image = IMG_URL.format(picture=DEFAULT_PLAYLIST_IMG.replace('-', '/'), size='1080x720')
 
@@ -207,21 +298,69 @@ class Mix(BrowsableMedia):
         return self._fanart
 
 
+class Folder(BrowsableMedia):
+    createdAt = None
+    lastModifiedAt = None
+    trn = None
+    totalNumberOfItems = 0
+    parentFolderId = None
+    parentFolderName = ''
+
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+        super(Folder, self).__init__()
+        self.createdAt = self.parse_date(self.createdAt)
+        self.lastModifiedAt = self.parse_date(self.lastModifiedAt, default=self.lastModifiedAt)
+        if not self.trn:
+            self.trn = 'trn:folder:' + self.id
+        try:
+            self.parentFolderId = kwargs['parent']['id']
+            self.parentFolderName = kwargs['parent']['name']
+        except:
+            pass
+
+    @property
+    def numberOfItems(self):
+        return self.totalNumberOfItems
+
+    @property
+    def year(self):
+        if self.lastModifiedAt:
+            return self.lastModifiedAt.year
+        elif self.createdAt:
+            return self.createdAt.year
+        return datetime.datetime.now().year
+
+    @property
+    def image(self):
+        return IMG_URL.format(picture=DEFAULT_PLAYLIST_IMG.replace('-', '/'), size='320x214')
+
+    @property
+    def fanart(self):
+        return None
+
+
 class Playlist(BrowsableMedia):
     description = None
     creator = None
     type = None
     uuid = None
+    trn = None
     title = 'Unknown'
     created = None
     creationDate = None
+    creatorId = None
     publicPlaylist = None
     lastUpdated = None
+    lastItemAddedAt = None
     squareImage = None
     numberOfTracks = 0
     numberOfVideos = 0
     duration = -1
     popularity = 0
+    parentFolderId = None
+    parentFolderName = ''
+    parent = {}
 
     # Internal Properties
     _image = None  # For Backward Compatibility because "image" is a property method
@@ -238,13 +377,26 @@ class Playlist(BrowsableMedia):
         if self.description == None:
             self.description = ''
         self._image = kwargs.get('image', None) # Because "image" is a property method
-        if self.created:
-            # New Property for Backward Compatibility
-            self.creationDate = self.parse_date(self.created)
-        if self.lastUpdated:
-            self.lastUpdated = self.parse_date(self.lastUpdated)
-        else:
-            self.lastUpdated = self.creationDate
+        self.created= self.parse_date(self.created)
+        # New Property for Backward Compatibility
+        self.creationDate = self.created
+        self.lastUpdated = self.parse_date(self.lastUpdated, default=self.created)
+        self.lastItemAddedAt = self.parse_date(self.lastItemAddedAt, default=self.lastUpdated)
+        if not self.trn:
+            self.trn = 'trn:playlist:' + self.uuid
+        try:
+            self.parentFolderId = kwargs['parent']['id']
+            self.parentFolderName = kwargs['parent']['name']
+        except:
+            pass
+        try:
+            self.creatorId = kwargs['creator']['id']
+        except:
+            pass
+
+    @property
+    def isUserPlaylist(self):
+        return True if self.type == 'USER' else False
 
     @property
     def numberOfItems(self):
@@ -296,8 +448,7 @@ class PlayableMedia(BrowsableMedia):
 
     def __init__(self):
         super(PlayableMedia, self).__init__()
-        if self.streamStartDate:
-            self.streamStartDate = self.parse_date(self.streamStartDate)
+        self.streamStartDate = self.parse_date(self.streamStartDate)
         self.name = self.title  # For Backward Compatibility
 
     @property
@@ -320,6 +471,7 @@ class Track(PlayableMedia):
     replayGain = 0.0
     peak = 1.0
     editable = False
+    audioModes = [AudioMode.stereo]
 
     # Internal Properties
     _ftArtists = []  # All artists except main (Filled by parser)
@@ -350,6 +502,17 @@ class Track(PlayableMedia):
             return self.artist.fanart
         return None
 
+    @property
+    def isMqa(self):
+        return True if self.audioQuality == Quality.hi_res else False
+
+    @property
+    def isDolbyAtmos(self):
+        try:
+            return True if AudioMode.dolby_atmos in self.audioModes else False
+        except:
+            return False
+
 
 class Video(PlayableMedia):
     releaseDate = None
@@ -357,6 +520,7 @@ class Video(PlayableMedia):
     imageId = None
     squareImage = None
     popularity = 0
+    quality = 'MP4_1080P'
 
     # Internal Properties
     _ftArtists = []  # All artists except main (Filled by parser)
@@ -364,8 +528,7 @@ class Video(PlayableMedia):
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         super(Video, self).__init__()
-        if self.releaseDate:
-            self.releaseDate = self.parse_date(self.releaseDate)
+        self.releaseDate = self.parse_date(self.releaseDate)
 
     @property
     def year(self):
@@ -413,6 +576,10 @@ class Promotion(BrowsableMedia):
     artifactId = None
     duration= 0
     popularity = 0
+    trn = None
+    parentFolderId = None
+    parentFolderName = ''
+    parent = {}
 
     # Internal Properties
     _artist = None       # filled by parser
@@ -420,8 +587,7 @@ class Promotion(BrowsableMedia):
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         super(Promotion, self).__init__()
-        if self.created:
-            self.created = self.parse_date(self.created)
+        self.created = self.parse_date(self.created)
         self.id = '%s' % self.artifactId
         self.id = self.id.strip()
         self.name = self.shortHeader
@@ -431,6 +597,13 @@ class Promotion(BrowsableMedia):
         if self.type == 'VIDEO' and 'http' in self.id and 'video/' in self.id:
             # Correct malformed ID
             self.id = self.id.split('video/')[1]
+        if not self.trn and self.type == 'PLAYLIST':
+            self.trn = 'trn:playlist:' + self.id
+        try:
+            self.parentFolderId = kwargs['parent']['id']
+            self.parentFolderName = kwargs['parent']['name']
+        except:
+            pass
 
     @property
     def image(self):
@@ -508,6 +681,62 @@ class SearchResult(Model):
         self.videos = []
 
 
+class DeviceCode(Model):
+    deviceCode = ''
+    userCode = ''
+    verificationUri = ''
+    verificationUriComplete = ''
+    expiresIn = 0
+    interval = 2
+    _client_id = None
+    _client_secret = None
+
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+        if isinstance(self.verificationUriComplete, string_types) and not self.verificationUriComplete.lower().startswith('http'):
+            self.verificationUriComplete = 'https://' + self.verificationUriComplete
+        self._start_time = datetime.datetime.now()
+        self._expire_time = self._start_time + datetime.timedelta(seconds=self.expiresIn)
+
+    @property
+    def isExpired(self):
+        return True if datetime.datetime.now() > self._expire_time else False
+
+
+class AuthToken(Model):
+    status = 200
+    error = ''
+    sub_status = 0
+    error = ''
+    error_description = ''
+    access_token = ''
+    refresh_token = ''
+    token_type = ''
+    expires_in = 0
+    user_id = 0
+    username = ''
+    country_code = 'WW'
+
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+        user = kwargs.get('user', {})
+        self.user_id = user.get('userId', 0)
+        self.username = user.get('username', '')
+        self.country_code = user.get('countryCode', 'WW')
+        self.id = self.user_id
+        self.name = self.username
+        self.login_time = datetime.datetime.now()
+        self.expire_time = self.login_time + datetime.timedelta(seconds=self.expires_in)
+
+    @property
+    def success(self):
+        return True if self.access_token and self.user_id != 0 else False
+
+    @property
+    def authorizationPending(self):
+        return True if self.status == 400 and self.sub_status == 1002 else False
+
+
 class UserInfo(Model):
     username = ''
     firstName = ''
@@ -524,10 +753,8 @@ class UserInfo(Model):
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         super(UserInfo, self).__init__()
-        if self.created:
-            self.created = self.parse_date(self.created)
-        if self.dateOfBirth:
-            self.dateOfBirth = self.parse_date(self.dateOfBirth)
+        self.created = self.parse_date(self.created)
+        self.dateOfBirth = self.parse_date(self.dateOfBirth)
         self.facebookUid = '%s' % self.facebookUid
         self.name = self.username
 
@@ -563,7 +790,7 @@ class Subscription(Model):
         self.subscription = {'type': value}
 
     @property
-    def isValis(self):
+    def isValid(self):
         return self.validUntil >= datetime.datetime.now()
 
 
@@ -575,7 +802,7 @@ class StreamUrl(object):
 
 
 class TrackUrl(StreamUrl):
-    codec = None            # MP3, AAC, FLAC, ALAC, MQA
+    codec = None            # MP3, AAC, FLAC, ALAC, MQA, EAC3
     cutId = None
     soundQuality = None     # LOW, HIGH, LOSSLESS
     audioQuality = None     # LOW, HIGH, LOSSLESS, HI_RES
@@ -583,7 +810,15 @@ class TrackUrl(StreamUrl):
     securityToken = None
     securityType = None
     trackId = None
+    mimeType = MimeType.audio_mpeg
     urls = []
+    # Fields for playbackinfopostpaywall results
+    assetPresentation = 'FULL'
+    audioMode = AudioMode.stereo
+    streamingSessionId = None
+    manifestMimeType  = ''
+    manifest = None
+    manifestJson = {}
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -592,22 +827,62 @@ class TrackUrl(StreamUrl):
             self.url = self.urls[0]
         if not self.soundQuality:
             self.soundQuality = self.audioQuality
+        if ManifestMimeType.tidal_bts in self.manifestMimeType and self.manifest:
+            self.manifestJson = json.loads(base64.b64decode(self.manifest).decode('utf-8'))
+            self.codec = self.manifestJson['codecs'].upper().split('.')[0] if 'codecs' in self.manifestJson else Codec.M4A
+            self.mimeType = self.manifestJson.get('mimeType', MimeType.fromAudioCodec(self.codec))
+            self.encryptionKey = self.manifestJson.get('keyId', None)
+            self.urls = self.manifestJson['urls']
+            self.url = self.urls[0]
+
+    def get_mimeType(self):
+        if self.codec:
+            return MimeType.fromAudioCodec(self.codec)
+        if not isinstance(self.url, string_types):
+            return MimeType.audio_m4a
+        return MimeType.audio_flac if  '.flac' in self.url else MimeType.audio_mp3 if '.mp3' in self.url else MimeType.audio_m4a
 
     @property
     def isEncrypted(self):
-        return True if self.encryptionKey or self.securityToken else False
+        return True if self.encryptionKey or self.securityToken or ManifestMimeType.dash_xml in self.manifestMimeType else False
 
 
 class VideoUrl(StreamUrl):
+    videoId = None
     videoQuality = None     # HIGH
     urls = []
     format = 'HLS'
+    mimeType = MimeType.video_mp4
+    # Fields for playbackinfopostpaywall results
+    streamType = None
+    assetPresentation = 'FULL'
+    audioMode = AudioMode.stereo
+    streamingSessionId = None
+    manifestMimeType  = ''
+    manifest = None
+    manifestJson = {}
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         super(VideoUrl, self).__init__()
         if not self.url and len(self.urls) > 0:
             self.url = self.urls[0]
+        if ManifestMimeType.apple_mpegurl in self.manifestMimeType and len(self.urls) > 0:
+            self.url = self.urls[0]
+        elif ManifestMimeType.tidal_emu in self.manifestMimeType and self.manifest:
+            self.manifestJson = json.loads(base64.b64decode(self.manifest).decode('utf-8'))
+            self.mimeType = self.manifestJson.get('mimeType', MimeType.video_mp4)
+            self.urls = self.manifestJson['urls']
+            self.url = self.urls[0]
+
+    def get_mimeType(self):
+        if isinstance(self.url, string_types) and '.m3u8' in self.url.lower():
+            return MimeType.video_m3u8
+        return MimeType.video_mp4
+
+    @property
+    def isEncrypted(self):
+        return True if ManifestMimeType.dash_xml in self.manifestMimeType else False
 
 
 class CutInfo(Model):

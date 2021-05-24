@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 #
+# Copyright (C) 2016-2021 arneson
 # Copyright (C) 2014 Thomas Amland
 #
 # This program is free software: you can redistribute it and/or modify
@@ -18,118 +19,127 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import sys
+import os
 import re
 import datetime
 import random
 import json
 import logging
 import requests
+import base64
+import hashlib
 
-from .models import Config, UserInfo, Subscription, SubscriptionType, Quality, AlbumType, TrackUrl, VideoUrl, CutInfo
-from .models import Artist, Album, Track, Video, Mix, Playlist, BrowsableMedia, PlayableMedia, Promotion, SearchResult, Category
+from .models import *
+
 try:
-    from urlparse import urljoin
+    from urlparse import parse_qs, urljoin, urlsplit
+    from urllib import urlencode, unquote
 except ImportError:
-    from urllib.parse import urljoin
+    from urllib.parse import parse_qs, urljoin, urlsplit, urlencode, unquote
 
-PY2 = sys.version_info[0] == 2
-
-if PY2:
-    string_types = basestring
-    from collections import Iterable
-else:
-    string_types = str
-    from collections.abc import Iterable
 
 # log = logging.getLogger(__name__.split('.')[-1])
 from ..debug import log
+
+try:
+    from requests.packages import urllib3
+    urllib3.disable_warnings() # Disable OpenSSL Warnings in URLLIB3
+except:
+    pass
+
+TIDAL_HOMEPAGE = 'https://listen.tidal.com'
+URL_API_V1 = 'https://api.tidal.com/v1/'
+URL_API_V2 = 'https://api.tidal.com/v2/'
+OAUTH_BASE_URL = 'https://auth.tidal.com/v1/oauth2/'
+DEFAULT_SCOPE = 'r_usr w_usr'   # w_usr=WRITE_USR, r_usr=READ_USR_DATA, w_sub=WRITE_SUBSCRIPTION
 
 ALL_SAERCH_FIELDS = ['ARTISTS', 'ALBUMS', 'PLAYLISTS', 'TRACKS', 'VIDEOS']
 
 
 class Session(object):
 
-    def __init__(self, config=Config()):
+    def __init__(self, config):
         """:type _config: :class:`Config`"""
         self._config = config
-        self.session_id = None
-        self.user = None
-        self.country_code = 'US'   # Enable Trial Mode
-        self.client_unique_key = None
-        try:
-            from requests.packages import urllib3
-            urllib3.disable_warnings() # Disable OpenSSL Warnings in URLLIB3
-        except:
-            pass
+        self.user = User(self)
+        self._cursor = ''
+        self._cursor_pos = 0
 
-    def logout(self):
-        self.session_id = None
-        self.user = None
-
-    def load_session(self, session_id, country_code, user_id=None, subscription_type=None, unique_key=None):
-        self.session_id = session_id
-        self.client_unique_key = unique_key
-        self.country_code = country_code
-        if not self.country_code:
-            # Set Local Country Code to enable Trial Mode 
-            self.country_code = self.local_country_code()
-        if user_id:
-            self.user = self.init_user(user_id=user_id, subscription_type=subscription_type)
-        else:
+    def cleanup(self):
+        self._config = None
+        if self.user:
+            self.user._session = None
+            if self.user.favorites:
+                self.user.favorites._session = None
+                self.user.favorites = None
             self.user = None
 
-    def generate_client_unique_key(self):
-        return format(random.getrandbits(64), '02x')
+    def get_country_code(self, default='DE'):
+        try:
+            url = urljoin(URL_API_V1, 'country/context')
+            headers = { 'X-Tidal-Token': self._config.preview_token}
+            r = requests.get(url, params={'countryCode': 'WW'}, headers=headers)
+            if not r.ok:
+                return default
+            return r.json().get('countryCode', default)
+        except:
+            return default
 
-    def login(self, username, password, subscription_type=None):
-        if not username or not password:
-            return False
-        if not subscription_type:
-            # Set Subscription Type corresponding to the given playback quality
-            subscription_type = SubscriptionType.hifi if self._config.quality == Quality.lossless else SubscriptionType.premium
-        if not self.client_unique_key:
-            # Generate a random client key if no key is given
-            self.client_unique_key = self.generate_client_unique_key()
-        url = urljoin(self._config.api_location, 'login/username')
-        headers = { "X-Tidal-Token": self._config.api_token }
-        payload = {
-            'username': username,
-            'password': password,
-            'clientUniqueKey': self.client_unique_key
+    def get_preview_token(self):
+        try:
+            return re.findall(base64.b64decode('LioiKENbMC05QS1aYS16XXsxNH1VKSIuKg==').decode('utf-8'), requests.get(urljoin(TIDAL_HOMEPAGE, 
+                                                re.findall(base64.b64decode('LipzY3JpcHRccytzcmNccyo9XHMqIi4oYXBwXC5bMC05QS1GYS1mXStcLmNodW5rXC5qcykiLio=').decode('utf-8'), 
+                                                           requests.get(TIDAL_HOMEPAGE).content.decode('utf-8'))[0])).content.decode('utf-8'))[0]
+        except:
+            pass
+        return ''
+
+    def login_part1(self, client_id=None, client_secret=None):
+        data = {
+            'client_id': client_id if client_id else self._config.client_id,
+            'scope': DEFAULT_SCOPE
         }
-        log.info('Using Token "%s" with clientUniqueKey "%s"' % (self._config.api_token, self.client_unique_key))
-        r = requests.post(url, data=payload, headers=headers)
-        if not r.ok:
-            try:
-                msg = r.json().get('userMessage')
-            except:
-                msg = r.reason
-            log.error(msg)
-        else:
-            try:
-                body = r.json()
-                self.session_id = body['sessionId']
-                self.country_code = body['countryCode']
-                self.user = self.init_user(user_id=body['userId'], subscription_type=subscription_type)
-            except:
-                log.error('Login failed.')
+        r = requests.post(urljoin(OAUTH_BASE_URL, 'device_authorization'), data=data)
+        r = self.check_response(r)
+        device_code = self._parse_device_code(r.json())
+        device_code._client_id = client_id if client_id else self._config.client_id
+        device_code._client_secret = client_secret if client_secret else self._config.client_secret
+        return device_code
 
-        return self.is_logged_in
+    def login_part2(self, device_code):
+        data = {
+            'client_id': device_code._client_id if device_code._client_id else self._config.client_id,
+            'client_secret': device_code._client_secret if device_code._client_secret else self._config.client_secret,
+            'device_code': device_code if isinstance(device_code, string_types) else device_code.deviceCode,
+            'grant_type': 'urn:ietf:params:oauth:grant-type:device_code',
+            'scope': DEFAULT_SCOPE
+        }
+        r = requests.post(urljoin(OAUTH_BASE_URL, 'token'), data=data)
+        if self._config.debug_json:
+            r = self.check_response(r, raiseOnError=False)
+        try:
+            token = self._parse_auth_token(r.json())
+            if token.success:
+                self._config.client_id = data['client_id']
+                self._config.client_secret = data['client_secret']
+                self._config.user_id = token.user_id
+                self._config.country_code = token.country_code
+                self._config.token_type = token.token_type
+                self._config.access_token = token.access_token
+                if token.refresh_token:
+                    self._config.refresh_token = token.refresh_token
+                self._config.expires_in = token.expires_in
+                self._config.login_time = token.login_time
+                self._config.refresh_time = token.login_time
+                self._config.expire_time = token.expire_time
+        except:
+            token = AuthToken(status=500, error='Unknown error', error_description='No Json data in respose')
+        return token
 
-    def init_user(self, user_id, subscription_type):
-        return User(self, user_id=user_id, subscription_type=subscription_type)
-
-    def local_country_code(self):
-        url = urljoin(self._config.api_location, 'country/context')
-        headers = { "X-Tidal-Token": self._config.api_token}
-        r = requests.request('GET', url, params={'countryCode': 'WW'}, headers=headers)
-        if not r.ok:
-            return 'US'
-        return r.json().get('countryCode')
 
     @property
     def is_logged_in(self):
-        return True if self.session_id and self.country_code and self.user else False
+        return True if self._config.access_token and self._config.country_code and self.user else False
 
     def check_login(self):
         """ Returns true if current session is valid, false otherwise. """
@@ -138,47 +148,104 @@ class Session(object):
         self.user.subscription = self.get_user_subscription(self.user.id)
         return True if self.user.subscription != None else False
 
-    def request(self, method, path, params=None, data=None, headers=None):
-        request_headers = {}
-        request_params = {
-            'countryCode': self.country_code
+    def token_refresh(self):
+        data = {
+            'client_id': self._config.client_id,
+            'client_secret': self._config.client_secret,
+            'refresh_token': self._config.refresh_token,
+            'grant_type': 'refresh_token',
+            'scope': DEFAULT_SCOPE
         }
+        log.debug('Requesting new Access Token...')
+        r = requests.post(urljoin(OAUTH_BASE_URL, 'token'), data=data)
+        if self._config.debug_json:
+            r = self.check_response(r, raiseOnError=False)
+        try:
+            token = self._parse_auth_token(r.json())
+            if token.success:
+                self._config.user_id = token.user_id
+                self._config.token_type = token.token_type
+                self._config.access_token = token.access_token
+                self._config.expires_in = token.expires_in
+                self._config.refresh_time = token.login_time
+                self._config.expire_time = token.expire_time
+                log.info('New Access Token expires at %s' % token.expire_time)
+        except:
+            token = AuthToken(status=500, error='Unknown error', error_description='No Json data in respose')
+        return token
+
+    def token_expired(self, r=None):
+        if isinstance(r, requests.Response):
+            try:
+                json_obj = r.json()
+                if not r.ok and json_obj.get('status', 0) == 401 and json_obj.get('subStatus', 0) == 11003:
+                    log.info('Access Token expired at %s. Getting new one ...' % self._config.expire_time)
+                    return True
+            except:
+                pass
+            return False
+        if datetime.datetime.now() > self._config.expire_time:
+            log.info('Access Token in addon settings expired at %s. Getting new one ...' % self._config.expire_time)
+            return True
+        return False
+
+    def logout(self, signoff=False):
+        if signoff:
+            try:
+                self.request(method='POST', path='logout')
+            except:
+                pass
+        self._config.init()
+        self.user = None
+
+
+    def request(self, method, url=URL_API_V1, path=None, params=None, data=None, headers=None, authenticate=True):
+        if self.is_logged_in and self.token_expired():
+            self.token_refresh()
+        request_headers = {}
+        request_params = {}
+        if url.startswith(URL_API_V1) or url.startswith(URL_API_V2):
+            request_params.update({'countryCode': self._config.country_code})
         if headers:
             request_headers.update(headers)
         if params:
             request_params.update(params)
         if request_params.get('offset', 1) == 0:
             request_params.pop('offset', 1) # Remove Zero Offset from Params
-        url = urljoin(self._config.api_location, path)
+        url = urljoin(url, path)
         if self.is_logged_in:
-            # Request with API Session if SessionId is not given in headers parameter
-            if not 'X-Tidal-SessionId' in request_headers:
-                request_headers.update({'X-Tidal-SessionId': self.session_id})
+            if authenticate:
+                request_headers.update({'Authorization': '{} {}'.format(self._config.token_type, self._config.access_token)})
         else:
             # Request with Preview-Token. Remove SessionId if given via headers parameter
-            request_headers.pop('X-Tidal-SessionId', None)
+            # request_headers.pop('X-Tidal-SessionId', None)
             request_params.update({'token': self._config.preview_token})
         r = requests.request(method, url, params=request_params, data=data, headers=request_headers)
-        log.info("%s %s" % (method, r.request.url))
+        if self.token_expired(r):
+            self.token_refresh()
+            request_headers.update({'Authorization': '{} {}'.format(self._config.token_type, self._config.access_token)})
+            r = requests.request(method, url, params=request_params, data=data, headers=request_headers)
+        return self.check_response(r)
+
+    def check_response(self, r, raiseOnError=True):
+        log.info('%s %s' % (r.request.method, r.request.url))
         if not r.ok:
-            log.error(r.url)
             try:
-                log.error(r.json().get('userMessage'))
+                log.error(repr(r)+' '+r.json().get('userMessage', repr(r)))
             except:
-                log.error(r.reason)
-        r.raise_for_status()
+                log.error(repr(r))
+        if raiseOnError:
+            r.raise_for_status()
         if self._config.debug_json:
-            log.info("response: %s" % json.dumps(r.json(), indent=4))
+            try:
+                log.info(repr(r))
+                log.info('response: %s' % json.dumps(r.json(), indent=4))
+            except:
+                try:
+                    log.info('response: %s' % r.content)
+                except:
+                    pass
         return r
-
-    def get_user(self, user_id):
-        return self._map_request('users/%s' % user_id, ret='user')
-
-    def get_user_subscription(self, user_id):
-        return self._map_request('users/%s/subscription' % user_id, ret='subscription')
-
-    def get_user_playlists(self, user_id):
-        return self._map_request('users/%s/playlists' % user_id, ret='playlists')
 
     def get_playlist(self, playlist_id):
         return self._map_request('playlists/%s' % playlist_id, ret='playlist')
@@ -283,11 +350,11 @@ class Session(object):
         return clean_text
 
     def get_artist_bio(self, artist_id):
-        bio = self.request('GET', 'artists/%s/bio' % artist_id, params={'includeImageLinks': 'false'}).json()
+        bio = self.request('GET', path='artists/%s/bio' % artist_id, params={'includeImageLinks': 'false'}).json()
         return self._cleanup_text(bio.get('text', ''))
 
     def get_artist_info(self, artist_id):
-        bio = self.request('GET', 'artists/%s/bio' % artist_id, params={'includeImageLinks': 'false'}).json()
+        bio = self.request('GET', path='artists/%s/bio' % artist_id, params={'includeImageLinks': 'false'}).json()
         if bio.get('summary', None):
             bio.update({'summary': self._cleanup_text(bio.get('summary', ''))})
         if bio.get('text', None):
@@ -306,14 +373,14 @@ class Session(object):
     def get_featured(self, group=None, types=['PLAYLIST'], limit=999):
         params = {'limit': limit,
                   'clientType': 'BROWSER',
-                  'subscriptionType': SubscriptionType.hifi if not self.is_logged_in else self.user.subscription.type}
+                  'subscriptionType': SubscriptionType.hifi}
         if group:
             params.update({'group': group})      # RISING | DISCOVERY | NEWS
-        items = self.request('GET', 'promotions', params=params).json()['items']
+        items = self.request('GET', path='promotions', params=params).json()['items']
         return [self._parse_promotion(item) for item in items if item['type'] in types]
 
     def get_category_items(self, group):
-        items = list(map(self._parse_category, self.request('GET', group).json()))
+        items = list(map(self._parse_category, self.request('GET', path=group).json()))
         for item in items:
             item._group = group
         return items
@@ -361,17 +428,23 @@ class Session(object):
                 item.album = album
         return item
 
+    def get_lyrics(self, track_id):
+        # Not working yet
+        return self._map_request('tracks/%s/lyrics' % track_id, ret='json')
+
     def get_video(self, video_id):
         return self._map_request('videos/%s' % video_id, ret='video')
 
     def get_recommended_items(self, content_type, item_id, offset=0, limit=999):
         return self._map_request('%s/%s/recommendations' % (content_type, item_id), params={'offset': offset, 'limit': limit}, ret=content_type)
 
-    def _map_request(self, url, method='GET', params=None, data=None, headers=None, ret=None):
-        r = self.request(method, url, params=params, data=data, headers=headers)
+    def _map_request(self, path, url=URL_API_V1, method='GET', params=None, data=None, headers=None, authenticate=True, ret=None):
+        r = self.request(method, url=url, path=path, params=params, data=data, headers=headers, authenticate=authenticate)
         if not r.ok:
             return [] if ret.endswith('s') else None
         json_obj = r.json()
+        if ret == 'json':
+            return json_obj
         if 'items' in json_obj:
             items = json_obj.get('items')
             result = []
@@ -379,7 +452,12 @@ class Session(object):
             if params and 'offset' in params:
                 offset = params.get('offset')
             itemPosition = offset
+            if self._cursor:
+                itemPosition = itemPosition + self._cursor_pos
+            else:
+                self._cursor_pos = 0
             try:
+                self._cursor = json_obj.get('cursor', '')
                 numberOfItems = int('0%s' % json_obj.get('totalNumberOfItems')) if 'totalNumberOfItems' in json_obj else 9999
             except:
                 numberOfItems = 9999
@@ -389,7 +467,13 @@ class Session(object):
                 if 'type' in item and ret.startswith('playlistitem'):
                     retType = item['type']
                 cutData = None
-                if 'item' in item:
+                if 'data' in item and URL_API_V2 in url:
+                    parent = item.get('parent', {})
+                    item = item['data']
+                    if not 'parent' in item:
+                        item['parent'] = parent if isinstance(parent, dict) else {}
+                    retType = item.get('itemType', retType).lower()
+                elif 'item' in item:
                     cutData = item.get('cut', None)
                     item = item['item']
                 elif 'track' in item and ret.startswith('track'):
@@ -405,58 +489,83 @@ class Session(object):
                     nextItem._cut = self._parse_one_item(cutData, ret='cut')
                 result.append(nextItem)
                 itemPosition = itemPosition + 1
+                self._cursor_pos = self._cursor_pos + 1
         else:
+            if 'data' in json_obj and URL_API_V2 in url:
+                parent = json_obj.get('parent', {})
+                json_obj = json_obj['data']
+                if not 'parent' in json_obj:
+                    json_obj['parent'] = parent if isinstance(parent, dict) else {}
+                retType = json_obj.get('itemType', ret).lower()
             result = self._parse_one_item(json_obj, ret)
-            if isinstance(result, Playlist) and result.type == 'USER':
+            if isinstance(result, Playlist) and result.isUserPlaylist:
                 # Get ETag of Playlist which must be used to add/remove entries of playlists
                 try: 
                     result._etag = r.headers._store['etag'][1]
                 except:
                     result._etag = None
-                    log.error('No ETag in response header for playlist "%s" (%s)' % (json_obj.get('title'), json_obj.get('id')))
+                    if URL_API_V1 in url:
+                        # ETag is only for API V1
+                        log.error('No ETag in response header for playlist "%s" (%s)' % (json_obj.get('title'), json_obj.get('id')))
         return result
 
-    def get_media_url(self, track_id, quality=None, cut_id=None, fallback=True):
-        soundQuality = quality if quality else self._config.quality
-        media = self.get_track_url(track_id, quality=soundQuality, cut_id=cut_id)
-        if fallback and soundQuality == Quality.lossless and (media == None or media.isEncrypted):
-            log.info(media.url)
-            if media:
-                # Got Encrypted Stream. Retry with HIGH Quality
-                log.warning('Got encryptionKey "%s" for track %s, trying HIGH Quality ...' % (media.encryptionKey, track_id))
-            else:
-                log.warning('No Lossless stream for track %s, trying HIGH Quality ...' % track_id)
-            media = self.get_track_url(track_id, quality=Quality.high, cut_id=cut_id)
-        if not media:
-            return None
-        return media.url
+    def _map_request_v2(self, path, url=URL_API_V2, params=None, data=None, headers=None, authenticate=True, ret=None):
+        self._cursor = ''
+        self._cursor_pos = 0
+        firstRun = True
+        items = []
+        while self._cursor or firstRun:
+            firstRun = False
+            items = items + self._map_request(path=path, url=url, params=params, data=data, headers=headers, authenticate=authenticate, ret=ret)
+            params['cursor'] = self._cursor
+        self._cursor = ''
+        self._cursor_pos = 0
+        # Build item numbers because all line are loaded everytime
+        offset = 0
+        for item in items:
+            item._totalNumberOfItems = len(items)
+            item._itemPosition = offset
+            item._offset = offset
+            offset = offset + 1
+        return items
 
-    def get_track_url(self, track_id, quality=None, cut_id=None):
+    def get_track_url(self, track_id, quality=None, cut_id=None, direct_mode=False):
         params = {}
-        if self.is_logged_in:
+        if not self.is_logged_in:
+            url = 'tracks/%s/previewurl' % track_id
+        elif direct_mode:
+            params.update({'soundQuality': quality if quality else self._config.quality})
             if cut_id:
                 url = 'cuts/%s/streamUrl' % cut_id
-                params.update({'soundQuality': quality if quality else self._config.quality})
             else:
-                url = 'tracks/%s/streamUrl' % track_id
-                params.update({'soundQuality': quality if quality else self._config.quality})
-                #url = 'tracks/%s/urlpostpaywall' % track_id
-                #params = {'urlusagemode': 'STREAM', 'assetpresentation': 'FULL', 'audioquality': quality if quality else self._config.quality}
+                # url = 'tracks/%s/streamUrl' % track_id
+                url = 'tracks/%s/urlpostpaywall' % track_id
+                params = {'urlusagemode': 'STREAM', 'assetpresentation': 'FULL', 'audioquality': quality if quality else self._config.quality}
         else:
-            url = 'tracks/%s/previewurl' % track_id
+            url = 'tracks/%s/playbackinfopostpaywall' % track_id
+            params = { 'audioquality': quality if quality else self._config.quality,
+                       'playbackmode': 'STREAM',
+                       'assetpresentation': 'FULL' }
+                    # 'streamingsessionid': self._config.session_id }
         return self._map_request(url,  params=params, ret='track_url')
 
-    def get_video_url(self, video_id, quality=None):
-        params = None
-        if self.is_logged_in:
+    def get_video_url(self, video_id, quality=None, direct_mode=False):
+        params = {}
+        if not self.is_logged_in:
+            url = 'videos/%s/previewurl' % video_id
+        elif direct_mode:
             # url = 'videos/%s/streamUrl' % video_id
             #if quality:
             #    params = {'videoQuality': quality}
             url = 'videos/%s/urlpostpaywall' % video_id
             params = {'urlusagemode': 'STREAM', 'assetpresentation': 'FULL', 'videoquality': quality if quality else 'HIGH' }
         else:
-            url = 'videos/%s/previewurl' % video_id
-        return self._map_request(url,  ret='video_url', params=params)
+            url = 'videos/%s/playbackinfopostpaywall' % video_id
+            params = { 'videoquality': quality if quality else 'HIGH',
+                       'playbackmode': 'STREAM',
+                       'assetpresentation': 'FULL' }
+                    # 'streamingsessionid': self._config.session_id }
+        return self._map_request(url,  params=params, ret='video_url')
 
     def search(self, field, value, limit=50):
         search_field = field
@@ -479,8 +588,11 @@ class Session(object):
 
     def _parse_one_item(self, json_obj, ret=None):
         parse = None
+        ret = ret.lower()
         if ret.startswith('user'):
             parse = self._parse_user
+        elif ret.startswith('refresh_token'):
+            parse = self._parse_refresh_token
         elif ret.startswith('subscription'):
             parse = self._parse_subscription
         elif ret.startswith('artist'):
@@ -495,6 +607,8 @@ class Session(object):
             parse = self._parse_video_url
         elif ret.startswith('video'):
             parse = self._parse_video
+        elif ret.startswith('folder'):
+            parse = self._parse_folder
         elif ret.startswith('playlist'):
             parse = self._parse_playlist
         elif ret.startswith('category'):
@@ -505,6 +619,10 @@ class Session(object):
             parse = self._parse_cut_info
         elif ret.startswith('mix'):
             parse = self._parse_mix
+        elif ret.startswith('device_code'):
+            parse = self._parse_device_code
+        elif ret.startswith('auth_token'):
+            parse = self._parse_auth_token
         else:
             raise NotImplementedError()
         oneItem = parse(json_obj)
@@ -549,10 +667,15 @@ class Session(object):
             album._isFavorite = self.user.favorites.isFavoriteAlbum(album.id)
         return album
 
+    def _parse_folder(self, json_obj):
+        return Folder(**json_obj)
+
     def _parse_playlist(self, json_obj):
         playlist = Playlist(**json_obj)
         if self.is_logged_in and self.user.favorites:
             playlist._isFavorite = self.user.favorites.isFavoritePlaylist(playlist.id)
+        if self.is_logged_in and playlist.isUserPlaylist and playlist.creatorId != None and '%s' % playlist.creatorId != '%s' % self._config.user_id:
+            playlist.type = 'OTHER_USER' # This is a User Playlist from a different user
         return playlist
 
     def _parse_promotion(self, json_obj):
@@ -628,8 +751,16 @@ class Session(object):
         return CutInfo(**json_obj)
 
     def _parse_mix(self, json_obj):
-        mix = Mix(**json_obj)
-        return mix
+        item = Mix(**json_obj)
+        if self.is_logged_in and self.user.favorites:
+            item._isFavorite = self.user.favorites.isFavoriteMix(item.id)
+        return item
+
+    def _parse_device_code(self, json_obj):
+        return DeviceCode(**json_obj)
+
+    def _parse_auth_token(self, json_obj):
+        return AuthToken(**json_obj)
 
 
 #------------------------------------------------------------------------------
@@ -638,24 +769,46 @@ class Session(object):
 
 class Favorites(object):
 
-    ids_loaded = False
-    ids = {}
-
-    def __init__(self, session, user_id):
+    def __init__(self, session):
+        self.ids = {}
         self._session = session
-        self._base_url = 'users/%s/favorites' % user_id
+        self._base_url = 'users/%s/favorites' % session._config.user_id
         self.reset()
 
     def reset(self):
         self.ids_loaded = False
-        self.ids = {'artists': [], 'albums': [], 'playlists': [], 'tracks': [], 'videos': []}
+        self.ids_modified = False
+        self.ids = {'artists': [], 'albums': [], 'playlists': [], 'tracks': [], 'videos': [], 'mixes': []}
+
+    def add_buffered_ids(self, content_type, item_ids):
+        ids = item_ids if isinstance(item_ids, list) else [item_ids]
+        for _id in ids:
+            _id = _id.id if isinstance(_id, BrowsableMedia) else _id
+            try:
+                if not '%s' % _id in self.ids[content_type]:
+                    self.ids[content_type].append('%s' % _id)
+                    self.ids_modified = True
+            except:
+                pass
+        return self.ids_modified
+
+    def remove_buffered_ids(self, content_type, item_ids):
+        ids = item_ids if isinstance(item_ids, list) else [item_ids]
+        for _id in ids:
+            _id = _id.id if isinstance(_id, BrowsableMedia) else _id
+            try:
+                if '%s' % _id in self.ids[content_type]:
+                    self.ids[content_type].remove('%s' % _id)
+                    self.ids_modified = True
+            except:
+                pass
+        return self.ids_modified
 
     def load_all(self, force_reload=False):
         if force_reload or not self.ids_loaded:
             # Reset all first
-            self.ids = {'artists': [], 'albums': [], 'playlists': [], 'tracks': [], 'videos': []}
-            self.ids_loaded = False
-            r = self._session.request('GET', self._base_url + '/ids')
+            self.reset()
+            r = self._session.request('GET', path=self._base_url + '/ids')
             if r.ok:
                 json_obj = r.json()
                 if 'ARTIST' in json_obj:
@@ -668,12 +821,30 @@ class Favorites(object):
                     self.ids['tracks'] = json_obj.get('TRACK')
                 if 'VIDEO' in json_obj:
                     self.ids['videos'] = json_obj.get('VIDEO')
+                try:
+                    mix_ids = self._session._map_request(path='favorites/mixes/ids', url=URL_API_V2, params={'limit': 500}, ret='json')
+                    if mix_ids:
+                        self.ids['mixes'] = mix_ids.get('content')
+                except:
+                    pass
                 self.ids_loaded = True
-        return self.ids
+        return self.ids_loaded
 
-    def get(self, content_type, limit=9999):
-        items = self._session._map_request(self._base_url + '/%s' % content_type, params={'limit': limit if content_type != 'videos' else min(limit, 100)}, ret=content_type)
-        self.ids[content_type] = ['%s' % item.id for item in items]
+    def get(self, content_type, offset=0, limit=9999):
+        content_type = content_type.lower()
+        if content_type == 'playlists':
+            params = {'folderId': 'root', 'offset': 0, 'limit': 50, 'order': 'NAME', 'includeOnly': 'FAVORITE_PLAYLIST'}
+            path = 'my-collection/playlists/folders/flattened'
+            items = self._session._map_request_v2(path=path, url=URL_API_V2, params=params, ret='folders')
+        elif content_type == 'mixes':
+            params = {'offset': 0, 'limit': 50, 'order': 'NAME', 'locale': self._session._config.locale, 'orderDirection': 'ASC', 'deviceType': 'BROWSER'}
+            path = 'favorites/mixes'
+            items = self._session._map_request_v2(path=path, url=URL_API_V2, params=params, ret='mix')
+        else:
+            items = self._session._map_request(self._base_url + '/' + content_type, 
+                                               params={'offset': offset, 'limit': limit if content_type != 'videos' else min(limit, 100), 'order': 'NAME'}, 
+                                               ret=content_type)
+        self.add_buffered_ids(content_type, items)
         return items
 
     def add(self, content_type, item_ids):
@@ -682,18 +853,22 @@ class Favorites(object):
         else:
             ids = item_ids
         param = {'artists': 'artistId', 'albums': 'albumId', 'playlists': 'uuid', 
-                 'tracks': 'trackIds', 'videos': 'videoIds'}.get(content_type)
-        ok = self._session.request('POST', self._base_url + '/%s' % content_type, data={param: ','.join(ids)}).ok
-        if ok and self.ids_loaded:
-            for _id in ids:
-                if _id not in self.ids[content_type]:
-                    self.ids[content_type].append(_id)
+                 'tracks': 'trackIds', 'videos': 'videoIds', 'mixes': 'mixIds'}.get(content_type)
+        if content_type == 'mixes':
+            ok = self._session.request('PUT', path='favorites/mixes/add', url=URL_API_V2, data={param: ','.join(ids), 'onArtifactNotFound': 'FAIL'}).ok
+        else:
+            ok = self._session.request('POST', path=self._base_url + '/%s' % content_type, data={param: ','.join(ids)}).ok
+        if ok:
+            self.add_buffered_ids(content_type, ids)
         return ok
 
     def remove(self, content_type, item_id):
-        ok = self._session.request('DELETE', self._base_url + '/%s/%s' % (content_type, item_id)).ok
-        if ok and self.ids_loaded and item_id in self.ids.get(content_type, []):
-            self.ids[content_type].remove(item_id)
+        if content_type == 'mixes':
+            ok = self._session.request('PUT', path='favorites/mixes/remove', url=URL_API_V2, data={'mixIds': item_id}).ok
+        else:
+            ok = self._session.request('DELETE', path=self._base_url + '/%s/%s' % (content_type, item_id)).ok
+        if ok:
+            self.remove_buffered_ids(content_type, item_id)
         return ok
 
     def add_artist(self, artist_id):
@@ -730,31 +905,43 @@ class Favorites(object):
         return self.get('artists')
 
     def isFavoriteArtist(self, artist_id):
+        self.load_all()
         return '%s' % artist_id in self.ids.get('artists', [])
 
     def albums(self):
         return self.get('albums')
 
     def isFavoriteAlbum(self, album_id):
+        self.load_all()
         return '%s' % album_id in self.ids.get('albums', [])
 
     def playlists(self):
         return self.get('playlists')
 
     def isFavoritePlaylist(self, playlist_id):
+        self.load_all()
         return '%s' % playlist_id in self.ids.get('playlists', [])
 
     def tracks(self):
         return self.get('tracks')
 
     def isFavoriteTrack(self, track_id):
+        self.load_all()
         return '%s' % track_id in self.ids.get('tracks', [])
 
     def videos(self):
         return self.get('videos', limit=100)
 
     def isFavoriteVideo(self, video_id):
+        self.load_all()
         return '%s' % video_id in self.ids.get('videos', [])
+
+    def mixes(self):
+        return self.get('mixes')
+
+    def isFavoriteMix(self, mix_id):
+        self.load_all()
+        return '%s' % mix_id in self.ids.get('mixes', [])
 
 #------------------------------------------------------------------------------
 # Class to work with users playlists
@@ -762,30 +949,34 @@ class Favorites(object):
 
 class User(object):
 
-    subscription = None
     favorites = None
 
-    def __init__(self, session, user_id, subscription_type=SubscriptionType.hifi):
+    def __init__(self, session, favorites=None):
         self._session = session
-        self.id = user_id
-        self._base_url = 'users/%s' % user_id
-        self.favorites = Favorites(session, user_id)
-        self.subscription = Subscription(subscription = {'type': subscription_type})
+        self._base_url = 'users/%s' % session._config.user_id
+        self._url_v2 = urljoin(URL_API_V2, 'my-collection/')
+        self.favorites = favorites if favorites else Favorites(session)
 
-    def playlists(self, offset=0, limit=9999):
-        # Insert Timestamp as dummy parameter to avoid caching and get actual "lastUpdated" for Playlists
-        #headers = {'If-None-Match': '%s' % datetime.datetime.now().strftime("%Y%m%d%H%M%S")}
-        #return self._session._map_request(self._base_url + '/playlists', params={'offset': offset, 'limit': limit}, headers=headers, ret='playlists')
-        dummy = '%s' % datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-        return self._session._map_request(self._base_url + '/playlists', params={'offset': offset, 'limit': limit, 'dummy':dummy}, ret='playlists')
+    def info(self):
+        return self._session._map_request(path=self._base_url, ret='user')
 
-    def create_playlist(self, title, description=''):
-        return self._session._map_request(self._base_url + '/playlists', method='POST', data={'title': title, 'description': description}, ret='playlist')
+    def subscription(self):
+        return self._session._map_request(path=self._base_url + '/subscription', ret='subscription')
+
+    def playlists(self, flattened=True, allPlaylists=False):
+        params = {'folderId': 'root', 'offset': 0, 'limit': 50, 'order': 'NAME', 'includeOnly': 'PLAYLIST' if allPlaylists else 'USER_PLAYLIST'}
+        path = 'my-collection/playlists/folders'
+        if flattened:
+            path = path + '/flattened'
+        return self._session._map_request_v2(path=path, url=URL_API_V2, params=params, ret='folders')
+
+    def create_playlist(self, title, description='', folder_id='root'):
+        return self._session._map_request(path='playlists/folders/create-playlist', url=self._url_v2, method='PUT', params={'name': title, 'description': description, 'folderId': folder_id}, ret='playlist')
 
     def delete_playlist(self, playlist_id):
         if isinstance(playlist_id, Playlist):
             playlist_id = playlist_id.id
-        return self._session.request('DELETE', 'playlists/%s' % playlist_id).ok
+        return self._session.request('DELETE', path='playlists/%s' % playlist_id).ok
 
     def rename_playlist(self, playlist, title, description=''):
         if not isinstance(playlist, Playlist):
@@ -795,12 +986,12 @@ class User(object):
             playlist = self._session.get_playlist(playlist.id)
         ok = False
         if playlist and playlist._etag:
-            headers = {'If-None-Match': '%s' % playlist._etag}
+            headers = {'if-none-match': '%s' % playlist._etag}
             data = {'title': title, 'description': description}
-            ok = self._session.request('POST', 'playlists/%s' % playlist.id, data=data, headers=headers).ok
+            ok = self._session.request('POST', path='playlists/%s' % playlist.id, data=data, headers=headers).ok
         else:
             log.warning('Got no ETag for playlist %s' & playlist.title)
-        return ok
+        return playlist if ok else None
 
     def add_playlist_entries(self, playlist, item_ids=[]):
         if not isinstance(playlist, Playlist):
@@ -811,12 +1002,12 @@ class User(object):
         trackIds = ','.join(item_ids)
         ok = False
         if playlist and playlist._etag:
-            headers = {'If-None-Match': '%s' % playlist._etag}
-            data = {'trackIds': trackIds, 'toIndex': playlist.numberOfItems}
-            ok = self._session.request('POST', 'playlists/%s/tracks' % playlist.id, data=data, headers=headers).ok
+            headers = {'if-none-match': '%s' % playlist._etag}
+            data = {'trackIds': trackIds}  # , 'toIndex': playlist.numberOfItems}
+            ok = self._session.request('POST', path='playlists/%s/items' % playlist.id, data=data, headers=headers).ok
         else:
             log.warning('Got no ETag for playlist %s' & playlist.title)
-        return ok
+        return playlist if ok else None
 
     def remove_playlist_entry(self, playlist, entry_no=None, item_id=None):
         if not isinstance(playlist, Playlist):
@@ -835,9 +1026,9 @@ class User(object):
                 return False
         ok = False
         if playlist and playlist._etag:
-            headers = {'If-None-Match': '%s' % playlist._etag}
-            ok = self._session.request('DELETE', 'playlists/%s/items/%s' % (playlist.id, entry_no), headers=headers).ok
-        return ok
+            headers = {'if-none-match': '%s' % playlist._etag}
+            ok = self._session.request('DELETE', path='playlists/%s/items/%s' % (playlist.id, entry_no), headers=headers).ok
+        return playlist if ok else None
 
     def remove_all_playlist_entries(self, playlist):
         if not isinstance(playlist, Playlist):
@@ -853,5 +1044,49 @@ class User(object):
             entries.append('%s' % i)
             i = i + 1
         return self.remove_playlist_entry(playlist, entry_no=','.join(entries))
+
+    def folders(self):
+        params = {'folderId': 'root', 'offset': 0, 'limit': 50, 'order': 'NAME', 'includeOnly': 'FOLDER'}
+        items = self._session._map_request_v2(path='my-collection/playlists/folders', url=URL_API_V2, params=params, ret='folders')
+        return items
+
+    def folder(self, folder_id):
+        items = self.folders()
+        for item in items:
+            if item.id == folder_id: return item
+        return None
+
+    def folder_items(self, folder_id):
+        params = {'folderId': folder_id, 'offset': 0, 'limit': 50, 'order': 'NAME', 'includeOnly': 'PLAYLIST'}
+        items = self._session._map_request_v2(path='my-collection/playlists/folders', url=URL_API_V2, params=params, ret='folders')
+        return items
+
+    def create_folder(self, name, parent_id='root'):
+        return self._session._map_request(url=self._url_v2, path='playlists/folders/create-folder', method='PUT', params={'folderId': parent_id, 'name': name, 'trns': ''}, ret='folder')
+
+    def remove_folder(self, trns):
+        # trns can be a folder or playlist trn or a comma separated list of trns
+        return self._session.request('PUT', url=self._url_v2, path='playlists/folders/remove', params={'trns': trns}).ok
+
+    def rename_folder(self, folder_trn, name):
+        return self._session.request('PUT', url=self._url_v2, path='playlists/folders/rename', params={'trn': folder_trn, 'name': name}).ok
+
+    def add_folder_entry(self, folder, playlist):
+        if not isinstance(playlist, Playlist):
+            playlist = self._session.get_playlist(playlist)
+        folderId = folder.id if isinstance(folder, Folder) else folder
+        ok = False
+        if playlist.isUserPlaylist or self.favorites.isFavoritePlaylist(playlist.id):
+            params = {'folderId': folderId, 'trns': playlist.trn}
+            ok = self._session.request('PUT', path='playlists/folders/move', url=self._url_v2, params=params).ok
+        else:
+            params = {"folderId": folderId, "uuids": playlist.uuid}
+            ok = self._session.request('PUT', path='playlists/folders/add-favorites', url=self._url_v2, params=params).ok
+        return ok
+
+    def move_folder_entries(self, trns, folder='root'):
+        folderId = folder.id if isinstance(folder, Folder) else folder
+        params = {'folderId': folderId, 'trns': ','.join([trns] if not isinstance(trns, list) else trns)}
+        return self._session.request('PUT', path='playlists/folders/move', url=self._url_v2, params=params).ok
 
 # End of File

@@ -1,3 +1,16 @@
+v2.0.2 (2021-05-24)
+- Changed login method to OAuth2
+- Intgrated a Login web page for a simple TIDAL device autohrization
+- Removed all tokens from the sources because of license restrictions
+- Support for Dolby Atmos playback (requires the right client id for playback)
+- Support for HI_RES streaming quality (24 Bit) for Master audio tracks
+- Improved handling of page limits
+- Support for Favorit Mixes (and Radio stations because this are mixes)
+- Support for Playlist Folders
+- Switched to TIDAL API v2 for Playlist and Folder handling
+- Folder name is appended to the playlist name if the playlist is in one of your folders
+- Added submenues in artist page for albums, EPs/Singles and compilations
+
 v2.0.1 (2021-04-08)
 - First working version for Kodi 19
 - Base code ist still compatible with Kodi 18

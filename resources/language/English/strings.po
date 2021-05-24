@@ -17,7 +17,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 msgctxt "#30001"
-msgid "User Account"
+msgid "Session Data"
 msgstr ""
 
 msgctxt "#30002"
@@ -41,11 +41,11 @@ msgid "Low (96 kBit/s)"
 msgstr ""
 
 msgctxt "#30008"
-msgid "Username"
+msgid "User ID"
 msgstr ""
 
 msgctxt "#30009"
-msgid "Password"
+msgid "Client-Secret"
 msgstr ""
 
 msgctxt "#30010"
@@ -69,7 +69,7 @@ msgid "Max. number of list items per page"
 msgstr ""
 
 msgctxt "#30015"
-msgid "Unique Client Key"
+msgid "Client-Unique-Key"
 msgstr ""
 
 msgctxt "#30016"
@@ -85,19 +85,19 @@ msgid "Lossless Streaming Option"
 msgstr ""
 
 msgctxt "#30019"
-msgid "FLAC 16-Bit"
+msgid "Session-ID"
 msgstr ""
 
 msgctxt "#30020"
-msgid "ALAC 16-Bit (Apple Lossless)"
+msgid "Device"
 msgstr ""
 
 msgctxt "#30021"
-msgid "FLAC/MQA 24-Bit (Master Audio)"
+msgid "MQA (Master Audio)"
 msgstr ""
 
 msgctxt "#30022"
-msgid "RTMP-Protocol for High/Low Quality"
+msgid "Access Token expires at"
 msgstr ""
 
 msgctxt "#30023"
@@ -105,7 +105,7 @@ msgid "Show Album Year in Labels"
 msgstr ""
 
 msgctxt "#30024"
-msgid "Add (MQA) to Master Album Labels"
+msgid "Add MQA or Atmos to Labels"
 msgstr ""
 
 msgctxt "#30025"
@@ -113,11 +113,15 @@ msgid "Options"
 msgstr ""
 
 msgctxt "#30026"
-msgid "Use HTTP instead of HLS Steaming (max. 720p)"
+msgid "Client-ID"
 msgstr ""
 
 msgctxt "#30027"
 msgid "Addon-Settings"
+msgstr ""
+
+msgctxt "#30028"
+msgid "--"
 msgstr ""
 
 msgctxt "#30040"
@@ -232,6 +236,22 @@ msgctxt "#30120"
 msgid "Promotions"
 msgstr ""
 
+msgctxt "#30121"
+msgid "Folder"
+msgstr ""
+
+msgctxt "#30122"
+msgid "Folders"
+msgstr ""
+
+msgctxt "#30123"
+msgid "Mix"
+msgstr ""
+
+msgctxt "#30124"
+msgid "Mixes"
+msgstr ""
+
 msgctxt "#30201"
 msgid "My Music"
 msgstr ""
@@ -253,11 +273,11 @@ msgid "Logout"
 msgstr ""
 
 msgctxt "#30208"
-msgid "Login (Trial-Mode is active !)"
+msgid "Login"
 msgstr ""
 
 msgctxt "#30209"
-msgid "Remember login details ?"
+msgid "Please log in via a web browser with URL:"
 msgstr ""
 
 msgctxt "#30210"
@@ -273,7 +293,7 @@ msgid "Suggestions for me"
 msgstr ""
 
 msgctxt "#30213"
-msgid "My Playlists"
+msgid "All my Playlists"
 msgstr ""
 
 msgctxt "#30214"
@@ -361,7 +381,7 @@ msgid "Description (optional)"
 msgstr ""
 
 msgctxt "#30235"
-msgid "Delete Playlist"
+msgid "Delete {what}"
 msgstr ""
 
 msgctxt "#30236"
@@ -369,19 +389,19 @@ msgid "Playlist '{name}' contains {count} items. Are you sure to delete this pla
 msgstr ""
 
 msgctxt "#30237"
-msgid "Create new Playlist"
+msgid "Create new {what}"
 msgstr ""
 
 msgctxt "#30238"
-msgid "Choose Playlist"
+msgid "Choose {what}"
 msgstr ""
 
 msgctxt "#30239"
-msgid "Add to Playlist ..."
+msgid "Add to {what}"
 msgstr ""
 
 msgctxt "#30240"
-msgid "Remove from Playlist"
+msgid "Remove from {what}"
 msgstr ""
 
 msgctxt "#30241"
@@ -397,7 +417,7 @@ msgid "Tracks:{tracks} / Videos:{videos}"
 msgstr ""
 
 msgctxt "#30244"
-msgid "Next Page ({pos1}-{pos2})"
+msgid "Next Page ({pos1}-{pos2} from {len})"
 msgstr ""
 
 msgctxt "#30245"
@@ -413,19 +433,19 @@ msgid "Remove from '{name}'"
 msgstr ""
 
 msgctxt "#30248"
-msgid "Move to Playlist ..."
+msgid "Move to {what}"
 msgstr ""
 
 msgctxt "#30249"
-msgid "Set as Default {what} Playlist"
+msgid "Set as default for {what}"
 msgstr ""
 
 msgctxt "#30250"
-msgid "Reset Default {what} Playlist"
+msgid "Reset default for {what}"
 msgstr ""
 
 msgctxt "#30251"
-msgid "Rename Playlist"
+msgid "{what} Playlist"
 msgstr ""
 
 msgctxt "#30252"
@@ -445,15 +465,15 @@ msgid "Open as Album Playlist"
 msgstr ""
 
 msgctxt "#30256"
-msgid "Streaming Options changed. Please re-login !"
+msgid "Do you really want to logout ?\nRelogin via web browswer necessary !"
 msgstr ""
 
 msgctxt "#30257"
-msgid "Execute the re-login now ?"
+msgid "Please set Client-ID and Client-Secret in the addon settings !\nOr login with URL: {url}"
 msgstr ""
 
 msgctxt "#30258"
-msgid "Clear Playlist"
+msgid "Clear {what}"
 msgstr ""
 
 msgctxt "#30259"
@@ -473,27 +493,83 @@ msgid "Enable Search for New Music"
 msgstr ""
 
 msgctxt "#30263"
-msgid "Adding to Playlist ..."
+msgid "Adding to {what} ..."
 msgstr ""
 
 msgctxt "#30264"
-msgid "Removing from Playlist ..."
+msgid "Removing from {what} ..."
 msgstr ""
 
 msgctxt "#30265"
-msgid "Moving to Playlist ..."
+msgid "Moving to {what} ..."
 msgstr ""
 
 msgctxt "#30266"
-msgid "Deleting from Playlist ..."
+msgid "Edit {what}"
 msgstr ""
 
 msgctxt "#30267"
-msgid "Please wait ..."
+msgid "EPs and Singles"
 msgstr ""
 
 msgctxt "#30268"
 msgid "Release Date: {:%m/%d/%Y}"
+msgstr ""
+
+msgctxt "#30269"
+msgid "TIDAL API Error"
+msgstr ""
+
+msgctxt "#30270"
+msgid "Other Albums and Compilations"
+msgstr ""
+
+msgctxt "#30271"
+msgid "Show Session-Info"
+msgstr ""
+
+msgctxt "#30272"
+msgid "Refresh Access-Token now"
+msgstr ""
+
+msgctxt "#30273"
+msgid "My Folders and Playlists"
+msgstr ""
+
+msgctxt "#30274"
+msgid "Default {what}"
+msgstr ""
+
+msgctxt "#30275"
+msgid "Favorite Mixes"
+msgstr ""
+
+msgctxt "#30276"
+msgid "The folder '{folder}' contains {count} playlists.\nUser playlists will be deleted !"
+msgstr ""
+
+msgctxt "#30277"
+msgid "Do you really want to delete the folder '{folder}' ?"
+msgstr ""
+
+msgctxt "#30278"
+msgid "Remove '{name}' from {what}"
+msgstr ""
+
+msgctxt "#30279"
+msgid "{what} is DRM protected"
+msgstr ""
+
+msgctxt "#30280"
+msgid "TIDAL2 - OAuth2 Device Login"
+msgstr ""
+
+msgctxt "#30281"
+msgid "Login-Status"
+msgstr ""
+
+msgctxt "#30282"
+msgid "Not logged in. Please login via web browser !"
 msgstr ""
 
 msgctxt "#30501"
@@ -505,7 +581,7 @@ msgid "Enable Debug-Logging"
 msgstr ""
 
 msgctxt "#30503"
-msgid "Read Album Data for every Track (Album Cache)"
+msgid "Set placback informations for Web-GUI"
 msgstr ""
 
 msgctxt "#30504"
@@ -513,11 +589,11 @@ msgid "Not a FLAC Stream !"
 msgstr ""
 
 msgctxt "#30505"
-msgid "Album Cache Error !"
+msgid "--"
 msgstr ""
 
 msgctxt "#30506"
-msgid "Max. number of parallel HTTP requests"
+msgid "--"
 msgstr ""
 
 msgctxt "#30507"
@@ -529,11 +605,11 @@ msgid "Are you sure to delete the Album Cache Database ?"
 msgstr ""
 
 msgctxt "#30509"
-msgid "Cached Albums with Videos"
+msgid "--"
 msgstr ""
 
 msgctxt "#30510"
-msgid "Got no HTTP Stream, using HLS ..."
+msgid "Log API JSON data"
 msgstr ""
 
 msgctxt "#30511"
