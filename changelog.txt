@@ -1,3 +1,7 @@
+v2.0.3 (2021-09-04)
+- removed music info label from video items. So videos will start in fullscreen mode now (in Kodi 19)
+- Fixed api change for mixes and radio stations
+
 v2.0.2 (2021-05-24)
 - Changed login method to OAuth2
 - Intgrated a Login web page for a simple TIDAL device autohrization

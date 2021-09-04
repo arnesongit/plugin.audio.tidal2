@@ -638,7 +638,7 @@ class VideoItem(tidal.Video, HasListItem):
                               'userrating': '%s' % int(round(self.popularity / 10.0))
                               })
         li.setInfo('video', infoLabel)
-        li.setInfo('music', musicLabel)
+        # li.setInfo('music', musicLabel)
         li.addStreamInfo('video', { 'codec': 'h264', 'aspect': 1.78, 'width': 1920,
                          'height': 1080, 'duration': self.duration })
         li.addStreamInfo('audio', { 'codec': 'AAC', 'language': 'en', 'channels': 2 })

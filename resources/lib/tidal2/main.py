@@ -19,7 +19,6 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import sys
 import traceback
-import json
 
 from kodi_six import xbmc, xbmcgui, xbmcplugin, py2_decode
 from requests import HTTPError
@@ -319,6 +318,8 @@ def similar_artists(artist_id):
 def mix_view(mix_id):
     params = { 'locale': settings.locale, 'deviceType': 'BROWSER', 'mixId': mix_id }
     r = session.request('GET', path='pages/mix', params=params)
+    items = []
+    rettype = 'NONE'
     if r.ok:
         json_obj = r.json()
         for row in json_obj['rows']:
@@ -326,11 +327,14 @@ def mix_view(mix_id):
                 try:
                     item_type = module['type']
                     if item_type in HOMEPAGE_ITEM_TYPES:
-                        api_path = module['pagedList']['dataApiPath']
-                        homepage_item(item_type, api_path)
-                        break
+                        rettype = HOMEPAGE_ITEM_TYPES.get(item_type, 'NONE')
+                        if rettype != 'NONE':
+                            mix_items = module['pagedList']['items']
+                            for item in mix_items:
+                                items.append(session._parse_one_item(item, ret=rettype))
                 except:
                     pass
+    session.add_list_items(items, content=CONTENT_FOR_TYPE.get(rettype, 'files'), end=True, withNextPage=True)
 
 
 @plugin.route('/playlist/<playlist_id>/items')

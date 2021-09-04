@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.audio.tidal2" name="TIDAL2" version="2.0.2" provider-name="arneson">
+<addon id="plugin.audio.tidal2" name="TIDAL2" version="2.0.3" provider-name="arneson">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests"/>
@@ -28,18 +28,9 @@ Es wird ein Abbonement benötigt. Siehe tidal.com für Details.</description>
     <license>GNU GENERAL PUBLIC LICENSE. Version 3, 29 June 2007</license>
     <forum>http://forum.xbmc.org/showthread.php?tid=200555</forum>
     <source>https://github.com/arnesongit/plugin.audio.tidal2</source>
-    <news>v2.0.2 (2021-05-24)
-- Changed login method to OAuth2
-- Intgrated a Login web page for a simple TIDAL device autohrization
-- Removed all tokens from the sources because of license restrictions
-- Support for Dolby Atmos playback (requires the right client id for playback)
-- Support for HI_RES streaming quality (24 Bit) for Master audio tracks
-- Improved handling of page limits
-- Support for Favorit Mixes (and Radio stations because this are mixes)
-- Support for Playlist Folders
-- Switched to TIDAL API v2 for Playlist and Folder handling
-- Folder name is appended to the playlist name if the playlist is in one of your folders
-- Added submenues in artist page for albums, EPs/Singles and compilations
+    <news>v2.0.3 (2021-09-04)
+- removed music info label from video items. So videos will start in fullscreen mode now (in Kodi 19)
+- Fixed api change for mixes and radio stations
     </news>
     <assets>
       <icon>resources/icon.png</icon>
