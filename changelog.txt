@@ -1,3 +1,7 @@
+v2.0.4 (2021-10-20)
+- Fixed preview token
+- Show title/video/artist radio as mix items so it's possible to add them to favorite mixes.
+
 v2.0.3 (2021-09-04)
 - removed music info label from video items. So videos will start in fullscreen mode now (in Kodi 19)
 - Fixed api change for mixes and radio stations

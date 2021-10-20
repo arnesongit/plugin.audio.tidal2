@@ -88,7 +88,7 @@ class Session(object):
     def get_preview_token(self):
         try:
             return re.findall(base64.b64decode('LioiKENbMC05QS1aYS16XXsxNH1VKSIuKg==').decode('utf-8'), requests.get(urljoin(TIDAL_HOMEPAGE, 
-                                                re.findall(base64.b64decode('LipzY3JpcHRccytzcmNccyo9XHMqIi4oYXBwXC5bMC05QS1GYS1mXStcLmNodW5rXC5qcykiLio=').decode('utf-8'), 
+                                                re.findall(base64.b64decode('Lio8c2NyaXB0LitzcmNccyo9XHMqIi4oYXBwXC5bMC05QS1GYS1mXStcLmpzKSIuKjwvc2NyaXB0Pi4q').decode('utf-8'), 
                                                            requests.get(TIDAL_HOMEPAGE).content.decode('utf-8'))[0])).content.decode('utf-8'))[0]
         except:
             pass
@@ -427,6 +427,22 @@ class Session(object):
             if album:
                 item.album = album
         return item
+
+    def get_mix(self, mix_id):
+        params = { 'mixId': mix_id, 'locale': self._config.locale, 'deviceType': 'BROWSER' }
+        r = self.request('GET', path='pages/mix', params=params)
+        if r.ok:
+            json_obj = r.json()
+            for row in json_obj['rows']:
+                for module in row['modules']:
+                    try:
+                        item_type = module['type']
+                        if item_type == 'MIX_HEADER' and 'mix' in module:
+                            item = self._parse_mix(module['mix'])
+                            return item
+                    except:
+                        pass
+        return None
 
     def get_lyrics(self, track_id):
         # Not working yet

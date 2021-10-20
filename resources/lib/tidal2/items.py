@@ -295,10 +295,19 @@ class MixItem(tidal.Mix, HasListItem):
 
     def getLabel(self, extended=True):
         self.setLabelFormat()
-        label = self.name
+        label = self.getLongTitle()
         if extended and self._isFavorite and not '/favorites/' in sys.argv[0] and not '/folder/' in sys.argv[0]:
             label = self.FAVORITE_MASK.format(label=label)
         return label
+
+    def getLongTitle(self):
+        self.setLabelFormat()
+        longTitle = '%s' % self.name
+        if 'MASTER' in self.mixType and settings.mqa_in_labels:
+            longTitle = self.MASTER_AUDIO_MASK.format(label=longTitle)
+        if 'DOLBY' in self.mixType and settings.mqa_in_labels:
+            longTitle = self.DOLBY_ATMOS_MASK.format(label=longTitle)
+        return longTitle
 
     def getListItem(self):
         li = HasListItem.getListItem(self)

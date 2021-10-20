@@ -37,7 +37,7 @@ except:
     # Python 2.7
     from urllib import quote_plus, unquote_plus
 
-CONTENT_FOR_TYPE = {'artists': 'artists', 'albums': 'albums', 'playlists': 'albums', 'tracks': 'songs', 'videos': 'musicvideos', 'files': 'files'}
+CONTENT_FOR_TYPE = {'artists': 'artists', 'albums': 'albums', 'playlists': 'albums', 'tracks': 'songs', 'videos': 'musicvideos', 'files': 'files', 'mixes': 'albums'}
 HOMEPAGE_ITEM_TYPES = {'PLAYLIST_LIST': 'playlists', 'ALBUM_LIST': 'albums', 'ARTIST_LIST': 'artists', 'TRACK_LIST': 'tracks', 'VIDEO_LIST': 'videos', 'MIX_LIST': 'mix'}
 
 #------------------------------------------------------------------------------
@@ -181,7 +181,18 @@ def master_playlists():
 
 @plugin.route('/track_radio/<track_id>')
 def track_radio(track_id):
-    add_items(session.get_track_radio(track_id, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('tracks'))
+    track = session.get_track(track_id, withAlbum=True)
+    mixItems = []
+    if track.mix_ids:
+        for mix_id in track.mix_ids.values():
+            mix = session.get_mix(mix_id)
+            log.info('Mix-ID: %s' % mix.id)
+            if mix:
+                mixItems.append(mix)
+    if mixItems:
+        session.add_list_items(mixItems, content=CONTENT_FOR_TYPE.get('mixes'), end=True)
+    else:
+        add_items(session.get_track_radio(track_id, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('tracks'))
 
 
 @plugin.route('/recommended/tracks/<track_id>')
@@ -281,7 +292,17 @@ def top_tracks(artist_id):
 
 @plugin.route('/artist/<artist_id>/radio')
 def artist_radio(artist_id):
-    add_items(session.get_artist_radio(artist_id, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('tracks'))
+    artist = session.get_artist(artist_id)
+    mixItems = []
+    if artist.mix_ids:
+        for mix_id in artist.mix_ids.values():
+            mix = session.get_mix(mix_id)
+            if mix:
+                mixItems.append(mix)
+    if mixItems:
+        session.add_list_items(mixItems, content=CONTENT_FOR_TYPE.get('mixes'), end=True)
+    else:
+        add_items(session.get_artist_radio(artist_id, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('tracks'))
 
 
 @plugin.route('/artist/<artist_id>/albums')

@@ -244,10 +244,15 @@ class Artist(BrowsableMedia):
     picture = None
     url = None
     popularity = 0
+    mix_ids = {}
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         super(Artist, self).__init__()
+        try:
+            self.mix_ids = kwargs['mixes']
+        except:
+            self.mix_ids = {}
 
     @property
     def image(self):
@@ -472,6 +477,7 @@ class Track(PlayableMedia):
     peak = 1.0
     editable = False
     audioModes = [AudioMode.stereo]
+    mix_ids = {}
 
     # Internal Properties
     _ftArtists = []  # All artists except main (Filled by parser)
@@ -483,6 +489,10 @@ class Track(PlayableMedia):
         self.track_num = self.trackNumber # For Backward Compatibility
         self.disc_num =self.volumeNumber  # For Backward Compatibility
         self.popularity = int("0%s" % self.popularity)
+        try:
+            self.mix_ids = kwargs['mixes']
+        except:
+            self.mix_ids = {}
 
     @property
     def year(self):
