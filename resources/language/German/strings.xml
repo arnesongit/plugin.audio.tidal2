@@ -3,7 +3,7 @@
     <string id="30001">Session-Daten</string>
     <string id="30002">Erweitert</string>
     <string id="30004">Musik-Qualität</string>
-    <string id="30005">Lossless (FLAC,ALAC)</string>
+    <string id="30005">Lossless (FLAC)</string>
     <string id="30006">High (320 kBit/s)</string>
     <string id="30007">Low (96 kBit/s)</string>
     <string id="30008">Benutzer-ID</string>
@@ -26,7 +26,12 @@
     <string id="30025">Optionen</string>
     <string id="30026">Client-ID</string>
     <string id="30027">Addon-Einstellungen</string>
-    <string id="30028">--</string>
+    <string id="30028">Gerätetyp</string>
+    <string id="30029">Lyrics/Songtexte aktivieren</string>
+    <string id="30030">TIDAL lyrics scraper installieren</string>
+    <string id="30031">TIDAL lyrics scraper deinstallieren</string>
+    <string id="30032">CU LRC Lyrics Addon Settings</string>
+    <string id="30033">CU LRC Lyrics Addon installieren</string>
 
     <!-- Video Settings -->
     <string id="30040">Video-Qualität</string>
@@ -145,6 +150,14 @@
     <string id="30280">TIDAL2 - OAuth2 Anmeldung</string>
     <string id="30281">Login-Status</string>
     <string id="30282">Nicht angemeldet. Bitte über Web-Browser anmelden !</string>
+    <string id="30283">TIDAL APK Datei wählen</string>
+    <string id="30284">Fehler beim Lesen der APK-Datei</string>
+    <string id="30285">Die APK-Datei ist keine TIDAL-App</string>
+    <string id="30286">Keine Gerätetypen in APK-Datei gefunden</string>
+    <string id="30287">°Achtung: Gerätetyp wurde aus der TIDAL-APK übernommen !&lt;br&gt;Client-ID und Client-Secret sind fest vorgegeben !</string>
+    <string id="30288">°Achtung: Gerätetyp wurde nicht aus der TIDAL-APK übernommen !&lt;br&gt;Bitte funktionierende Client-ID und Client-Secret Werte direkt vorgeben !</string>
+    <string id="30289">Gerätetyp aus TIDAL APK Datei lesen</string>
+    <string id="30290">Kein Gerätetyp ausgewählt.\nSoll der vorhandene Gerätetyp entfernt werden ?\nClient-ID und Client-Secret müssen dann manuell gesetzt werden !</string>
 
     <!-- Extended Settings -->
     <string id="30501">Farben in Label verwenden</string>

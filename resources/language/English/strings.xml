@@ -3,7 +3,7 @@
     <string id="30001">Session Data</string>
     <string id="30002">Extended</string>
     <string id="30004">Music Quality</string>
-    <string id="30005">Lossless (FLAC,ALAC)</string>
+    <string id="30005">Lossless (FLAC)</string>
     <string id="30006">High (320 kBit/s)</string>
     <string id="30007">Low (96 kBit/s)</string>
     <string id="30008">User ID</string>
@@ -26,7 +26,12 @@
     <string id="30025">Options</string>
     <string id="30026">Client-ID</string>
     <string id="30027">Addon-Settings</string>
-    <string id="30028">--</string>
+    <string id="30028">Device Type</string>
+    <string id="30029">Enable lyrics</string>
+    <string id="30030">Install TIDAL lyrics scraper</string>
+    <string id="30031">Uninstall TIDAL lyrics scraper</string>
+    <string id="30032">CU LRC Lyrics addon settings</string>
+    <string id="30033">Install CU LRC Lyrics addon</string>
 
     <!-- Video Settings -->
     <string id="30040">Video Quality</string>
@@ -145,6 +150,14 @@
     <string id="30280">TIDAL2 - OAuth2 Device Login</string>
     <string id="30281">Login-Status</string>
     <string id="30282">Not logged in. Please login via web browser !</string>
+    <string id="30283">Select TIDAL APK file</string>
+    <string id="30284">Failed to load APK file</string>
+    <string id="30285">APK file is not a TIDAL app</string>
+    <string id="30286">No device type found in APK</string>
+    <string id="30287">°Attention: Device type was selected from the TIDAL APK !&lt;br&gt;Client-ID are Client-Secret are fixed !</string>
+    <string id="30288">°Attention: No device type was selected from a TIDAL APK !&lt;br&gt;Please use a working Client-ID and Client-Secret values directly !</string>
+    <string id="30289">Select device type from TIDAL APK file</string>
+    <string id="30290">No device type selected.\nShould the existing device type be cleared ?\nThen the Client-ID and Client-Secret must be set manually !</string>
 
     <!-- Extended Settings -->
     <string id="30501">Use Colors in Labels</string>

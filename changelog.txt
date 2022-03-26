@@ -1,3 +1,12 @@
+v2.1.0 (2022-03-26)
+- The 'Artist' context menu now opens a popup if the selected item has more than one artist
+- Added a device selector dialog to select a device type from a TIDAL apk file
+- Added support for lyrics:
+  - The CU LRC Lyrics addon is used to display the TIDAL lyrics
+  - The CU LRC Lyrics addon can be installed from the TIDAL2 settings dialog
+  - The TIDAL2 lyrics scaper has to be installed as a CU LRC Lyrics scaper module.
+    This can also be done from the TIDAL2 settings dialog.
+
 v2.0.4 (2021-10-20)
 - Fixed preview token
 - Show title/video/artist radio as mix items so it's possible to add them to favorite mixes.

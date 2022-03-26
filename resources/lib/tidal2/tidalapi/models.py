@@ -24,6 +24,7 @@ import re
 import datetime
 import json
 import base64
+import pyaes
 
 PY2 = sys.version_info[0] == 2
 
@@ -59,8 +60,11 @@ class Quality(object):
 
 class SubscriptionType(object):
     premium = 'PREMIUM'
+    premium_mid = 'PREMIUM_MID'
+    premium_plus = 'PREMIUM_PLUS'
     hifi = 'HIFI'
     free = 'FREE'
+    intro = 'INTRO'
 
 
 class AudioMode(object):
@@ -104,22 +108,25 @@ class Config(object):
         self.quality = Quality.lossless
         self.country_code = 'WW'
         self.locale = 'en_US'
-        self.preview_token = None
         self.debug_json = False
+        self.client_name = ''
+        self.client_id = ''
+        self.client_secret = ''
+        self.refresh_token = ''
         self.init(**kwargs)
 
     def init(self, **kwargs):
         self.user_agent = kwargs.get('user_agent', "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.128 Safari/537.36")
         self.country_code = kwargs.get('country_code', self.country_code)
-        self.user_id = kwargs.get('user_id', None)
-        self.client_id = kwargs.get('client_id', None)
-        self.client_secret = kwargs.get('client_secret', None)
-        self.client_unique_key = kwargs.get('client_unique_key', None)
-        self.session_id = kwargs.get('session_id', None)
-        self.preview_token = kwargs.get('preview_token', self.preview_token)
-        self.token_type = kwargs.get('token_type', None)
-        self.access_token = kwargs.get('access_token', None)
-        self.refresh_token = kwargs.get('refresh_token', None)
+        self.user_id = kwargs.get('user_id', '')
+        self.client_name = kwargs.get('client_name', self.client_name)
+        self.client_id = kwargs.get('client_id', self.client_id)
+        self.client_secret = kwargs.get('client_secret', self.client_secret)
+        self.client_unique_key = kwargs.get('client_unique_key', '')
+        self.session_id = kwargs.get('session_id', '')
+        self.token_type = kwargs.get('token_type', '')
+        self.access_token = kwargs.get('access_token', '')
+        self.refresh_token = kwargs.get('refresh_token', '')
         self.login_time = kwargs.get('login_time', datetime.datetime.now())
         self.refresh_time = kwargs.get('refresh_time', datetime.datetime.now())
         self.expires_in = kwargs.get('expires_in', 0)
@@ -132,6 +139,20 @@ class Config(object):
             self.locale = locale.locale_alias.get(self.country_code.lower()).split('.')[0]
         except:
             pass
+
+    @property
+    def preview_token(self):
+        try:
+            iv, key = base64.b64encode(re.findall(base64.b64decode(b'Ki4nKX05M3tdLlx6LWFaLUE5LTBbKCcqLg==')[::-1].decode('utf-8'), 
+                                                  repr(eval('\x5f\x5f\x73\x73\x61\x6c\x63\x5f\x5f\x2e\x66\x6c\x65\x73'[::-1])))[0].encode('utf-8')).split(b'Yi50')
+            return pyaes.AESModeOfOperationCBC(key, iv = iv).decrypt(b'\xd2gH\xfdPG\xf5e\xe6J\xb4\xb4$M\x0fL').decode('utf-8')
+        except:
+            pass
+        return ''
+
+    @property
+    def token_secret(self):
+        return (self.preview_token*3 + 'LioiKENbMC05QS1aYS16XXsxNH1VKSIuKg==')[3:35].encode('utf-8')
 
 
 class AlbumType(object):
@@ -481,7 +502,7 @@ class Track(PlayableMedia):
 
     # Internal Properties
     _ftArtists = []  # All artists except main (Filled by parser)
-    _cut = None
+    _lyrics = None
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -531,6 +552,7 @@ class Video(PlayableMedia):
     squareImage = None
     popularity = 0
     quality = 'MP4_1080P'
+    audioModes = [AudioMode.stereo] # For videos in albums
 
     # Internal Properties
     _ftArtists = []  # All artists except main (Filled by parser)
@@ -895,11 +917,27 @@ class VideoUrl(StreamUrl):
         return True if ManifestMimeType.dash_xml in self.manifestMimeType else False
 
 
-class CutInfo(Model):
-    duration = 0
-    userId = None
+class Lyrics(Model):
+    trackId = 0
+    lyrics = ""
+    lyricsProvider = ""
+    providerCommontrackId = ""
+    providerLyricsId = ""
+    lyrics = None
+    subtitles = ""
+    isRightToLeft = False
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
-        super(CutInfo, self).__init__()
+        super(Lyrics, self).__init__()
+        self.id = self.providerCommontrackId
+        self.name = self.lyricsProvider
 
+    def is_lrc(self):
+        try:
+            return True if re.search(r'(\[\d{2}\:\d{2}\.\d{2}\])', self.get_lyrics()) else False
+        except:
+            return False
+
+    def get_lyrics(self):
+        return self.subtitles if self.subtitles else self.lyrics if self.lyrics else ""

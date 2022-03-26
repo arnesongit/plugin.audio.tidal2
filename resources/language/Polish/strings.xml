@@ -3,7 +3,7 @@
     <string id="30001">Dane sesji</string>
     <string id="30002">Dodatkowe</string>
     <string id="30004">Jakość Muzyki</string>
-    <string id="30005">Bezstratna (FLAC,ALAC,MQA)</string>
+    <string id="30005">Bezstratna (FLAC)</string>
     <string id="30006">Wysoka (320 kBit/s)</string>
     <string id="30007">Niska (96 kBit/s)</string>
     <string id="30008">Użytkownik ID</string>
@@ -26,7 +26,12 @@
     <string id="30025">Opcje</string>
     <string id="30026">ClientID</string>
     <string id="30027">Ustawienia Dodatku</string>
-    <string id="30028">--</string>
+    <string id="30028">Rodzaj urządzenia</string>
+    <string id="30029">Włącz teksty</string>
+    <string id="30030">Install TIDAL lyrics scraper</string>
+    <string id="30031">Uninstall TIDAL lyrics scraper</string>
+    <string id="30032">CU LRC Lyrics addon settings</string>
+    <string id="30033">Install CU LRC Lyrics addon</string>
 
     <!-- Video Settings -->
     <string id="30040">Jakość Wideo</string>
@@ -145,6 +150,12 @@
     <string id="30280">TIDAL2 - OAuth2 Logowanie do urządzenia</string>
     <string id="30281">Status logowania</string>
     <string id="30282">Niezalogowany. Zaloguj się przez przeglądarkę internetową!</string>
+    <string id="30283">Wybierz plik APK TIDAL</string>
+    <string id="30284">Błąd odczytu pliku APK</string>
+    <string id="30285">Plik APK nie jest aplikacją TIDAL</string>
+    <string id="30286">W pliku APK nie znaleziono typów urządzeń</string>
+    <string id="30287">°Uwaga: typ urządzenia został wybrany z TIDAL APK !\nIdentyfikator klienta to tajny klucz klienta jest stały !</string>
+    <string id="30288">°Uwaga: nie wybrano żadnego typu urządzenia z pakietu APK TIDAL !\nUżyj działających wartości Client-ID i Client-Secret bezpośrednio !</string>
 
     <!-- Extended Settings -->
     <string id="30501">Używaj Kolorów w Etykietach</string>

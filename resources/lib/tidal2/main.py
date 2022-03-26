@@ -18,9 +18,10 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import sys
+import re
 import traceback
 
-from kodi_six import xbmc, xbmcgui, xbmcplugin, py2_decode
+from kodi_six import xbmc, xbmcgui, xbmcplugin, xbmcaddon, py2_decode
 from requests import HTTPError
 
 from .common import Const, plugin
@@ -29,7 +30,8 @@ from .debug import log
 from .tidalapi.models import Category, TrackUrl, VideoUrl, DeviceCode
 from .config import settings
 from .koditidal import TidalSession, DirectoryItem
-
+from .devices import DeviceSelectorDialog
+from .lyricsInstaller import LyricsInstaller
 try:
     # Python 3
     from urllib.parse import quote_plus, unquote_plus
@@ -75,6 +77,27 @@ def root():
 def settings_dialog():
     xbmc.executebuiltin('Addon.OpenSettings("%s")' % Const.addon_id)
 
+@plugin.route('/settings_choose_apk')
+def settings_choose_apk():
+    client = DeviceSelectorDialog.select_device(config=settings)
+    if client:
+        # Ask for Logout when a device type is selected
+        if xbmcgui.Dialog().yesno(_T(Msg.i30207), _T(Msg.i30256)):
+            settings.client_name = client.name
+            settings.client_id = client.id
+            settings.client_secret = client.secret
+            settings.save_client()
+            session.logout()
+        xbmc.executebuiltin('Container.Refresh()')
+    else:
+        # Ask if device type should be cleared
+        if xbmcgui.Dialog().yesno(_T(Msg.i30289), _T(Msg.i30290)):
+            settings.client_name = ''
+            settings.client_id = ''
+            settings.client_secret = ''
+            settings.save_client()
+            session.logout()
+        xbmc.executebuiltin('Container.Refresh()')
 
 @plugin.route('/homepage_items')
 def homepage_items():
@@ -247,6 +270,21 @@ def album_videos(album_id):
     add_items(session.get_album_items(album_id, ret='videos'), content=CONTENT_FOR_TYPE.get('videos'))
 
 
+@plugin.route('/artists/<artist_id>')
+def artist_select(artist_id):
+    if '-' in artist_id:
+        try:
+            ids = artist_id.split('-')
+            artists = [session.get_artist(i) for i in ids]
+            selected = xbmcgui.Dialog().select(_P('artists'),  [a.name for a in artists])
+            if selected < 0 or selected >= len(artists):
+                return
+            artist_id = artists[selected].id
+        except:
+            artist_id = ids[0]
+    xbmc.executebuiltin('Container.Update(%s)' % plugin.url_for(artist_view, artist_id))
+
+
 @plugin.route('/artist/<artist_id>')
 def artist_view(artist_id):
     if session.is_logged_in:
@@ -360,17 +398,23 @@ def mix_view(mix_id):
 
 @plugin.route('/playlist/<playlist_id>/items')
 def playlist_view(playlist_id):
-    add_items(session.get_playlist_items(playlist_id, offset=int('0%s' % plugin.qs_offset), limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('tracks'), withNextPage=True)
+    items = session.get_playlist_items(playlist_id, offset=int('0%s' % plugin.qs_offset), limit=settings.pageSize)
+    #items = sorted(items, key=lambda line: line.getSortCriteria(sortType=1), reverse=True)
+    add_items(items, content=CONTENT_FOR_TYPE.get('tracks'), withNextPage=True)
 
 
 @plugin.route('/playlist/<playlist_id>/tracks')
 def playlist_tracks(playlist_id):
-    add_items(session.get_playlist_tracks(playlist_id, offset=int('0%s' % plugin.qs_offset), limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('tracks'), withNextPage=True)
+    items = session.get_playlist_tracks(playlist_id, offset=int('0%s' % plugin.qs_offset), limit=settings.pageSize)
+    #items = sorted(items, key=lambda line: line.getSortCriteria(sortType=1), reverse=True)
+    add_items(items, content=CONTENT_FOR_TYPE.get('tracks'), withNextPage=True)
 
 
 @plugin.route('/playlist/<playlist_id>/albums')
 def playlist_albums(playlist_id):
-    add_items(session.get_playlist_albums(playlist_id, offset=int('0%s' % plugin.qs_offset), limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True)
+    items = session.get_playlist_albums(playlist_id, offset=int('0%s' % plugin.qs_offset), limit=settings.pageSize)
+    #items = sorted(items, key=lambda line: line.getSortCriteria(sortType=1), reverse=True)
+    add_items(items, content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True)
 
 
 @plugin.route('/user_playlists')
@@ -925,6 +969,9 @@ def search_type(field):
 @plugin.route('/login')
 def login():
     try:
+        #session.login_direct(username='***REMOVED***', password='***REMOVED***', subscription_type='HIFI')
+        #xbmc.executebuiltin('Container.Refresh()')
+        #return
         try:
             args = plugin.args
             code = None
@@ -962,12 +1009,14 @@ def logout():
 
 @plugin.route('/session_info')
 def session_info():
+    abo = session.user.subscription()
     info = session._map_request(path='sessions', method='GET', ret='json')
     dialog = xbmcgui.Dialog()
-    dialog.ok(_T(Msg.i30271), 
-              '%s: %s\n' % (_T(Msg.i30008), info['userId']) +
+    dialog.ok(_T(Msg.i30271),
+              '%s: %s  ' % (_T(Msg.i30008), info['userId']) +
+              '%s: %s\n' % (_T(Msg.i30010), abo.subscription['type']) +
               '%s: %s\n' % (_T(Msg.i30019), info['sessionId']) +
-              '%s: %s\n' % (_T(Msg.i30020), info['client']['name']) +
+              '%s: %s\n' % (_T(Msg.i30020), re.sub(r'[0-9]+', '', info['client']['name']).replace('_', ' ').strip()) +
               '%s: %s' % (_T(Msg.i30022), settings.expire_time))
 
 
@@ -984,17 +1033,9 @@ def refresh_token():
 
 @plugin.route('/play_track/<track_id>/<album_id>')
 def play_track(track_id, album_id):
-    play_track_cut(track_id, None, album_id)
-
-
-@plugin.route('/play_track_cut/<track_id>/<cut_id>/<album_id>')
-def play_track_cut(track_id, cut_id, album_id):
     try:
-        media = session.get_track_url(track_id, cut_id=cut_id)
-        if cut_id:
-            log.info("Playing Cut %s: %s with MimeType: %s" % (cut_id, media.url, media.get_mimeType()))
-        else:
-            log.info("Playing: %s with MimeType: %s" % (media.url, media.get_mimeType()))
+        media = session.get_track_url(track_id)
+        log.info("Playing: %s with MimeType: %s" % (media.url, media.get_mimeType()))
         if settings.set_playback_info:
             track = session.get_track(track_id, withAlbum=False)
             url, li, isFolder = track.getListItem()
@@ -1051,6 +1092,57 @@ def play_video(video_id):
 def stream_locked():
     xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30242), icon=xbmcgui.NOTIFICATION_INFO)
 
+
+@plugin.route('/install_lyrics_scraper')
+def install_lyrics_scraper():
+    li = LyricsInstaller()
+    li.install(checkInstalled=False)
+    log.info("Test %s" % "Erfolgreich" if li.success else "Fehlerhaft")
+    li.show_protocol()
+
+@plugin.route('/check_lyrics_scraper')
+def check_lyrics_scraper():
+    li = LyricsInstaller()
+    li.install(checkInstalled=True)
+    log.info("Test %s" % "Erfolgreich" if li.success else "Fehlerhaft")
+    li.show_protocol()
+
+@plugin.route('/uninstall_lyrics_scraper')
+def uninstall_lyrics_scraper():
+    li = LyricsInstaller()
+    li.uninstall()
+    log.info("Test %s" % "Erfolgreich" if li.success else "Fehlerhaft")
+    li.show_protocol()
+
+@plugin.route('/install_lyrics_addon')
+def install_lyrics_addon():
+    xbmc.executebuiltin('InstallAddon(script.cu.lrclyrics)', wait=True)
+
+@plugin.route('/lyrics_settings')
+def lyrics_settings():
+    LyricsInstaller.lyrics_settings()
+    settings_dialog()
+
+@plugin.route('/start_lyrics')
+def start_lyrics():
+    try:
+        log.info('Starting lyrics dialog if it is not visible.')
+        lrc_addon = xbmcaddon.Addon('script.cu.lrclyrics')
+        service_active = True if lrc_addon.getSetting('service') == 'true' else False
+        guirunning = True if  xbmcgui.Window(10000).getProperty('culrc.guirunning').lower() == 'true' else False
+        if not service_active:
+            log.info('Starting lyrics service')
+            lrc_addon.setSetting('service', 'true')
+            xbmc.executebuiltin('RunScript(script.cu.lrclyrics)')
+        elif not guirunning:
+            log.info('Trigger lyrics addon to open its dialog.')
+            xbmc.executebuiltin('RunScript(script.cu.lrclyrics)')
+        else:
+            log.info('Disabling lyrics service and close its dialog.')
+            xbmc.executebuiltin('Action(Back)')
+            lrc_addon.setSetting('service', 'false')
+    except:
+        log.error('Lyrics Addon script.cu.lrclyrics is not installed.')
 
 #------------------------------------------------------------------------------
 # MAIN Program of the Plugin

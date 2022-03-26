@@ -29,7 +29,7 @@ msgid "Music Quality"
 msgstr ""
 
 msgctxt "#30005"
-msgid "Lossless (FLAC,ALAC)"
+msgid "Lossless (FLAC)"
 msgstr ""
 
 msgctxt "#30006"
@@ -121,7 +121,27 @@ msgid "Addon-Settings"
 msgstr ""
 
 msgctxt "#30028"
-msgid "--"
+msgid "Device Type"
+msgstr ""
+
+msgctxt "#30029"
+msgid "Enable lyrics"
+msgstr ""
+
+msgctxt "#30030"
+msgid "Install TIDAL lyrics scraper"
+msgstr ""
+
+msgctxt "#30031"
+msgid "Uninstall TIDAL lyrics scraper"
+msgstr ""
+
+msgctxt "#30032"
+msgid "CU LRC Lyrics addon settings"
+msgstr ""
+
+msgctxt "#30033"
+msgid "Install CU LRC Lyrics addon"
 msgstr ""
 
 msgctxt "#30040"
@@ -570,6 +590,38 @@ msgstr ""
 
 msgctxt "#30282"
 msgid "Not logged in. Please login via web browser !"
+msgstr ""
+
+msgctxt "#30283"
+msgid "Select TIDAL APK file"
+msgstr ""
+
+msgctxt "#30284"
+msgid "Failed to load APK file"
+msgstr ""
+
+msgctxt "#30285"
+msgid "APK file is not a TIDAL app"
+msgstr ""
+
+msgctxt "#30286"
+msgid "No device type found in APK"
+msgstr ""
+
+msgctxt "#30287"
+msgid "°Attention: Device type was selected from the TIDAL APK !<br>Client-ID are Client-Secret are fixed !"
+msgstr ""
+
+msgctxt "#30288"
+msgid "°Attention: No device type was selected from a TIDAL APK !<br>Please use a working Client-ID and Client-Secret values directly !"
+msgstr ""
+
+msgctxt "#30289"
+msgid "Select device type from TIDAL APK file"
+msgstr ""
+
+msgctxt "#30290"
+msgid "No device type selected.\nShould the existing device type be cleared ?\nThen the Client-ID and Client-Secret must be set manually !"
 msgstr ""
 
 msgctxt "#30501"

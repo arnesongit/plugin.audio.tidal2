@@ -28,6 +28,7 @@ import logging
 import requests
 import base64
 import hashlib
+import pyaes
 
 from .models import *
 
@@ -51,7 +52,7 @@ TIDAL_HOMEPAGE = 'https://listen.tidal.com'
 URL_API_V1 = 'https://api.tidal.com/v1/'
 URL_API_V2 = 'https://api.tidal.com/v2/'
 OAUTH_BASE_URL = 'https://auth.tidal.com/v1/oauth2/'
-DEFAULT_SCOPE = 'r_usr w_usr'   # w_usr=WRITE_USR, r_usr=READ_USR_DATA, w_sub=WRITE_SUBSCRIPTION
+DEFAULT_SCOPE = 'r_usr+w_usr+w_sub'  # 'r_usr w_usr'   # w_usr=WRITE_USR, r_usr=READ_USR_DATA, w_sub=WRITE_SUBSCRIPTION
 
 ALL_SAERCH_FIELDS = ['ARTISTS', 'ALBUMS', 'PLAYLISTS', 'TRACKS', 'VIDEOS']
 
@@ -85,31 +86,59 @@ class Session(object):
         except:
             return default
 
-    def get_preview_token(self):
-        try:
-            return re.findall(base64.b64decode('LioiKENbMC05QS1aYS16XXsxNH1VKSIuKg==').decode('utf-8'), requests.get(urljoin(TIDAL_HOMEPAGE, 
-                                                re.findall(base64.b64decode('Lio8c2NyaXB0LitzcmNccyo9XHMqIi4oYXBwXC5bMC05QS1GYS1mXStcLmpzKSIuKjwvc2NyaXB0Pi4q').decode('utf-8'), 
-                                                           requests.get(TIDAL_HOMEPAGE).content.decode('utf-8'))[0])).content.decode('utf-8'))[0]
-        except:
-            pass
-        return ''
+    def login_direct(self, username, password, subscription_type=None):
+        if not username or not password:
+            return False
+        if not subscription_type:
+            # Set Subscription Type corresponding to the given playback quality
+            subscription_type = SubscriptionType.hifi if self._config.quality == Quality.lossless else SubscriptionType.premium
+        url = urljoin(URL_API_V1, 'login/username')
+        client_id = self._config.client_id
+        headers = { "X-Tidal-Token": 'VyxGXu7lLvVb5Ng' }
+        payload = {
+            'username': username,
+            'password': password,
+            'client_id': pyaes.AESModeOfOperationCTR(self._config.token_secret).decrypt(base64.b64decode(client_id)).decode('utf-8') if self._config.client_name else client_id,
+            'clientUniqueKey': format(random.getrandbits(64), '02x')
+        }
+        log.info('Using Token "%s" with clientUniqueKey "%s"' % (headers['X-Tidal-Token'], payload['clientUniqueKey']))
+        r = requests.post(url, data=payload, headers=headers)
+        if not r.ok:
+            try:
+                msg = r.json().get('userMessage')
+            except:
+                msg = r.reason
+            log.error(msg)
+        else:
+            try:
+                body = r.json()
+                self.session_id = body['sessionId']
+                self.country_code = body['countryCode']
+                #self.user = self.init_user(user_id=body['userId'], subscription_type=subscription_type)
+            except:
+                log.error('Login failed.')
+
+        return self.is_logged_in
 
     def login_part1(self, client_id=None, client_secret=None):
+        if not client_id or not client_secret:
+            client_id = self._config.client_id
+            client_secret = self._config.client_secret
         data = {
-            'client_id': client_id if client_id else self._config.client_id,
+            'client_id': pyaes.AESModeOfOperationCTR(self._config.token_secret).decrypt(base64.b64decode(client_id)).decode('utf-8') if self._config.client_name else client_id,
             'scope': DEFAULT_SCOPE
         }
         r = requests.post(urljoin(OAUTH_BASE_URL, 'device_authorization'), data=data)
         r = self.check_response(r)
         device_code = self._parse_device_code(r.json())
-        device_code._client_id = client_id if client_id else self._config.client_id
-        device_code._client_secret = client_secret if client_secret else self._config.client_secret
+        device_code._client_id = client_id
+        device_code._client_secret = client_secret
         return device_code
 
     def login_part2(self, device_code):
         data = {
-            'client_id': device_code._client_id if device_code._client_id else self._config.client_id,
-            'client_secret': device_code._client_secret if device_code._client_secret else self._config.client_secret,
+            'client_id': pyaes.AESModeOfOperationCTR(self._config.token_secret).decrypt(base64.b64decode(device_code._client_id)).decode('utf-8') if self._config.client_name else device_code._client_id,
+            'client_secret': pyaes.AESModeOfOperationCTR(self._config.token_secret).decrypt(base64.b64decode(device_code._client_secret)).decode('utf-8') if self._config.client_name else device_code._client_secret,
             'device_code': device_code if isinstance(device_code, string_types) else device_code.deviceCode,
             'grant_type': 'urn:ietf:params:oauth:grant-type:device_code',
             'scope': DEFAULT_SCOPE
@@ -120,14 +149,18 @@ class Session(object):
         try:
             token = self._parse_auth_token(r.json())
             if token.success:
-                self._config.client_id = data['client_id']
-                self._config.client_secret = data['client_secret']
                 self._config.user_id = token.user_id
                 self._config.country_code = token.country_code
                 self._config.token_type = token.token_type
                 self._config.access_token = token.access_token
                 if token.refresh_token:
                     self._config.refresh_token = token.refresh_token
+                if self._config.client_name:
+                    self._config.client_id = base64.b64encode(pyaes.AESModeOfOperationCTR(self._config.token_secret).encrypt(data['client_id'].encode('utf-8'))).decode('utf-8')
+                    self._config.client_secret = base64.b64encode(pyaes.AESModeOfOperationCTR(self._config.token_secret).encrypt(data['client_secret'].encode('utf-8'))).decode('utf-8')
+                else:
+                    self._config.client_id = data['client_id']
+                    self._config.client_secret = data['client_secret']
                 self._config.expires_in = token.expires_in
                 self._config.login_time = token.login_time
                 self._config.refresh_time = token.login_time
@@ -150,8 +183,8 @@ class Session(object):
 
     def token_refresh(self):
         data = {
-            'client_id': self._config.client_id,
-            'client_secret': self._config.client_secret,
+            'client_id': pyaes.AESModeOfOperationCTR(self._config.token_secret).decrypt(base64.b64decode(self._config.client_id)).decode('utf-8') if self._config.client_name else self._config.client_id,
+            'client_secret': pyaes.AESModeOfOperationCTR(self._config.token_secret).decrypt(base64.b64decode(self._config.client_secret)).decode('utf-8') if self._config.client_name else self._config.client_secret,
             'refresh_token': self._config.refresh_token,
             'grant_type': 'refresh_token',
             'scope': DEFAULT_SCOPE
@@ -445,8 +478,10 @@ class Session(object):
         return None
 
     def get_lyrics(self, track_id):
-        # Not working yet
-        return self._map_request('tracks/%s/lyrics' % track_id, ret='json')
+        try:
+            return self._map_request('tracks/%s/lyrics' % track_id, ret='lyrics')
+        except:
+            return None
 
     def get_video(self, video_id):
         return self._map_request('videos/%s' % video_id, ret='video')
@@ -482,7 +517,6 @@ class Session(object):
                 retType = ret
                 if 'type' in item and ret.startswith('playlistitem'):
                     retType = item['type']
-                cutData = None
                 if 'data' in item and URL_API_V2 in url:
                     parent = item.get('parent', {})
                     item = item['data']
@@ -490,7 +524,6 @@ class Session(object):
                         item['parent'] = parent if isinstance(parent, dict) else {}
                     retType = item.get('itemType', retType).lower()
                 elif 'item' in item:
-                    cutData = item.get('cut', None)
                     item = item['item']
                 elif 'track' in item and ret.startswith('track'):
                     item = item['track']
@@ -501,8 +534,6 @@ class Session(object):
                     nextItem._itemPosition = itemPosition
                     nextItem._offset = offset
                     nextItem._totalNumberOfItems = numberOfItems
-                if isinstance(nextItem, Track) and cutData:
-                    nextItem._cut = self._parse_one_item(cutData, ret='cut')
                 result.append(nextItem)
                 itemPosition = itemPosition + 1
                 self._cursor_pos = self._cursor_pos + 1
@@ -545,23 +576,22 @@ class Session(object):
             offset = offset + 1
         return items
 
-    def get_track_url(self, track_id, quality=None, cut_id=None, direct_mode=False):
+    def get_track_url(self, track_id, quality=None, direct_mode=False):
         params = {}
         if not self.is_logged_in:
             url = 'tracks/%s/previewurl' % track_id
         elif direct_mode:
             params.update({'soundQuality': quality if quality else self._config.quality})
-            if cut_id:
-                url = 'cuts/%s/streamUrl' % cut_id
-            else:
-                # url = 'tracks/%s/streamUrl' % track_id
-                url = 'tracks/%s/urlpostpaywall' % track_id
-                params = {'urlusagemode': 'STREAM', 'assetpresentation': 'FULL', 'audioquality': quality if quality else self._config.quality}
+            url = 'tracks/%s/streamUrl' % track_id
+            # url = 'tracks/%s/offlineUrl' % track_id
+            # url = 'tracks/%s/urlpostpaywall' % track_id
+            # params = {'urlusagemode': 'STREAM', 'assetpresentation': 'FULL', 'audioquality': quality if quality else self._config.quality}
         else:
             url = 'tracks/%s/playbackinfopostpaywall' % track_id
             params = { 'audioquality': quality if quality else self._config.quality,
                        'playbackmode': 'STREAM',
                        'assetpresentation': 'FULL' }
+                    # 'locale': self._config.locale,
                     # 'streamingsessionid': self._config.session_id }
         return self._map_request(url,  params=params, ret='track_url')
 
@@ -631,10 +661,10 @@ class Session(object):
             parse = self._parse_category
         elif ret.startswith('search'):
             parse = self._parse_search
-        elif ret.startswith('cut'):
-            parse = self._parse_cut_info
         elif ret.startswith('mix'):
             parse = self._parse_mix
+        elif ret.startswith('lyrics'):
+            parse = self._parse_lyrics
         elif ret.startswith('device_code'):
             parse = self._parse_device_code
         elif ret.startswith('auth_token'):
@@ -763,14 +793,14 @@ class Session(object):
             result.videos = [self._parse_video(json) for json in json_obj['videos']['items']]
         return result
 
-    def _parse_cut_info(self, json_obj):
-        return CutInfo(**json_obj)
-
     def _parse_mix(self, json_obj):
         item = Mix(**json_obj)
         if self.is_logged_in and self.user.favorites:
             item._isFavorite = self.user.favorites.isFavoriteMix(item.id)
         return item
+
+    def _parse_lyrics(self, json_obj):
+        return Lyrics(**json_obj)
 
     def _parse_device_code(self, json_obj):
         return DeviceCode(**json_obj)

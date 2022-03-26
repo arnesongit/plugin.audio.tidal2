@@ -104,8 +104,9 @@ class DebugHelper(object):
             self.updatePath()
             log.debug('Starting Remote Debugger')
             import pydevd
-            pydevd.settrace(host=self.debugServer, port=self.debugPort, stdoutToServer=True, stderrToServer=True, 
-                            suspend=True, wait_for_ready_to_run=True, trace_only_current_thread=True)
+            pydevd.settrace(host=self.debugServer, stdout_to_server=True, stderr_to_server=True, port=self.debugPort, suspend=True, trace_only_current_thread=True, wait_for_ready_to_run=True)
+            #pydevd.settrace(host=self.debugServer, port=self.debugPort, stdoutToServer=True, stderrToServer=True, 
+            #                suspend=True, wait_for_ready_to_run=True, trace_only_current_thread=True)
             log.debug('Remote Debugger started')
         except:
             self.error('pydevd library not found')

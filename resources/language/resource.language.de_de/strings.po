@@ -29,8 +29,8 @@ msgid "Music Quality"
 msgstr "Musik-Qualität"
 
 msgctxt "#30005"
-msgid "Lossless (FLAC,ALAC)"
-msgstr "Lossless (FLAC,ALAC)"
+msgid "Lossless (FLAC)"
+msgstr "Lossless (FLAC)"
 
 msgctxt "#30006"
 msgid "High (320 kBit/s)"
@@ -121,8 +121,28 @@ msgid "Addon-Settings"
 msgstr "Addon-Einstellungen"
 
 msgctxt "#30028"
-msgid "--"
-msgstr "--"
+msgid "Device Type"
+msgstr "Gerätetyp"
+
+msgctxt "#30029"
+msgid "Enable lyrics"
+msgstr "Lyrics/Songtexte aktivieren"
+
+msgctxt "#30030"
+msgid "Install TIDAL lyrics scraper"
+msgstr "TIDAL lyrics scraper installieren"
+
+msgctxt "#30031"
+msgid "Uninstall TIDAL lyrics scraper"
+msgstr "TIDAL lyrics scraper deinstallieren"
+
+msgctxt "#30032"
+msgid "CU LRC Lyrics addon settings"
+msgstr "CU LRC Lyrics Addon Settings"
+
+msgctxt "#30033"
+msgid "Install CU LRC Lyrics addon"
+msgstr "CU LRC Lyrics Addon installieren"
 
 msgctxt "#30040"
 msgid "Video Quality"
@@ -571,6 +591,38 @@ msgstr "Login-Status"
 msgctxt "#30282"
 msgid "Not logged in. Please login via web browser !"
 msgstr "Nicht angemeldet. Bitte über Web-Browser anmelden !"
+
+msgctxt "#30283"
+msgid "Select TIDAL APK file"
+msgstr "TIDAL APK Datei wählen"
+
+msgctxt "#30284"
+msgid "Failed to load APK file"
+msgstr "Fehler beim Lesen der APK-Datei"
+
+msgctxt "#30285"
+msgid "APK file is not a TIDAL app"
+msgstr "Die APK-Datei ist keine TIDAL-App"
+
+msgctxt "#30286"
+msgid "No device type found in APK"
+msgstr "Keine Gerätetypen in APK-Datei gefunden"
+
+msgctxt "#30287"
+msgid "°Attention: Device type was selected from the TIDAL APK !<br>Client-ID are Client-Secret are fixed !"
+msgstr "°Achtung: Gerätetyp wurde aus der TIDAL-APK übernommen !<br>Client-ID und Client-Secret sind fest vorgegeben !"
+
+msgctxt "#30288"
+msgid "°Attention: No device type was selected from a TIDAL APK !<br>Please use a working Client-ID and Client-Secret values directly !"
+msgstr "°Achtung: Gerätetyp wurde nicht aus der TIDAL-APK übernommen !<br>Bitte funktionierende Client-ID und Client-Secret Werte direkt vorgeben !"
+
+msgctxt "#30289"
+msgid "Select device type from TIDAL APK file"
+msgstr "Gerätetyp aus TIDAL APK Datei lesen"
+
+msgctxt "#30290"
+msgid "No device type selected.\nShould the existing device type be cleared ?\nThen the Client-ID and Client-Secret must be set manually !"
+msgstr "Kein Gerätetyp ausgewählt.\nSoll der vorhandene Gerätetyp entfernt werden ?\nClient-ID und Client-Secret müssen dann manuell gesetzt werden !"
 
 msgctxt "#30501"
 msgid "Use Colors in Labels"

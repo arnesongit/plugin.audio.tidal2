@@ -51,7 +51,12 @@ class Msg(object):
     i30025 = 30025 # Options
     i30026 = 30026 # Client ID
     i30027 = 30027 # Addon-Settings
-    i30028 = 30028 # --
+    i30028 = 30028 # Device Name
+    i30029 = 30029 # Enable lyrics
+    i30030 = 30030 # Install TIDAL lyrics scraper
+    i30031 = 30031 # Uninstall TIDAL lyrics scraper
+    i30032 = 30032 # CU LRC Lyrics addon settings
+    i30033 = 30033 # Install CU LRC Lyrics addon
 
     # Video Settings
     i30040 = 30040 # Video Quality
@@ -144,7 +149,7 @@ class Msg(object):
     i30254 = 30254 # Open as Track/Video Playlist
     i30255 = 30255 # Open as Album Playlist
     i30256 = 30256 # Do you really want to logout ?
-    i30257 = 30257 # Zdefiniuj Client-ID i Client-Secret w ustawieniach dodatku!\nNLub zaloguj się za pomocą adresu URL: {url}
+    i30257 = 30257 # Please set Client-ID and Client-Secret in the addon settings ! Or login with URL: {url}
     i30258 = 30258 # Clear {what}
     i30259 = 30259 # Playlist "{name}" contains {count} items. Are you sure to remove all items from this playlist ?
     i30260 = 30260 # No auto search
@@ -170,6 +175,14 @@ class Msg(object):
     i30280 = 30280 # TIDAL2 - OAuth2 Device Login
     i30281 = 30281 # Login-Status
     i30282 = 30282 # Not logged in. Please login via web browser !
+    i30283 = 30283 # Select TIDAL APK file
+    i30284 = 30284 # Failed to load APK file
+    i30285 = 30285 # APK file is not a TIDAL app
+    i30286 = 30286 # No Clients found in APK
+    i30287 = 30287 # Attention: Device type was selected from TIDAL App
+    i30288 = 30288 # Attention: No device type was selected from TIDAL App
+    i30289 = 30289 # Select device type from TIDAL APK file
+    i30290 = 30290 # No device type selected.\nDo you want to keep the existing device type ?
 
     # Extended Settings
     i30501 = 30501 # Use Colors in Labels

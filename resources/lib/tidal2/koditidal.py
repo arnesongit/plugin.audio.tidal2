@@ -45,6 +45,11 @@ class TidalSession(Session):
         self.user = TidalUser(self)
         self.load_session()
 
+    def cleanup(self):
+        if self._config:
+            self._config.addon = None
+        Session.cleanup(self)
+
     def load_session(self):
         if not self._config.country_code or self._config.country_code == 'WW':
             self._config.country_code = self.get_country_code()
@@ -53,13 +58,6 @@ class TidalSession(Session):
             else:
                 settings.setSetting('country_code', self._config.country_code)
                 log.info('Initialized Country Code to "%s"' % self._config.country_code)
-        if not self._config.preview_token:
-            self._config.preview_token = self.get_preview_token()
-            if self._config.preview_token:
-                settings.setSetting('preview_token', self._config.preview_token)
-                log.info('Preview-Token initialized successfully')
-            else:
-                log.error('Failed to retrieve Preview-Token')
         if self.is_logged_in:
             self.user.favorites.load_cache()
             self.user.load_cache()
@@ -78,25 +76,24 @@ class TidalSession(Session):
                 progress.update(percent)
                 auth = self.login_part2(device_code=code)
                 if auth.success:
+                    settings.save_client()
                     settings.save_session()
-                    if code._client_id and code._client_secret:
-                        settings.setSetting('client_id', code._client_id)
-                        settings.setSetting('client_secret', code._client_secret)
                     break
                 if not auth.authorizationPending or progress.iscanceled() or monitor.waitForAbort(timeout=1):
                     log.warning('Login Session aborted')
                     break
                 percent = int(100 * min(code.expiresIn, (datetime.datetime.now() - start_time).seconds) / code.expiresIn)
-            progress.close()
         except Exception as e:
             log.logException(e, 'Login failed !')
             xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30253) , icon=xbmcgui.NOTIFICATION_ERROR)
+        finally:
+            progress.close()
         if auth and not auth.success and not auth.authorizationPending and auth.error:
             xbmcgui.Dialog().ok(plugin.name+' - '+_T(Msg.i30253), auth.error)
         return auth
 
     def logout(self):
-        Session.logout(self, signoff=True)
+        Session.logout(self, signoff=False)
         settings.save_session()
         self._config.load()
 
@@ -288,10 +285,10 @@ class TidalSession(Session):
         return CategoryItem(Session._parse_category(self, json_obj))
 
 
-    def get_track_url(self, track_id, quality=None, cut_id=None):
+    def get_track_url(self, track_id, quality=None):
         try:
             soundQuality = quality if quality else self._config.quality
-            media = Session.get_track_url(self, track_id, quality=soundQuality, cut_id=cut_id)
+            media = Session.get_track_url(self, track_id, quality=soundQuality)
             if media.isEncrypted:
                 log.warning('Got encrypted track %s ! Playing silence track to avoid kodi to crash ...' % track_id)
                 xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30279).format(what=_T('track')), icon=xbmcgui.NOTIFICATION_WARNING)

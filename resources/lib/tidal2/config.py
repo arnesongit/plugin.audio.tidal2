@@ -19,6 +19,8 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import os
 import datetime
+import base64
+import pyaes
 
 from kodi_six import xbmcvfs
 
@@ -31,18 +33,30 @@ from .tidalapi.models import Config, Quality, Model
 
 class TidalConfig(Config):
 
-    def __init__(self):
+    def __init__(self, tidal_addon=None):
         Config.__init__(self)
+        self.addon = tidal_addon if tidal_addon else addon
         self.load()
 
+    def init(self, **kwargs):
+        if self.client_name:
+            # Re-Encode Client-ID and Secret
+            old_secret = self.token_secret
+            self.refresh_token = ''
+            self.client_name = self.client_name
+            self.client_id = base64.b64encode(pyaes.AESModeOfOperationCTR(self.token_secret).encrypt(pyaes.AESModeOfOperationCTR(old_secret).decrypt(base64.b64decode(self.client_id)))).decode('utf-8')
+            self.client_secret = base64.b64encode(pyaes.AESModeOfOperationCTR(self.token_secret).encrypt(pyaes.AESModeOfOperationCTR(old_secret).decrypt(base64.b64decode(self.client_secret)))).decode('utf-8')
+            self.save_client()
+        Config.init(self, **kwargs)
+
     def getSetting(self, setting):
-        return addon.getSetting(setting)
+        return self.addon.getSetting(setting)
 
     def setSetting(self, setting, value):
-        addon.setSetting(setting, value)
+        self.addon.setSetting(setting, value)
 
     def getAddonInfo(self, val):
-        return addon.getAddonInfo(val)
+        return self.addon.getAddonInfo(val)
 
     def load(self):
         self.album_playlist_tag = 'ALBUM'
@@ -71,15 +85,18 @@ class TidalConfig(Config):
         self.user_id = self.getSetting('user_id')
         self.country_code = self.getSetting('country_code')
         self.subscription_type = self.getSetting('subscription_type')
+        self.enable_lyrics = True if self.getSetting('enable_lyrics') == 'true' else False
 
         # Determine the locale of the system
         self.locale = getLocale(self.country_code)
 
+        self.use_drm = True if self.getSetting('use_drm') == 'true' else False
+        self.client_name = self.getSetting('client_name')
         self.client_id = self.getSetting('client_id')
         self.client_secret = self.getSetting('client_secret')
         self.client_unique_key = self.getSetting('client_unique_key')
         self.session_id = self.getSetting('session_id')
-        self.preview_token = self.getSetting('preview_token')
+        self.session_id = '29c9ddca-0a2f-40af-aae6-d426f9b8e6b3'
         self.token_type = self.getSetting('token_type')
         self.access_token = self.getSetting('access_token')
         self.refresh_token = self.getSetting('refresh_token')
@@ -110,6 +127,12 @@ class TidalConfig(Config):
         self.fanart_server_enabled = True if self.getSetting('fanart_server_enabled') == 'true' else False
         self.fanart_server_port = int('0%s' % self.getSetting('fanart_server_port'))
 
+    @property
+    def token_secret(self):
+        if len(self.refresh_token) >= 35:
+            return self.refresh_token[3:35].encode('utf-8')
+        return Config.token_secret.fget(self)
+
     def handle_deprecated_settings(self):
         # Delete or convert deprecated settings values from older addon versions
         if self.getSetting('username') != '': self.setSetting('username', '')
@@ -126,6 +149,13 @@ class TidalConfig(Config):
                 xbmcvfs.delete(self.playlist_file)
             if xbmcvfs.exists(self.favorites_file):
                 xbmcvfs.delete(self.favorites_file)
+        if self.getSetting('preview_token'):
+            self.setSetting('preview_token', '')
+
+    def save_client(self):
+        settings.setSetting('client_name', self.client_name)
+        settings.setSetting('client_id', self.client_id)
+        settings.setSetting('client_secret', self.client_secret)
 
     def save_session(self):
         settings.setSetting('user_id', '%s' % self.user_id)

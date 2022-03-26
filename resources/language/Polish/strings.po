@@ -29,8 +29,8 @@ msgid "Music Quality"
 msgstr "Jakość Muzyki"
 
 msgctxt "#30005"
-msgid "Lossless (FLAC,ALAC)"
-msgstr "Bezstratna (FLAC,ALAC,MQA)"
+msgid "Lossless (FLAC)"
+msgstr "Bezstratna (FLAC)"
 
 msgctxt "#30006"
 msgid "High (320 kBit/s)"
@@ -121,8 +121,28 @@ msgid "Addon-Settings"
 msgstr "Ustawienia Dodatku"
 
 msgctxt "#30028"
-msgid "--"
-msgstr "--"
+msgid "Device Type"
+msgstr "Rodzaj urządzenia"
+
+msgctxt "#30029"
+msgid "Enable lyrics"
+msgstr "Włącz teksty"
+
+msgctxt "#30030"
+msgid "Install TIDAL lyrics scraper"
+msgstr "Install TIDAL lyrics scraper"
+
+msgctxt "#30031"
+msgid "Uninstall TIDAL lyrics scraper"
+msgstr "Uninstall TIDAL lyrics scraper"
+
+msgctxt "#30032"
+msgid "CU LRC Lyrics addon settings"
+msgstr "CU LRC Lyrics addon settings"
+
+msgctxt "#30033"
+msgid "Install CU LRC Lyrics addon"
+msgstr "Install CU LRC Lyrics addon"
 
 msgctxt "#30040"
 msgid "Video Quality"
@@ -571,6 +591,30 @@ msgstr "Status logowania"
 msgctxt "#30282"
 msgid "Not logged in. Please login via web browser !"
 msgstr "Niezalogowany. Zaloguj się przez przeglądarkę internetową!"
+
+msgctxt "#30283"
+msgid "Select TIDAL APK file"
+msgstr "Wybierz plik APK TIDAL"
+
+msgctxt "#30284"
+msgid "Failed to load APK file"
+msgstr "Błąd odczytu pliku APK"
+
+msgctxt "#30285"
+msgid "APK file is not a TIDAL app"
+msgstr "Plik APK nie jest aplikacją TIDAL"
+
+msgctxt "#30286"
+msgid "No device type found in APK"
+msgstr "W pliku APK nie znaleziono typów urządzeń"
+
+msgctxt "#30287"
+msgid "°Attention: Device type was selected from the TIDAL APK !<br>Client-ID are Client-Secret are fixed !"
+msgstr "°Uwaga: typ urządzenia został wybrany z TIDAL APK !\nIdentyfikator klienta to tajny klucz klienta jest stały !"
+
+msgctxt "#30288"
+msgid "°Attention: No device type was selected from a TIDAL APK !<br>Please use a working Client-ID and Client-Secret values directly !"
+msgstr "°Uwaga: nie wybrano żadnego typu urządzenia z pakietu APK TIDAL !\nUżyj działających wartości Client-ID i Client-Secret bezpośrednio !"
 
 msgctxt "#30501"
 msgid "Use Colors in Labels"

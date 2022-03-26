@@ -29,6 +29,11 @@ from .tidalapi import models as tidal
 
 # Convert TIDAL-API Media into Kodi List Items
 
+class ItemSortType(object):
+    DATE = 1
+    NAME = 2
+
+
 class HasListItem(object):
 
     _is_logged_in = False
@@ -93,6 +98,11 @@ class HasListItem(object):
     def getSortText(self, mode=None):
         return self.getLabel(extended=False)
 
+    def getSortCriteria(self, sortType=ItemSortType.DATE):
+        if sortType == ItemSortType.DATE:
+            return '19000101%08d' % self._itemPosition
+        return '%s %08d' % (self.getLabel(extended=False), self._itemPosition)
+
 
 class AlbumItem(tidal.Album, HasListItem):
 
@@ -147,6 +157,18 @@ class AlbumItem(tidal.Album, HasListItem):
     def getSortText(self, mode=None):
         return '%s - (%s) %s' % (self.artist.getLabel(extended=False), getattr(self, 'year', ''), self.getLongTitle())
 
+    def getSortCriteria(self, sortType=ItemSortType.DATE):
+        criteria = HasListItem.getSortCriteria(self, sortType=sortType)
+        try:
+            if sortType == ItemSortType.DATE:
+                if isinstance(self.releaseDate, datetime.datetime):
+                    criteria = '%04d%02d%02d%08d' % (self.releaseDate.year, self.releaseDate.month, self.releaseDate.day, self._itemPosition)
+                elif isinstance(self.streamStartDate, datetime.datetime):
+                    criteria = '%04d%02d%02d%08d' % (self.streamStartDate.year, self.streamStartDate.month, self.streamStartDate.day, self._itemPosition)
+        except:
+            pass
+        return criteria
+
     def getListItem(self):
         li = HasListItem.getListItem(self)
         url = plugin.url_for_path('/album/%s' % self.id)
@@ -187,7 +209,10 @@ class AlbumItem(tidal.Album, HasListItem):
             for plid in plids:
                 if plid != self._playlist_id:
                     cm.append(((_T(Msg.i30247).format(name=self._userplaylists[plid].get('title'))+' ...', 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_album/%s/%s' % (plid, self.id)))))
-            cm.append((_T(Msg.i30221), 'Container.Update(%s)' % plugin.url_for_path('/artist/%s' % self.artist.id)))
+            if len(self.artists) > 1:
+                cm.append((_T(Msg.i30221), 'RunPlugin(%s)' % plugin.url_for_path('/artists/%s' % '-'.join(['%s' % artist.id for artist in self.artists]))))
+            else:
+                cm.append((_T(Msg.i30221), 'Container.Update(%s)' % plugin.url_for_path('/artist/%s' % self.artist.id)))
         return cm
 
 
@@ -204,6 +229,9 @@ class ArtistItem(tidal.Artist, HasListItem):
         if self._isLocked and '/favorites/artists' in sys.argv[0]:
             return self.STREAM_LOCKED_MASK.format(label=self.name, info=_T(Msg.i30260))
         return self.name
+
+    def getSortCriteria(self, sortType=None):
+        return HasListItem.getSortCriteria(self, sortType=ItemSortType.NAME)
 
     def getListItem(self):
         li = HasListItem.getListItem(self)
@@ -309,6 +337,18 @@ class MixItem(tidal.Mix, HasListItem):
             longTitle = self.DOLBY_ATMOS_MASK.format(label=longTitle)
         return longTitle
 
+    def getSortCriteria(self, sortType=ItemSortType.DATE):
+        criteria = HasListItem.getSortCriteria(self, sortType=sortType)
+        try:
+            if sortType == ItemSortType.DATE:
+                if isinstance(self.dateAdded, datetime.datetime):
+                    criteria = '%04d%02d%02d%08d' % (self.dateAdded.year, self.dateAdded.month, self.dateAdded.day, self._itemPosition)
+                elif isinstance(self.streamStartDate, datetime.datetime):
+                    criteria = '%04d%02d%02d%08d' % (self.streamStartDate.year, self.streamStartDate.month, self.streamStartDate.day, self._itemPosition)
+        except:
+            pass
+        return criteria
+
     def getListItem(self):
         li = HasListItem.getListItem(self)
         url = plugin.url_for_path('/mix/%s' % self.id)
@@ -364,6 +404,18 @@ class PlaylistItem(tidal.Playlist, HasListItem):
         if extended and self.parentFolderId and not 'user_folders' in sys.argv[0]:
             label = self.USER_PLAYLIST_MASK.format(label=label, userpl=self.parentFolderName)
         return label
+
+    def getSortCriteria(self, sortType=ItemSortType.DATE):
+        criteria = HasListItem.getSortCriteria(self, sortType=sortType)
+        try:
+            if sortType == ItemSortType.DATE:
+                if isinstance(self.dateAdded, datetime.datetime):
+                    criteria = '%04d%02d%02d%08d' % (self.dateAdded.year, self.dateAdded.month, self.dateAdded.day, self._itemPosition)
+                elif isinstance(self.streamStartDate, datetime.datetime):
+                    criteria = '%04d%02d%02d%08d' % (self.streamStartDate.year, self.streamStartDate.month, self.streamStartDate.day, self._itemPosition)
+        except:
+            pass
+        return criteria
 
     def getListItem(self):
         li = HasListItem.getListItem(self)
@@ -454,9 +506,6 @@ class TrackItem(tidal.Track, HasListItem):
             longTitle += ' (%s)' % self.version
         if self.explicit and not 'Explicit' in self.title:
             longTitle += ' (Explicit)'
-        if self.editable and isinstance(self._cut, tidal.CutInfo):
-            if self._cut.name:
-                longTitle += ' (%s)' % self._cut.name
         if self.isMqa and settings.mqa_in_labels:
             longTitle = self.MASTER_AUDIO_MASK.format(label=longTitle)
         if self.isDolbyAtmos and settings.mqa_in_labels:
@@ -467,6 +516,16 @@ class TrackItem(tidal.Track, HasListItem):
         if mode == 'ALBUM':
             return self.album.getSortText(mode=mode)
         return self.getLabel(extended=False)
+
+    def getSortCriteria(self, sortType=ItemSortType.DATE):
+        criteria = HasListItem.getSortCriteria(self, sortType=sortType)
+        try:
+            if sortType == ItemSortType.DATE:
+                if isinstance(self.streamStartDate, datetime.datetime):
+                    criteria = '%04d%02d%02d%08d' % (self.streamStartDate.year, self.streamStartDate.month, self.streamStartDate.day, self._itemPosition)
+        except:
+            pass
+        return criteria
 
     def getFtArtistsText(self):
         text = ''
@@ -487,13 +546,10 @@ class TrackItem(tidal.Track, HasListItem):
         #    comments.append("gain:%0.3f, peak:%0.3f" % (self.replayGain, self.peak))
         return ', '.join(comments)
 
-    def getListItem(self):
+    def getListItem(self, lyrics=None):
         li = HasListItem.getListItem(self)
         if self.available:
-            if isinstance(self._cut, tidal.CutInfo):
-                url = plugin.url_for_path('/play_track_cut/%s/%s/%s' % (self.id, self._cut.id, self.album.id))
-            else:
-                url = plugin.url_for_path('/play_track/%s/%s' % (self.id, self.album.id))
+            url = plugin.url_for_path('/play_track/%s/%s' % (self.id, self.album.id))
             isFolder = False
         else:
             url = plugin.url_for_path('/stream_locked')
@@ -512,6 +568,9 @@ class TrackItem(tidal.Track, HasListItem):
             'rating': '%s' % int(round(self.popularity / 10.0)),
             'comment': self.getComment()
         }
+        if lyrics:
+            infoLabel.update({'lyrics': lyrics.subtitles})
+            li.setProperty('culrc.source', Const.addon_id)
         try:
             if self.streamStartDate:
                 infoLabel.update({'date': self.streamStartDate.date().strftime('%d.%m.%Y')})
@@ -535,8 +594,7 @@ class TrackItem(tidal.Track, HasListItem):
                 cm.append((_T(Msg.i30219), 'RunPlugin(%s)' % plugin.url_for_path('/favorites/add/tracks/%s' % self.id)))
             if self._playlist_type == 'USER':
                 cm.append((_T(Msg.i30240).format(what=_T('playlist'))+' ...', 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove/%s/%s' % (self._playlist_id, self._playlist_pos))))
-                item_id = self.id if not isinstance(self._cut, tidal.CutInfo) else self._cut.id
-                cm.append((_T(Msg.i30248).format(what=_T('playlist'))+' ...', 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/move/%s/%s/%s' % (self._playlist_id, self._playlist_pos, item_id))))
+                cm.append((_T(Msg.i30248).format(what=_T('playlist'))+' ...', 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/move/%s/%s/%s' % (self._playlist_id, self._playlist_pos, self.id))))
             else:
                 cm.append((_T(Msg.i30239).format(what=_T('playlist'))+' ...', 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/add/track/%s' % self.id)))
             plids = list(self._userplaylists.keys())
@@ -547,7 +605,10 @@ class TrackItem(tidal.Track, HasListItem):
                         cm.append(((_T(Msg.i30247).format(name=playlist.get('title'))+' ...', 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_album/%s/%s' % (plid, self.album.id)))))
                     else:
                         cm.append(((_T(Msg.i30247).format(name=playlist.get('title'))+' ...', 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_id/%s/%s' % (plid, self.id)))))
-        cm.append((_T(Msg.i30221), 'Container.Update(%s)' % plugin.url_for_path('/artist/%s' % self.artist.id)))
+        if len(self.artists) > 1:
+            cm.append((_T(Msg.i30221), 'RunPlugin(%s)' % plugin.url_for_path('/artists/%s' % '-'.join(['%s' % artist.id for artist in self.artists]))))
+        else:
+            cm.append((_T(Msg.i30221), 'Container.Update(%s)' % plugin.url_for_path('/artist/%s' % self.artist.id)))
         cm.append((_T(Msg.i30245), 'Container.Update(%s)' % plugin.url_for_path('/album/%s' % self.album.id)))
         cm.append((_T(Msg.i30222), 'Container.Update(%s)' % plugin.url_for_path('/track_radio/%s' % self.id)))
         cm.append((_T(Msg.i30223), 'Container.Update(%s)' % plugin.url_for_path('/recommended/tracks/%s' % self.id)))
@@ -591,6 +652,16 @@ class VideoItem(tidal.Video, HasListItem):
         if getattr(self, 'year', None):
             longTitle += ' (%s)' % self.year
         return longTitle
+
+    def getSortCriteria(self, sortType=ItemSortType.DATE):
+        criteria = HasListItem.getSortCriteria(self, sortType=sortType)
+        try:
+            if sortType == ItemSortType.DATE:
+                if isinstance(self.streamStartDate, datetime.datetime):
+                    criteria = '%04d%02d%02d%08d' % (self.streamStartDate.year, self.streamStartDate.month, self.streamStartDate.day, self._itemPosition)
+        except:
+            pass
+        return criteria
 
     def getFtArtistsText(self):
         text = ''
@@ -669,7 +740,10 @@ class VideoItem(tidal.Video, HasListItem):
             for plid in plids:
                 if plid != self._playlist_id:
                     cm.append(((_T(Msg.i30247).format(name=self._userplaylists[plid].get('title'))+' ...', 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_id/%s/%s' % (plid, self.id)))))
-        cm.append((_T(Msg.i30221), 'Container.Update(%s)' % plugin.url_for_path('/artist/%s' % self.artist.id)))
+        if len(self.artists) > 1:
+            cm.append((_T(Msg.i30221), 'RunPlugin(%s)' % plugin.url_for_path('/artists/%s' % '-'.join(['%s' % artist.id for artist in self.artists]))))
+        else:
+            cm.append((_T(Msg.i30221), 'Container.Update(%s)' % plugin.url_for_path('/artist/%s' % self.artist.id)))
         cm.append((_T(Msg.i30224), 'Container.Update(%s)' % plugin.url_for_path('/recommended/videos/%s' % self.id)))
         return cm
 
@@ -702,6 +776,16 @@ class PromotionItem(tidal.Promotion, HasListItem):
                 if txt:
                     label = self.USER_PLAYLIST_MASK.format(label=label, userpl=', '.join(txt))
         return label
+
+    def getSortCriteria(self, sortType=ItemSortType.DATE):
+        criteria = HasListItem.getSortCriteria(self, sortType=sortType)
+        try:
+            if sortType == ItemSortType.DATE:
+                if isinstance(self.streamStartDate, datetime.datetime):
+                    criteria = '%04d%02d%02d%08d' % (self.streamStartDate.year, self.streamStartDate.month, self.streamStartDate.day, self._itemPosition)
+        except:
+            pass
+        return criteria
 
     def getListItem(self):
         li = HasListItem.getListItem(self)
