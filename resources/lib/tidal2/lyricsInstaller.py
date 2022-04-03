@@ -249,6 +249,8 @@ class LyricsInstaller:
                 # Enable the tidal2 scraper
                 LYRICS_ADDON.setSetting(SUBDIR, 'true')
                 TIDAL2_ADDON.setSetting('enable_lyrics', 'true')
+                TIDAL2_ADDON.setSetting('save_lyrics1', 'false')
+                TIDAL2_ADDON.setSetting('save_lyrics2', 'false')
                 self.log_info('Successfully installed "%s" scraper. Please restart Kodi !' % SUBDIR)
         except:
             self.log_error("Failed to install tidal2 lyrics scraper")
