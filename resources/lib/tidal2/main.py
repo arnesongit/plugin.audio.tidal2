@@ -969,9 +969,6 @@ def search_type(field):
 @plugin.route('/login')
 def login():
     try:
-        #session.login_direct(username='***REMOVED***', password='***REMOVED***', subscription_type='HIFI')
-        #xbmc.executebuiltin('Container.Refresh()')
-        #return
         try:
             args = plugin.args
             code = None

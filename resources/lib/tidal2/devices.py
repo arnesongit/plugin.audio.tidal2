@@ -26,6 +26,7 @@ from kodi_six import xbmcgui
 
 from .apktools import AXMLPrinter, ARSCParser, ARSCResTableConfig
 from .textids import Msg, _T, _P
+from .common import KODI_VERSION
 from .debug import log
 
 
@@ -50,14 +51,18 @@ class DeviceSelectorDialog(object):
     def select_device(config):
         client = None
         try:
-            fname = xbmcgui.Dialog().browseSingle(type=1, heading=_T(Msg.i30283), shares='', mask='.apk|.APK|.apkm|.APKM')
+            if KODI_VERSION < (18, 0):
+                fname = xbmcgui.Dialog().browseSingle(type=1, heading=_T(Msg.i30283), shares='files', mask='.apk|.APK|.apkm|.APKM')
+            else:
+                fname = xbmcgui.Dialog().browseSingle(type=1, heading=_T(Msg.i30283), shares='', mask='.apk|.APK|.apkm|.APKM')
             if fname:
                 selector = DeviceSelectorDialog(fname)
                 client = selector.select_one_device(config)
                 if client:
                     log.info('Selected device: %s' % client.name)
-        except:
-            pass
+        except Exception as e:
+            log.logException(e, 'Error opening Device Selector')
+            traceback.print_exc()
         return client
 
     def __init__(self, apk_filename):
