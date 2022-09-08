@@ -35,6 +35,9 @@ else:
     string_types = str
     from collections.abc import Iterable
 
+
+HTTP_USER_AGENT = 'Mozilla/5.0 (Linux; Android 12; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/91.0.4472.114 Safari/537.36'
+
 IMG_URL = 'http://resources.tidal.com/images/{picture}/{size}.jpg'
 
 DEFAULT_ARTIST_IMG = '1e01cdb6-f15d-4d8b-8440-a047976c1cac'
@@ -48,6 +51,8 @@ TIDAL_ARTIST_ID = '6712922'
 CATEGORY_IMAGE_SIZES = {'genres': '460x306', 'moods': '342x342'}
 
 RE_ISO8601 = re.compile(r'^(?P<full>((?P<year>\d{4})([/-]?(?P<month>(0[1-9])|(1[012]))([/-]?(?P<day>(0[1-9])|([12]\d)|(3[01])))?)?(?:[\sT](?P<hour>([01][0-9])|(?:2[0123]))(\:?(?P<minute>[0-5][0-9])(\:?(?P<second>[0-5][0-9])(?P<ms>([\,\.]\d{1,10})?))?)?(?:Z|([\-+](?:([01][0-9])|(?:2[0123]))(\:?(?:[0-5][0-9]))?))?)?))$')
+
+RE_ISO8601_PERIOD = re.compile(r'^(?P<sign>[+-])?P(?!\b)(?P<years>[0-9]+([,.][0-9]+)?Y)?(?P<months>[0-9]+([,.][0-9]+)?M)?(?P<weeks>[0-9]+([,.][0-9]+)?W)?(?P<days>[0-9]+([,.][0-9]+)?D)?((?P<separator>T)(?P<hours>[0-9]+([,.][0-9]+)?H)?(?P<minutes>[0-9]+([,.][0-9]+)?M)?(?P<seconds>[0-9]+([,.][0-9]+)?S)?)?$')
 
 
 class Quality(object):
@@ -65,6 +70,7 @@ class SubscriptionType(object):
     hifi = 'HIFI'
     free = 'FREE'
     intro = 'INTRO'
+    FreeSubscriptions = [free, intro]
 
 
 class AudioMode(object):
@@ -80,6 +86,11 @@ class Codec(object):
     FLAC = 'FLAC'
     MQA = 'MQA'
     Atmos = 'EAC3'
+    AC4 = 'AC4'
+    SONY360RA = 'MHA1'
+    LowResCodecs = [MP3, AAC, M4A]
+    PremiumCodecs = [MQA, Atmos, AC4]
+    HQCodecs = PremiumCodecs + [FLAC]
 
 
 class ManifestMimeType(object):
@@ -93,20 +104,25 @@ class MimeType(object):
     audio_mpeg = 'audio/mpeg'
     audio_mp3 = 'audio/mp3'
     audio_m4a = 'audio/m4a'
-    audio_flac = 'audio/x-flac'
+    audio_flac = 'audio/flac'
+    audio_xflac = 'audio/x-flac'
     audio_eac3 = 'audio/eac3'
+    audio_ac4 = 'audio/mp4'
     video_mp4 = 'video/mp4'
     video_m3u8 = 'video/mpegurl'
     audio_map = {Codec.MP3: audio_mp3, Codec.AAC: audio_m4a, Codec.M4A: audio_m4a,
-                 Codec.FLAC: audio_flac, Codec.MQA: audio_m4a, Codec.Atmos: audio_eac3}
+                 Codec.FLAC: audio_xflac, Codec.MQA: audio_xflac, Codec.Atmos: audio_eac3, Codec.AC4: audio_ac4}
     @staticmethod
     def fromAudioCodec(codec): return MimeType.audio_map.get(codec, MimeType.audio_m4a)
+    @staticmethod
+    def isFLAC(mime_type): return True if mime_type in [MimeType.audio_flac, MimeType.audio_xflac] else False
 
 
 class Config(object):
     def __init__(self, **kwargs):
         self.quality = Quality.lossless
         self.country_code = 'WW'
+        self.user_country_code = 'WW'
         self.locale = 'en_US'
         self.debug_json = False
         self.client_name = ''
@@ -116,14 +132,13 @@ class Config(object):
         self.init(**kwargs)
 
     def init(self, **kwargs):
-        self.user_agent = kwargs.get('user_agent', "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.128 Safari/537.36")
+        self.user_agent = kwargs.get('user_agent', HTTP_USER_AGENT)
         self.country_code = kwargs.get('country_code', self.country_code)
+        self.user_country_code = kwargs.get('user_country_code', self.user_country_code)
         self.user_id = kwargs.get('user_id', '')
         self.client_name = kwargs.get('client_name', self.client_name)
         self.client_id = kwargs.get('client_id', self.client_id)
         self.client_secret = kwargs.get('client_secret', self.client_secret)
-        self.client_unique_key = kwargs.get('client_unique_key', '')
-        self.session_id = kwargs.get('session_id', '')
         self.token_type = kwargs.get('token_type', '')
         self.access_token = kwargs.get('access_token', '')
         self.refresh_token = kwargs.get('refresh_token', '')
@@ -161,11 +176,10 @@ class AlbumType(object):
     single = 'SINGLE'
 
 
-class Model(object):
-    id = None
-    name = 'Unknown'
+class Iso8601(object):
 
-    def parse_date(self, datestring, default=None):
+    @staticmethod
+    def parse_date(datestring, default=None):
         try:
             if isinstance(datestring, datetime.datetime):
                 return datestring
@@ -179,6 +193,28 @@ class Model(object):
             pass
         return default
 
+    @staticmethod
+    def parse_duration(durationstring):
+        try:
+            d = RE_ISO8601_PERIOD.match(durationstring).groupdict()
+            for key in ("days", "hours", "minutes", "seconds"):
+                d[key] = float("0" if d[key] == None else d[key][:-1].replace(",", "."))
+            ret = datetime.timedelta(days=d["days"], hours=d["hours"], minutes=d["minutes"], seconds=d["seconds"])
+            if d["sign"] == "-":
+                ret = datetime.timedelta(0) - ret
+            return ret
+        except:
+            pass
+        return datetime.timedelta(0)
+
+
+class Model(object):
+    id = None
+    name = 'Unknown'
+
+    def parse_date(self, datestring, default=None):
+        return Iso8601.parse_date(datestring, default)
+
 
 class BrowsableMedia(Model):
 
@@ -186,6 +222,7 @@ class BrowsableMedia(Model):
     _isFavorite = False
     _itemPosition = -1
     _offset = 0
+    _pageSize = 9999
     _totalNumberOfItems = 0
 
     @property
@@ -257,6 +294,13 @@ class Album(BrowsableMedia):
     def isDolbyAtmos(self):
         try:
             return True if AudioMode.dolby_atmos in self.audioModes else False
+        except:
+            return False
+
+    @property
+    def isSony360RA(self):
+        try:
+            return True if AudioMode.sony_360 in self.audioModes else False
         except:
             return False
 
@@ -544,6 +588,13 @@ class Track(PlayableMedia):
         except:
             return False
 
+    @property
+    def isSony360RA(self):
+        try:
+            return True if AudioMode.sony_360 in self.audioModes else False
+        except:
+            return False
+
 
 class Video(PlayableMedia):
     releaseDate = None
@@ -604,7 +655,7 @@ class Promotion(BrowsableMedia):
     text = None
     imageId = None
     imageURL = None
-    type = None         # PLAYLIST|ALBUM|VIDEO|EXTURL
+    type = None         # PLAYLIST|ALBUM|VIDEO|EXTURL|CATEGORY_PAGES
     artifactId = None
     duration= 0
     popularity = 0
@@ -664,7 +715,7 @@ class Category(BrowsableMedia):
 
     @staticmethod
     def groups():
-        return ['featured', 'rising', 'genres', 'moods', 'movies', 'shows']
+        return ['featured', 'genres', 'moods', 'movies', 'shows']
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -805,8 +856,11 @@ class Subscription(Model):
         super(Subscription, self).__init__()
         if not self.highestSoundQuality:
             # Determine highest sound quality with subscription type 
-            self.highestSoundQuality = {SubscriptionType.hifi: Quality.lossless, 
-                                        SubscriptionType.premium: Quality.high,
+            self.highestSoundQuality = {SubscriptionType.premium: Quality.hi_res,
+                                        SubscriptionType.premium_mid: Quality.hi_res,
+                                        SubscriptionType.premium_plus: Quality.hi_res,
+                                        SubscriptionType.hifi: Quality.lossless, 
+                                        SubscriptionType.intro: Quality.high, 
                                         SubscriptionType.free: Quality.low}.get(self.type, Quality.high)
         self.validUntil = self.parse_date(self.validUntil if self.validUntil else '2099-12-31')
 
@@ -834,8 +888,7 @@ class StreamUrl(object):
 
 
 class TrackUrl(StreamUrl):
-    codec = None            # MP3, AAC, FLAC, ALAC, MQA, EAC3
-    cutId = None
+    codec = None            # MP3, AAC, FLAC, ALAC, MQA, EAC3, AC4, MHA1
     soundQuality = None     # LOW, HIGH, LOSSLESS
     audioQuality = None     # LOW, HIGH, LOSSLESS, HI_RES
     encryptionKey = None
@@ -848,9 +901,10 @@ class TrackUrl(StreamUrl):
     assetPresentation = 'FULL'
     audioMode = AudioMode.stereo
     streamingSessionId = None
+    licenseSecurityToken = None
     manifestMimeType  = ''
     manifest = None
-    manifestJson = {}
+    manifestHash = None
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -860,23 +914,49 @@ class TrackUrl(StreamUrl):
         if not self.soundQuality:
             self.soundQuality = self.audioQuality
         if ManifestMimeType.tidal_bts in self.manifestMimeType and self.manifest:
-            self.manifestJson = json.loads(base64.b64decode(self.manifest).decode('utf-8'))
-            self.codec = self.manifestJson['codecs'].upper().split('.')[0] if 'codecs' in self.manifestJson else Codec.M4A
-            self.mimeType = self.manifestJson.get('mimeType', MimeType.fromAudioCodec(self.codec))
-            self.encryptionKey = self.manifestJson.get('keyId', None)
-            self.urls = self.manifestJson['urls']
+            manifestJson = self.get_manifest_json()
+            self.codec = manifestJson['codecs'].upper().split('.')[0] if 'codecs' in manifestJson else Codec.M4A
+            self.mimeType = manifestJson.get('mimeType', MimeType.fromAudioCodec(self.codec))
+            self.encryptionKey = manifestJson.get('keyId', None)
+            self.urls = manifestJson['urls']
             self.url = self.urls[0]
+        elif self.isDASH and self.manifest:
+            manifestData = self.get_manifest_data().lower()
+            self.codec = Codec.FLAC if 'codecs="flac"' in manifestData else Codec.M4A
+            self.mimeType = MimeType.fromAudioCodec(self.codec)
+
+    def get_manifest_data(self):
+        try:
+            return base64.b64decode(self.manifest).decode('utf-8')
+        except:
+            pass
+        return ''
+
+    def get_manifest_json(self):
+        try:
+            return json.loads(self.get_manifest_data())
+        except:
+            pass
+        return {}
 
     def get_mimeType(self):
         if self.codec:
             return MimeType.fromAudioCodec(self.codec)
         if not isinstance(self.url, string_types):
             return MimeType.audio_m4a
-        return MimeType.audio_flac if  '.flac' in self.url else MimeType.audio_mp3 if '.mp3' in self.url else MimeType.audio_m4a
+        return MimeType.audio_xflac if '.flac' in self.url else MimeType.audio_mp3 if '.mp3' in self.url else MimeType.audio_m4a
+
+    def get_hls_data(self):
+        dash = DashInfo.fromTrackUrl(self)
+        return None if dash == None else dash.m3u8()
 
     @property
     def isEncrypted(self):
-        return True if self.encryptionKey or self.securityToken or ManifestMimeType.dash_xml in self.manifestMimeType else False
+        return True if self.encryptionKey or self.securityToken or self.licenseSecurityToken else False
+
+    @property
+    def isDASH(self):
+        return True if ManifestMimeType.dash_xml in self.manifestMimeType else False
 
 
 class VideoUrl(StreamUrl):
@@ -914,6 +994,10 @@ class VideoUrl(StreamUrl):
 
     @property
     def isEncrypted(self):
+        return False # Videos are not encrypted until today
+
+    @property
+    def isDASH(self):
         return True if ManifestMimeType.dash_xml in self.manifestMimeType else False
 
 
@@ -941,3 +1025,57 @@ class Lyrics(Model):
 
     def get_lyrics(self):
         return self.subtitles if self.subtitles else self.lyrics if self.lyrics else ""
+
+
+class DashInfo(object):
+
+    @staticmethod
+    def fromTrackUrl(trackUrl):
+        try:
+            if trackUrl.isDASH and not trackUrl.isEncrypted:
+                return DashInfo(trackUrl.get_manifest_data())
+        except:
+            pass
+        return None
+
+    @staticmethod
+    def fromBase64(mpdBase64Encoded):
+        try:
+            return DashInfo(base64.b64decode(mpdBase64Encoded).decode('utf-8'))
+        except:
+            return None
+
+    def __init__(self, mpd_xml):
+        self.manifest = mpd_xml
+        self.duration = Iso8601.parse_duration(re.match(r'.* mediaPresentationDuration=\"(?P<m>[PTMS0-9\.]+?)\".*', mpd_xml ).groupdict()['m'])
+        self.contentType = re.match(r'.* contentType=\"(?P<m>.+?)\".*', mpd_xml ).groupdict()['m']
+        self.mimeType = re.match(r'.* mimeType=\"(?P<m>.+?)\".*', mpd_xml ).groupdict()['m']
+        self.codecs = re.match(r'.* codecs=\"(?P<m>.+?)\".*', mpd_xml ).groupdict()['m']
+        self.firstUrl = re.match(r'.* initialization=\"(?P<m>http.+?)\".*', mpd_xml ).groupdict()['m']
+        self.mediaUrl = re.match(r'.* media=\"(?P<m>http.+?)\".*', mpd_xml ).groupdict()['m'].replace('$Number$', '{number}')
+        self.startNumber = int(re.match(r'.* startNumber=\"(?P<m>\d+?)\".*', mpd_xml ).groupdict()['m'])
+        self.timescale = int(re.match(r'.* timescale=\"(?P<m>\d+?)\".*', mpd_xml ).groupdict()['m'])
+        sizes = re.match(r'.* d=\"(?P<d1>\d+?)\".* r=\"(?P<r>\d+?)\".* d=\"(?P<d2>\d+?)\".*', mpd_xml).groupdict()
+        self.chunksize = int(sizes['d1'])
+        self.chunkcount = int(sizes['r']) + 1
+        self.lastchunksize = int(sizes['d2'])
+
+    def urls(self):
+        items = [self.firstUrl]
+        idx = self.startNumber - 1
+        while idx <= self.chunkcount:
+            idx += 1 # Last chunk has number chunkcount+1
+            items.append(self.mediaUrl.format(number=idx))
+        return items
+
+    def m3u8(self):
+        hls = '#EXTM3U\n'
+        hls += '#EXT-X-TARGETDURATION:%s\n' % int(self.duration.seconds)
+        hls += '#EXT-X-VERSION:3\n'
+        chunk_duration = '#EXTINF:%0.3f,\n' % (float(self.chunksize) / float(self.timescale))
+        items = self.urls()
+        hls += '\n'.join(chunk_duration + item for item in items[0:-1])
+        chunk_duration = '#EXTINF:%0.3f,\n' % (float(self.lastchunksize) / float(self.timescale))
+        hls += '\n' + chunk_duration + items[-1] + '\n'
+        hls += '#EXT-X-ENDLIST\n'
+        return hls

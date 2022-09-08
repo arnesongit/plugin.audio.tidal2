@@ -21,11 +21,12 @@ import zipfile
 import traceback
 import base64
 import pyaes
+import re
 from io import BytesIO
 from kodi_six import xbmcgui
 
 from .apktools import AXMLPrinter, ARSCParser, ARSCResTableConfig
-from .textids import Msg, _T, _P
+from .textids import Msg, _T
 from .common import KODI_VERSION
 from .debug import log
 
@@ -33,7 +34,12 @@ from .debug import log
 class ClientDevice(object):
 
     def __init__(self, name, client_id='', client_secret=''):
-        self.name = name.replace('_', ' ').title()
+        if '_' in name:
+            self.name = name.replace('_', ' ').title()
+        else:
+            self.name = ' '.join(re.findall('^[a-z]+|[A-Z][^A-Z]*', name)).title()
+        if self.name != 'Default':
+            self.name = self.name.replace('Default', '').strip()
         self.id = client_id
         self.secret = client_secret
 
@@ -42,7 +48,7 @@ class ClientDevice(object):
 
     @property
     def complete(self):
-        return True if self.id != '' and self.secret != '' else False
+        return True if self.id != '' and self.secret != '' and self.name not in ['Stage', 'Bits'] else False
 
 
 class DeviceSelectorDialog(object):
@@ -89,20 +95,32 @@ class DeviceSelectorDialog(object):
             xbmcgui.Dialog().ok('Error', _T(Msg.i30285))
             return None
         clients = {}
+        if self.apk.device_properties:
+            for k in self.apk.device_properties.keys():
+                p = k.find('ClientId')
+                if p > 0:
+                    c = ClientDevice(k[:p])
+                    if not c.name in clients:
+                        clients[c.name] = c
+                    clients[c.name].id = base64.b64encode(pyaes.AESModeOfOperationCTR(config.token_secret).encrypt(self.apk.device_properties[k])).decode('utf-8')
+                p = k.find('ClientSecret')
+                if p > 0:
+                    c = ClientDevice(k[:p])
+                    if not c.name in clients:
+                        clients[c.name] = c
+                    clients[c.name].secret = base64.b64encode(pyaes.AESModeOfOperationCTR(config.token_secret).encrypt(self.apk.device_properties[k])).decode('utf-8')
         res = self.apk.get_android_resources()
         for s in res.values[self.package_name]['\x00\x00']["string"]:
             if s[0].find('_client_id') > 0:
                 c = ClientDevice(s[0].split('_client_id')[0].split('default_')[-1])
-                if c.name != 'Stage':
-                    if not c.name in clients:
-                        clients[c.name] = c
-                    clients[c.name].id = base64.b64encode(pyaes.AESModeOfOperationCTR(config.token_secret).encrypt(s[1])).decode('utf-8')
+                if not c.name in clients:
+                    clients[c.name] = c
+                clients[c.name].id = base64.b64encode(pyaes.AESModeOfOperationCTR(config.token_secret).encrypt(s[1])).decode('utf-8')
             elif s[0].find('_client_secret') > 0:
                 c = ClientDevice(s[0].split('_client_secret')[0].split('default_')[-1])
-                if c.name != 'Stage':
-                    if not c.name in clients:
-                        clients[c.name] = c
-                    clients[c.name].secret = base64.b64encode(pyaes.AESModeOfOperationCTR(config.token_secret).encrypt(s[1])).decode('utf-8')
+                if not c.name in clients:
+                    clients[c.name] = c
+                clients[c.name].secret = base64.b64encode(pyaes.AESModeOfOperationCTR(config.token_secret).encrypt(s[1])).decode('utf-8')
         clients = sorted([c for c in clients.values() if c.complete], key=lambda line: line.name)
         if len(clients) == 0:
             xbmcgui.Dialog().ok('%s v%s' % (self.app_name, self.app_version), _T(Msg.i30286))
@@ -123,6 +141,7 @@ class APK:
         self.versionNumber = '0.0'
         self.validZip = False
         self.validApk = False
+        self.device_properties = {}
         try:
             _bundle = None
             _zip = zipfile.ZipFile(filename, mode="r")
@@ -154,6 +173,9 @@ class APK:
                     except Exception as e:
                         log.logException(e, 'Error reading manifest of APK file %s' % filename)
                         traceback.print_exc()
+
+                elif i == "assets/secrets.properties":
+                    self.device_properties = self.load_properties(_zip, i)
 
                 elif i == "resources.arsc":
                     log.info('Found resources.arsc')
@@ -203,5 +225,17 @@ class APK:
             return int(res_id, 16), package
         except ValueError:
             raise ValueError("ID is not a hex ID: '{}'".format(res_id))
+
+    def load_properties(self, zipobj, filename, sep='=', comment_char='#'):
+        props = {}
+        with zipobj.open(filename, "r") as f:
+            for line in f:
+                l = line.decode('utf-8').strip()
+                if l and not l.startswith(comment_char):
+                    key_value = l.split(sep)
+                    key = key_value[0].strip()
+                    value = sep.join(key_value[1:]).strip().strip('"') 
+                    props[key] = value 
+        return props
 
 # End of File

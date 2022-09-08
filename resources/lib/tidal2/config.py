@@ -22,9 +22,9 @@ import datetime
 import base64
 import pyaes
 
-from kodi_six import xbmcvfs
+from kodi_six import xbmc, xbmcvfs
 
-from .common import addon, Const, getLocale
+from .common import addon, Const, getLocale, isAddonInstalled
 from .tidalapi.models import Config, Quality, Model
 
 #------------------------------------------------------------------------------
@@ -45,7 +45,8 @@ class TidalConfig(Config):
             self.refresh_token = ''
             self.client_name = self.client_name
             self.client_id = base64.b64encode(pyaes.AESModeOfOperationCTR(self.token_secret).encrypt(pyaes.AESModeOfOperationCTR(old_secret).decrypt(base64.b64decode(self.client_id)))).decode('utf-8')
-            self.client_secret = base64.b64encode(pyaes.AESModeOfOperationCTR(self.token_secret).encrypt(pyaes.AESModeOfOperationCTR(old_secret).decrypt(base64.b64decode(self.client_secret)))).decode('utf-8')
+            if self.client_secret:
+                self.client_secret = base64.b64encode(pyaes.AESModeOfOperationCTR(self.token_secret).encrypt(pyaes.AESModeOfOperationCTR(old_secret).decrypt(base64.b64decode(self.client_secret)))).decode('utf-8')
             self.save_client()
         Config.init(self, **kwargs)
 
@@ -85,7 +86,16 @@ class TidalConfig(Config):
         self.user_id = self.getSetting('user_id')
         self.country_code = self.getSetting('country_code')
         self.subscription_type = self.getSetting('subscription_type')
+        self.user_country_code = self.getSetting('user_country_code')
+        if not self.user_country_code and self.country_code:
+            self.user_country_code = self.country_code
+            self.setSetting('user_country_code', self.country_code)
         self.enable_lyrics = True if self.getSetting('enable_lyrics') == 'true' else False
+
+        # Set playback modes for MPD Dash streams
+        self.dash_aac_mode = [Const.is_hls, Const.is_adaptive, Const.is_ffmpegdirect][min(2,int('0%s' % self.getSetting('dash_aac_mode')))]
+        self.dash_flac_mode = [Const.is_hls, Const.is_ffmpegdirect][min(1,int('0%s' % self.getSetting('dash_flac_mode')))]
+        self.ffmpegdirect_has_mpd = True if self.getSetting('ffmpegdirect_has_mpd') == 'true' else False
 
         # Determine the locale of the system
         self.locale = getLocale(self.country_code)
@@ -94,9 +104,6 @@ class TidalConfig(Config):
         self.client_name = self.getSetting('client_name')
         self.client_id = self.getSetting('client_id')
         self.client_secret = self.getSetting('client_secret')
-        self.client_unique_key = self.getSetting('client_unique_key')
-        self.session_id = self.getSetting('session_id')
-        self.session_id = '29c9ddca-0a2f-40af-aae6-d426f9b8e6b3'
         self.token_type = self.getSetting('token_type')
         self.access_token = self.getSetting('access_token')
         self.refresh_token = self.getSetting('refresh_token')
@@ -112,19 +119,20 @@ class TidalConfig(Config):
 
         # Options
         self.quality = [Quality.hi_res, Quality.lossless, Quality.high, Quality.low][min(3, int('0' + self.getSetting('quality')))]
-        self.maxVideoHeight = [9999, 1080, 720, 540, 480, 360, 240][min(6, int('0%s' % self.getSetting('video_quality')))]
+        self.maxVideoHeight = [9999, 1080, 720, 540, 480, 360, 240, 0][min(7, int('0%s' % self.getSetting('video_quality')))]
         self.pageSize = max(10, min(9999, int('0%s' % self.getSetting('page_size'))))
         self.debug = True if self.getSetting('debug_log') == 'true' else False
         self.debug_json = True if self.getSetting('debug_json') == 'true' else False
 
         # Extended Options
+        self.ffmpegdirect_is_default_player = True if self.getSetting('ffmpegdirect_is_default') == 'true' else False
         self.color_mode = True if self.getSetting('color_mode') == 'true' else False
         self.favorites_in_labels = True if self.getSetting('favorites_in_labels') == 'true' else False
         self.user_playlists_in_labels = True if self.getSetting('user_playlists_in_labels') == 'true' else False
         self.album_year_in_labels = True if self.getSetting('album_year_in_labels') == 'true' else False
         self.mqa_in_labels = True if self.getSetting('mqa_in_labels') == 'true' else False
         self.set_playback_info = True if self.getSetting('set_playback_info') == 'true' else False
-        self.fanart_server_enabled = True if self.getSetting('fanart_server_enabled') == 'true' else False
+        self.fanart_server_enabled = True
         self.fanart_server_port = int('0%s' % self.getSetting('fanart_server_port'))
 
     @property
@@ -151,6 +159,19 @@ class TidalConfig(Config):
                 xbmcvfs.delete(self.favorites_file)
         if self.getSetting('preview_token'):
             self.setSetting('preview_token', '')
+        if not self.getSetting('user_country_code'):
+            # New in V2.1.1: Test if inputstream.adaptive or inputstream.ffmpegdirect is installed
+            # To overwrite the default value which uses HLS converter to play the streams
+            if isAddonInstalled(Const.is_adaptive):
+                self.setSetting('dash_aac_mode', '1')
+            if isAddonInstalled(Const.is_ffmpegdirect):
+                self.setSetting('dash_flac_mode', '1')
+                if xbmc.getCondVisibility('system.platform.windows') or xbmc.getCondVisibility('system.platform.osx'):
+                    self.setSetting('ffmpegdirect_has_mpd', 'true')
+                if xbmc.getCondVisibility('system.platform.windows') or xbmc.getCondVisibility('system.platform.android'):
+                    self.setSetting('ffmpegdirect_is_default', 'true')
+            pass
+
 
     def save_client(self):
         settings.setSetting('client_name', self.client_name)
@@ -160,8 +181,8 @@ class TidalConfig(Config):
     def save_session(self):
         settings.setSetting('user_id', '%s' % self.user_id)
         settings.setSetting('country_code', self.country_code)
+        settings.setSetting('user_country_code', self.user_country_code)
         settings.setSetting('subscription_type', self.subscription_type)
-        settings.setSetting('session_id', self.session_id)
         settings.setSetting('token_type', self.token_type)
         settings.setSetting('access_token', self.access_token)
         settings.setSetting('refresh_token', self.refresh_token)

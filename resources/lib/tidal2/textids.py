@@ -57,6 +57,7 @@ class Msg(object):
     i30031 = 30031 # Uninstall TIDAL lyrics scraper
     i30032 = 30032 # CU LRC Lyrics addon settings
     i30033 = 30033 # Install CU LRC Lyrics addon
+    i30034 = 30034 # Country of the user
 
     # Video Settings
     i30040 = 30040 # Video Quality
@@ -96,7 +97,7 @@ class Msg(object):
 
     # Main Menu
     i30201 = 30201 # My Music
-    i30202 = 30202 # Featured Playlists
+    i30202 = 30202 # Home
     i30203 = 30203 # What's New
     i30206 = 30206 # Search
     i30207 = 30207 # Logout
@@ -104,7 +105,7 @@ class Msg(object):
     i30209 = 30209 # Please log in via a web browser with URL:
     i30210 = 30210 # Authorization problem  
     i30211 = 30211 # TIDAL Rising  
-    i30212 = 30212 # Suggestions for me
+    i30212 = 30212 # Explore
     i30213 = 30213 # All my Playlists
     i30214 = 30214 # Favorite Artists
     i30215 = 30215 # Favorite Albums
@@ -172,7 +173,7 @@ class Msg(object):
     i30277 = 30277 # Do you really want to delete the folder '{folder}' ?
     i30278 = 30278 # Remove '{name}' from {what}
     i30279 = 30279 # {what} is DRM protected
-    i30280 = 30280 # TIDAL2 - OAuth2 Device Login
+    i30280 = 30280 # TIDAL2 - OAuth2 Login
     i30281 = 30281 # Login-Status
     i30282 = 30282 # Not logged in. Please login via web browser !
     i30283 = 30283 # Select TIDAL APK file
@@ -183,6 +184,14 @@ class Msg(object):
     i30288 = 30288 # Attention: No device type was selected from TIDAL App
     i30289 = 30289 # Select device type from TIDAL APK file
     i30290 = 30290 # No device type selected.\nDo you want to keep the existing device type ?
+    i30291 = 30291 # E-Mail Address
+    i30293 = 30293 # Login Successful !
+    i30295 = 30295 # Feed
+    i30296 = 30296 # Codec {codec} not supported
+    i30306 = 30306 # Loading favorites ...
+    i30307 = 30307 # Loading playlists ...
+    i30308 = 30308 # Loading playlist ({item}/{max}): {name}
+    i30309 = 30309 # Saving playlist cache ...
 
     # Extended Settings
     i30501 = 30501 # Use Colors in Labels

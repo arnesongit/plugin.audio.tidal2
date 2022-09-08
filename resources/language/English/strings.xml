@@ -32,6 +32,7 @@
     <string id="30031">Uninstall TIDAL lyrics scraper</string>
     <string id="30032">CU LRC Lyrics addon settings</string>
     <string id="30033">Install CU LRC Lyrics addon</string>
+    <string id="30034">Country of the user</string>
 
     <!-- Video Settings -->
     <string id="30040">Video Quality</string>
@@ -42,6 +43,8 @@
     <string id="30045">Video (480p)</string>
     <string id="30046">Video (360p)</string>
     <string id="30047">Video (240p)</string>
+    <string id="30048">Audio Only</string>
+    <string id="30049">30 seconds preview</string>
 
     <!-- Program Text -->
     <string id="30101">Artist</string>
@@ -71,7 +74,7 @@
 
     <!-- Main Menu -->
     <string id="30201">My Music</string>
-    <string id="30202">Featured Playlists</string>
+    <string id="30202">Home</string>
     <string id="30203">What's New</string>
     <string id="30206">Search</string>
     <string id="30207">Logout</string>
@@ -79,7 +82,7 @@
     <string id="30209">Please log in via a web browser with URL:</string>  
     <string id="30210">Authorization problem</string>
     <string id="30211">TIDAL Rising</string>
-    <string id="30212">Suggestions for me</string>
+    <string id="30212">Explore</string>
     <string id="30213">All my Playlists</string>
     <string id="30214">Favorite Artists</string>
     <string id="30215">Favorite Albums</string>
@@ -120,10 +123,10 @@
     <string id="30250">Reset default for {what}</string>
     <string id="30251">{what} Playlist</string>
     <string id="30252">Open Playlist (Audio only)</string>
-    <string id="30253">Login failed !!</string>
+    <string id="30253">Login failed !</string>
     <string id="30254">Open as Track/Video Playlist</string>
     <string id="30255">Open as Album Playlist</string>
-    <string id="30256">Do you really want to logout ?\nRelogin via web browswer necessary !</string>
+    <string id="30256">Do you really want to logout ?\nThen a relogin is necessary !</string>
     <string id="30257">Please set Client-ID and Client-Secret in the addon settings !\nOr login with URL: {url}</string>
     <string id="30258">Clear {what}</string>
     <string id="30259">Playlist '{name}' contains {count} items. Are you sure to remove all items from this playlist ?</string>
@@ -147,7 +150,7 @@
     <string id="30277">Do you really want to delete the folder '{folder}' ?</string>
     <string id="30278">Remove '{name}' from {what}</string>
     <string id="30279">{what} is DRM protected</string>
-    <string id="30280">TIDAL2 - OAuth2 Device Login</string>
+    <string id="30280">TIDAL2 - OAuth2 Login</string>
     <string id="30281">Login-Status</string>
     <string id="30282">Not logged in. Please login via web browser !</string>
     <string id="30283">Select TIDAL APK file</string>
@@ -155,22 +158,39 @@
     <string id="30285">APK file is not a TIDAL app</string>
     <string id="30286">No device type found in APK</string>
     <string id="30287">°Attention: Device type was selected from the TIDAL APK !&lt;br&gt;Client-ID are Client-Secret are fixed !</string>
-    <string id="30288">°Attention: No device type was selected from a TIDAL APK !&lt;br&gt;Please use a working Client-ID and Client-Secret values directly !</string>
+    <string id="30288">°Attention: No device type was selected from a TIDAL APK !&lt;br&gt;Please use working Client-ID and Client-Secret values directly !</string>
     <string id="30289">Select device type from TIDAL APK file</string>
     <string id="30290">No device type selected.\nShould the existing device type be cleared ?\nThen the Client-ID and Client-Secret must be set manually !</string>
+    <string id="30291">E-Mail Address</string>
+    <string id="30293">Login Successful !</string>
+    <string id="30294">Authorization code expired (1 minute)</string>
+    <string id="30295">Feed</string>
+    <string id="30296">Codec {codec} not supported</string>
+    <string id="30306">Loading favorites ...</string>
+    <string id="30307">Loading playlists ...</string>
+    <string id="30308">Loading playlist ({item}/{max}): {name}</string>
+    <string id="30309">Saving playlist cache ...</string>
 
     <!-- Extended Settings -->
     <string id="30501">Use Colors in Labels</string>
     <string id="30502">Enable Debug-Logging</string>
     <string id="30503">Set placback informations for Web-GUI</string>
     <string id="30504">Not a FLAC Stream !</string>
-    <string id="30505">--</string>
+    <string id="30505">Use inputstream.ffmpegdirect as default player</string>
     <string id="30506">--</string>
     <string id="30507">Delete Album Cache</string>
     <string id="30508">Are you sure to delete the Album Cache Database ?</string>
     <string id="30509">--</string>
     <string id="30510">Log API JSON data</string>
     <string id="30511">Activate Fanart HTTP Server</string>
-    <string id="30512">IP-Port for Fanart HTTP Server</string>
+    <string id="30512">IP-Port for internal HTTP Server</string>
+
+    <!-- Dash playback modes -->
+    <string id="30513">Playback Mode for AAC MPD</string>
+    <string id="30514">Playback Mode for FLAC MPD</string>
+    <string id="30515">inputstream.ffmpegdirect plays MPD</string>
+    <string id="30516">Play as HLS</string>
+    <string id="30517">Use inputstream.adaptive</string>
+    <string id="30518">Use inputstream.ffmpegdirect</string>
 
 </strings>

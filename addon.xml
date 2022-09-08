@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.audio.tidal2" name="TIDAL2" version="2.1.0" provider-name="arneson">
+<addon id="plugin.audio.tidal2" name="TIDAL2" version="2.1.1" provider-name="arneson">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests"/>
@@ -7,6 +7,8 @@
     <import addon="script.module.m3u8"/>
     <import addon="script.module.kodi-six"/>
     <import addon="script.module.pyaes"/>
+    <import addon="inputstream.adaptive"/>
+    <import addon="inputstream.ffmpegdirect"/>
   </requires>
   <extension point="xbmc.python.pluginsource" library="addon.py">
     <provides>audio</provides>
@@ -29,14 +31,22 @@ Es wird ein Abbonement benötigt. Siehe tidal.com für Details.</description>
     <license>GNU GENERAL PUBLIC LICENSE. Version 3, 29 June 2007</license>
     <forum>http://forum.xbmc.org/showthread.php?tid=200555</forum>
     <source>https://github.com/arnesongit/plugin.audio.tidal2</source>
-    <news>v2.1.0 (2022-03-26)
-- The 'Artist' context menu now opens a popup if the selected item has more than one artist
-- Added a device selector dialog to select a device type from a TIDAL apk file
-- Added support for lyrics:
-  - The CU LRC Lyrics addon is used to display the TIDAL lyrics
-  - The CU LRC Lyrics addon can be installed from the TIDAL2 settings dialog
-  - The TIDAL2 lyrics scaper has to be installed as a CU LRC Lyrics scaper module.
-    This can also be done from the TIDAL2 settings dialog.
+    <news>v2.1.1 (2022-09-08)
+- Rebuild the TIDAL browsing pages for "Feed", "Home", "Explore" and "Videos" as folders to have more content available
+- Removed old menu items "Suggestions for me", "Featured Playlists", "TIDAL Rising" and "Promotions"
+- Support for unencrypted DASH playback:
+  - AAC streams are played using the inputstream.adaptive addon (Kodi >= 18)
+  - FLAC streams are played using the inputstream.ffmpegdirect addon (Kodi >= 19)
+  - FLAC DASH streams can be converted into HLS streams if the DASH demuxer is not compiled into inputstream.ffmpegdirect
+  - If no inputstream addon is installed, the DASH streams are played with an internal MPD to HLS converter
+- Using inputstream.ffmpegdirect as default player for HTTP streams on Windows and Android platforms
+  because HTTP streaming is buggy on these platforms (very long loading times). inputstream.ffmpegdirect as default player
+  can also be enabled/disabled in the TIDAL2 addon settings.
+- New quality mode "Audio only" for videos
+- Splitted country codes for browsing and streaming
+- New colored label extension for Sony 360 Real Audio
+- Skipping playback for Sony 360 Real Audio and Dolby AC-4, because Kodi can't play them. Otherwise Kodi will crash.
+- Added externally callable search function: plugin://plugin.audio.tidal2/search/&lt;field&gt;?query=&lt;text&gt;
     </news>
     <assets>
       <icon>resources/icon.png</icon>

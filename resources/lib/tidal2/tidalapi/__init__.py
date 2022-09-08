@@ -29,6 +29,8 @@ import requests
 import base64
 import hashlib
 import pyaes
+import uuid
+from requests.structures import CaseInsensitiveDict
 
 from .models import *
 
@@ -51,8 +53,10 @@ except:
 TIDAL_HOMEPAGE = 'https://listen.tidal.com'
 URL_API_V1 = 'https://api.tidal.com/v1/'
 URL_API_V2 = 'https://api.tidal.com/v2/'
+URL_LOGIN = 'https://login.tidal.com/'
 OAUTH_BASE_URL = 'https://auth.tidal.com/v1/oauth2/'
-DEFAULT_SCOPE = 'r_usr+w_usr+w_sub'  # 'r_usr w_usr'   # w_usr=WRITE_USR, r_usr=READ_USR_DATA, w_sub=WRITE_SUBSCRIPTION
+DEFAULT_SCOPE = 'r_usr+w_usr+w_sub' # w_usr=WRITE_USR, r_usr=READ_USR_DATA, w_sub=WRITE_SUBSCRIPTION
+REFRESH_SCOPE = 'r_usr+w_usr'
 
 ALL_SAERCH_FIELDS = ['ARTISTS', 'ALBUMS', 'PLAYLISTS', 'TRACKS', 'VIDEOS']
 
@@ -65,6 +69,7 @@ class Session(object):
         self.user = User(self)
         self._cursor = ''
         self._cursor_pos = 0
+        self._streamingSessionId = None
 
     def cleanup(self):
         self._config = None
@@ -85,40 +90,6 @@ class Session(object):
             return r.json().get('countryCode', default)
         except:
             return default
-
-    def login_direct(self, username, password, subscription_type=None):
-        if not username or not password:
-            return False
-        if not subscription_type:
-            # Set Subscription Type corresponding to the given playback quality
-            subscription_type = SubscriptionType.hifi if self._config.quality == Quality.lossless else SubscriptionType.premium
-        url = urljoin(URL_API_V1, 'login/username')
-        client_id = self._config.client_id
-        headers = { "X-Tidal-Token": 'VyxGXu7lLvVb5Ng' }
-        payload = {
-            'username': username,
-            'password': password,
-            'client_id': pyaes.AESModeOfOperationCTR(self._config.token_secret).decrypt(base64.b64decode(client_id)).decode('utf-8') if self._config.client_name else client_id,
-            'clientUniqueKey': format(random.getrandbits(64), '02x')
-        }
-        log.info('Using Token "%s" with clientUniqueKey "%s"' % (headers['X-Tidal-Token'], payload['clientUniqueKey']))
-        r = requests.post(url, data=payload, headers=headers)
-        if not r.ok:
-            try:
-                msg = r.json().get('userMessage')
-            except:
-                msg = r.reason
-            log.error(msg)
-        else:
-            try:
-                body = r.json()
-                self.session_id = body['sessionId']
-                self.country_code = body['countryCode']
-                #self.user = self.init_user(user_id=body['userId'], subscription_type=subscription_type)
-            except:
-                log.error('Login failed.')
-
-        return self.is_logged_in
 
     def login_part1(self, client_id=None, client_secret=None):
         if not client_id or not client_secret:
@@ -150,7 +121,7 @@ class Session(object):
             token = self._parse_auth_token(r.json())
             if token.success:
                 self._config.user_id = token.user_id
-                self._config.country_code = token.country_code
+                self._config.user_country_code = token.country_code
                 self._config.token_type = token.token_type
                 self._config.access_token = token.access_token
                 if token.refresh_token:
@@ -172,7 +143,7 @@ class Session(object):
 
     @property
     def is_logged_in(self):
-        return True if self._config.access_token and self._config.country_code and self.user else False
+        return True if self._config.access_token and self._config.user_country_code and self.user else False
 
     def check_login(self):
         """ Returns true if current session is valid, false otherwise. """
@@ -184,11 +155,12 @@ class Session(object):
     def token_refresh(self):
         data = {
             'client_id': pyaes.AESModeOfOperationCTR(self._config.token_secret).decrypt(base64.b64decode(self._config.client_id)).decode('utf-8') if self._config.client_name else self._config.client_id,
-            'client_secret': pyaes.AESModeOfOperationCTR(self._config.token_secret).decrypt(base64.b64decode(self._config.client_secret)).decode('utf-8') if self._config.client_name else self._config.client_secret,
             'refresh_token': self._config.refresh_token,
             'grant_type': 'refresh_token',
-            'scope': DEFAULT_SCOPE
+            'scope': REFRESH_SCOPE
         }
+        if self._config.client_secret:
+            data['client_secret'] = pyaes.AESModeOfOperationCTR(self._config.token_secret).decrypt(base64.b64decode(self._config.client_secret)).decode('utf-8') if self._config.client_name else self._config.client_secret
         log.debug('Requesting new Access Token...')
         r = requests.post(urljoin(OAUTH_BASE_URL, 'token'), data=data)
         if self._config.debug_json:
@@ -231,14 +203,13 @@ class Session(object):
         self._config.init()
         self.user = None
 
-
     def request(self, method, url=URL_API_V1, path=None, params=None, data=None, headers=None, authenticate=True):
         if self.is_logged_in and self.token_expired():
             self.token_refresh()
         request_headers = {}
         request_params = {}
-        if url.startswith(URL_API_V1) or url.startswith(URL_API_V2):
-            request_params.update({'countryCode': self._config.country_code})
+        if (url.startswith(URL_API_V1) or url.startswith(URL_API_V2)) and not 'countryCode' in request_params:
+            request_params['countryCode'] = self._config.country_code
         if headers:
             request_headers.update(headers)
         if params:
@@ -246,7 +217,7 @@ class Session(object):
         if request_params.get('offset', 1) == 0:
             request_params.pop('offset', 1) # Remove Zero Offset from Params
         url = urljoin(url, path)
-        if self.is_logged_in:
+        if self.is_logged_in and not 'token' in request_params:
             if authenticate:
                 request_headers.update({'Authorization': '{} {}'.format(self._config.token_type, self._config.access_token)})
         else:
@@ -260,16 +231,22 @@ class Session(object):
             r = requests.request(method, url, params=request_params, data=data, headers=request_headers)
         return self.check_response(r)
 
-    def check_response(self, r, raiseOnError=True):
+    def check_response(self, r, raiseOnError=True, debugJson=True):
         log.info('%s %s' % (r.request.method, r.request.url))
         if not r.ok:
             try:
-                log.error(repr(r)+' '+r.json().get('userMessage', repr(r)))
+                msg = r.json()
+                errtab = [repr(r)]
+                if 'userMessage' in msg:
+                    errtab.append(msg['userMessage'])
+                if 'error_description' in msg:
+                    errtab.append(msg['error_description'])
+                log.error('\n'.join(errtab))
             except:
                 log.error(repr(r))
         if raiseOnError:
             r.raise_for_status()
-        if self._config.debug_json:
+        if self._config.debug_json and debugJson:
             try:
                 log.info(repr(r))
                 log.info('response: %s' % json.dumps(r.json(), indent=4))
@@ -316,6 +293,7 @@ class Session(object):
                     item._etag = playlist._etag
                     item._playlist_name = playlist.title
                     item._playlist_type = playlist.type
+                    item._pageSize = limit
                     track_no += 1
                 remaining -= len(items)
                 result += items
@@ -406,7 +384,7 @@ class Session(object):
     def get_featured(self, group=None, types=['PLAYLIST'], limit=999):
         params = {'limit': limit,
                   'clientType': 'BROWSER',
-                  'subscriptionType': SubscriptionType.hifi}
+                  'subscriptionType': SubscriptionType.premium_mid}
         if group:
             params.update({'group': group})      # RISING | DISCOVERY | NEWS
         items = self.request('GET', path='promotions', params=params).json()['items']
@@ -479,7 +457,7 @@ class Session(object):
 
     def get_lyrics(self, track_id):
         try:
-            return self._map_request('tracks/%s/lyrics' % track_id, ret='lyrics')
+            return self._map_request('tracks/%s/lyrics' % track_id, params={'countryCode': self._config.user_country_code}, ret='lyrics')
         except:
             return None
 
@@ -488,6 +466,21 @@ class Session(object):
 
     def get_recommended_items(self, content_type, item_id, offset=0, limit=999):
         return self._map_request('%s/%s/recommendations' % (content_type, item_id), params={'offset': offset, 'limit': limit}, ret=content_type)
+
+    def get_feed_items(self):
+        try:
+            items = []
+            json = self._map_request(path='feed/activities', url=URL_API_V2, params={'userId': self._config.user_id, 'locale': self._config.locale, 'deviceType': 'BROWSER'}, ret='json')
+            for jitem in json['activities']:
+                jalbum = jitem.get('followableActivity', {}).get('album', {})
+                if jalbum:
+                    items.append(self._parse_album(jalbum))
+                jmix = jitem.get('followableActivity', {}).get('historyMix', {})
+                if jmix:
+                    items.append(self._parse_mix(jmix))
+        except:
+            pass
+        return items
 
     def _map_request(self, path, url=URL_API_V1, method='GET', params=None, data=None, headers=None, authenticate=True, ret=None):
         r = self.request(method, url=url, path=path, params=params, data=data, headers=headers, authenticate=authenticate)
@@ -533,6 +526,8 @@ class Session(object):
                 if isinstance(nextItem, BrowsableMedia):
                     nextItem._itemPosition = itemPosition
                     nextItem._offset = offset
+                    if params and 'limit' in params:
+                        nextItem._pageSize = params['limit']
                     nextItem._totalNumberOfItems = numberOfItems
                 result.append(nextItem)
                 itemPosition = itemPosition + 1
@@ -576,42 +571,41 @@ class Session(object):
             offset = offset + 1
         return items
 
-    def get_track_url(self, track_id, quality=None, direct_mode=False):
+    def get_streaming_session_id(self, forceNew=False):
+        if forceNew or not self.streamingSessionId:
+            self._streamingSessionId = uuid.uuid4()
+        return self._streamingSessionId
+
+    def get_track_url(self, track_id, quality=None):
         params = {}
         if not self.is_logged_in:
             url = 'tracks/%s/previewurl' % track_id
-        elif direct_mode:
-            params.update({'soundQuality': quality if quality else self._config.quality})
-            url = 'tracks/%s/streamUrl' % track_id
-            # url = 'tracks/%s/offlineUrl' % track_id
-            # url = 'tracks/%s/urlpostpaywall' % track_id
-            # params = {'urlusagemode': 'STREAM', 'assetpresentation': 'FULL', 'audioquality': quality if quality else self._config.quality}
         else:
             url = 'tracks/%s/playbackinfopostpaywall' % track_id
             params = { 'audioquality': quality if quality else self._config.quality,
                        'playbackmode': 'STREAM',
-                       'assetpresentation': 'FULL' }
-                    # 'locale': self._config.locale,
-                    # 'streamingsessionid': self._config.session_id }
+                       'assetpresentation': 'FULL',
+                       'deviceType': 'TABLET',
+                       'locale': self._config.locale,
+                       'countryCode': self._config.user_country_code,
+                       'streamingsessionid':  self.get_streaming_session_id(forceNew=True) }
         return self._map_request(url,  params=params, ret='track_url')
 
-    def get_video_url(self, video_id, quality=None, direct_mode=False):
+    def get_video_url(self, video_id, audioOnly=False, preview=False):
         params = {}
-        if not self.is_logged_in:
+        ret_type = 'video_url'
+        if not self.is_logged_in or preview:
             url = 'videos/%s/previewurl' % video_id
-        elif direct_mode:
-            # url = 'videos/%s/streamUrl' % video_id
-            #if quality:
-            #    params = {'videoQuality': quality}
-            url = 'videos/%s/urlpostpaywall' % video_id
-            params = {'urlusagemode': 'STREAM', 'assetpresentation': 'FULL', 'videoquality': quality if quality else 'HIGH' }
+            params['token'] = self._config.preview_token
         else:
             url = 'videos/%s/playbackinfopostpaywall' % video_id
-            params = { 'videoquality': quality if quality else 'HIGH',
+            params = { 'videoquality': 'AUDIO_ONLY' if audioOnly else 'HIGH',
                        'playbackmode': 'STREAM',
-                       'assetpresentation': 'FULL' }
-                    # 'streamingsessionid': self._config.session_id }
-        return self._map_request(url,  params=params, ret='video_url')
+                       'assetpresentation': 'FULL',
+                       'countryCode': self._config.user_country_code }
+            if audioOnly:
+                ret_type = 'track_url'
+        return self._map_request(url,  params=params, ret=ret_type)
 
     def search(self, field, value, limit=50):
         search_field = field
@@ -946,6 +940,12 @@ class Favorites(object):
 
     def remove_video(self, video_id):
         return self.remove('videos', video_id)
+
+    def add_mix(self, mix_id):
+        return self.add('mixes', mix_id)
+
+    def remove_mix(self, mix_id):
+        return self.remove('mixes', mix_id)
 
     def artists(self):
         return self.get('artists')

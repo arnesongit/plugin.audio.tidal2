@@ -32,6 +32,7 @@
     <string id="30031">Uninstall TIDAL lyrics scraper</string>
     <string id="30032">CU LRC Lyrics addon settings</string>
     <string id="30033">Install CU LRC Lyrics addon</string>
+    <string id="30034">Kraj użytkownika</string>
 
     <!-- Video Settings -->
     <string id="30040">Jakość Wideo</string>
@@ -42,6 +43,8 @@
     <string id="30045">Wideo (480p)</string>
     <string id="30046">Wideo (360p)</string>
     <string id="30047">Wideo (240p)</string>
+    <string id="30048">Tylko dźwięk</string>
+    <string id="30049">30-sekundowy podgląd</string>
 
     <!-- Program Text -->
     <string id="30101">Artysta</string>
@@ -71,7 +74,7 @@
 
     <!-- Main Menu -->
     <string id="30201">Moja Muzyka</string>
-    <string id="30202">Wyróżnione Playlisty</string>
+    <string id="30202">Dom</string>
     <string id="30203">Nowości</string>
     <string id="30206">Szukaj</string>
     <string id="30207">Wyloguj</string>
@@ -79,7 +82,7 @@
     <string id="30209">Zaloguj się przez przeglądarkę internetową z adresem URL:</string>
     <string id="30210">Problem z Autoryzacją</string>  
     <string id="30211">TIDAL Rising</string>  
-    <string id="30212">Sugerowane dla mnie</string>
+    <string id="30212">Badać</string>
     <string id="30213">Moje Playlisty</string>
     <string id="30214">Ulubieni Artyści</string>
     <string id="30215">Ulubione Albumy</string>
@@ -120,10 +123,10 @@
     <string id="30250">Resetuj jako {what}</string>
     <string id="30251">Zmień Nazwę {what}</string>
     <string id="30252">Open Playlist (Audio only)"</string>
-    <string id="30253">Logowanie nieudane !!</string>
+    <string id="30253">Logowanie nieudane !</string>
     <string id="30254">Otwórz Playlistę jako Utwór/Wideo</string>
     <string id="30255">Otwórz Playlistę jako Album</string>
-    <string id="30256">Czy na pewno chcesz się wypisać ?\nKonieczna rejestracja przez przeglądarkę internetową !</string>
+    <string id="30256">Czy na pewno chcesz się wypisać ?\nNastępnie musisz się ponownie zarejestrować !</string>
     <string id="30257">Zdefiniuj Client-ID i Client-Secret w ustawieniach dodatku!\nNLub zaloguj się za pomocą adresu URL: {url}</string>
     <string id="30258">Wyczyść {what}</string>
     <string id="30259">Playlista '{name}' zawiera {count} utworów. Na pewno usunąć wszystkie utwory? ?</string>
@@ -156,19 +159,38 @@
     <string id="30286">W pliku APK nie znaleziono typów urządzeń</string>
     <string id="30287">°Uwaga: typ urządzenia został wybrany z TIDAL APK !\nIdentyfikator klienta to tajny klucz klienta jest stały !</string>
     <string id="30288">°Uwaga: nie wybrano żadnego typu urządzenia z pakietu APK TIDAL !\nUżyj działających wartości Client-ID i Client-Secret bezpośrednio !</string>
+    <string id="30289">Wybierz typ urządzenia z pliku TIDAL APK</string>
+    <string id="30290">Nie wybrano typu urządzenia.\nCzy istniejący typ urządzenia powinien zostać wyczyszczony ?\nNastępnie Client-ID i Client-Secret należy ustawić ręcznie !</string>
+    <string id="30291">Adres e-mail</string>
+    <string id="30293">Zalogowano poprawnie</string>
+    <string id="30294">Token logowania wygasł (1 minuta)</string>
+    <string id="30295">Feed</string>
+    <string id="30296">Codec {codec} nie jest obsługiwany</string>
+    <string id="30306">Ładowanie ulubionych ...</string>
+    <string id="30307">Ładowanie list odtwarzania ...</string>
+    <string id="30308">Ładowanie listy odtwarzania ({item}/{max}): {name}</string>
+    <string id="30309">Zapisywanie pamięci podręcznej listy odtwarzania ...</string>
 
     <!-- Extended Settings -->
     <string id="30501">Używaj Kolorów w Etykietach</string>
     <string id="30502">Aktywuj Logowanie Debugowania</string>
     <string id="30503">Ustaw informacje o umieszczaniu zwrotnym dla internetowego interfejsu GUI</string>
     <string id="30504">To Nie Jest Strumień FLAC !</string>
-    <string id="30505">--</string>
+    <string id="30505">Użyj inputstream.ffmpegdirect jako domyślnego odtwarzacza</string>
     <string id="30506">--</string>
     <string id="30507">Usuń Cache Albumu</string>
     <string id="30508">Na Pewno Usunąć Bazę Cache Albumu ?</string>
     <string id="30509">--</string>
     <string id="30510">Log API JSON data</string>
     <string id="30511">Aktywuj Serwer HTTP Fanartów</string>
-    <string id="30512">Port IP dla Serwera HTTP Fanartów</string>
+    <string id="30512">Port IP dla Serwera HTTP</string>
+
+    <!-- Dash playback modes -->
+    <string id="30513">Tryb odtwarzania dla AAC MPD</string>
+    <string id="30514">Tryb odtwarzania dla FLAC MPD</string>
+    <string id="30515">inputstream.ffmpegdirect plays MPD</string>
+    <string id="30516">Graj jako HLS</string>
+    <string id="30517">Użyj inputstream.adaptive</string>
+    <string id="30518">Użyj inputstream.ffmpegdirect</string>
 
 </strings>

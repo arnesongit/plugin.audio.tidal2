@@ -31,7 +31,6 @@ __priority__ = '005'
 __lrc__ = True
 
 TIDAL2_PLUGIN = 'plugin.audio.tidal2'
-TIDAL2_ADDON = xbmcaddon.Addon(TIDAL2_PLUGIN)
 
 
 class LyricsFetcher:
@@ -42,30 +41,33 @@ class LyricsFetcher:
     def __init__(self, *args, **kwargs):
         self.DEBUG = kwargs.get('debug', True)
         self.settings = kwargs.get('settings', {})
-        self.URL = 'http://localhost:%s/lyrics' % TIDAL2_ADDON.getSetting('fanart_server_port')
+        self.URL = 'http://localhost:%s/lyrics' % xbmcaddon.Addon(TIDAL2_PLUGIN).getSetting('fanart_server_port')
 
     def get_lyrics(self, song):
         log("%s: searching lyrics for %s - %s" % (__title__, song.artist, song.title), debug=self.DEBUG)
         if not TIDAL2_PLUGIN in song.filepath:
-            lrcaddon = xbmcaddon.Addon('script.cu.lrclyrics')
-            if lrcaddon.getSetting('search_lrc_file') == 'true' or lrcaddon.getSetting('search_file') == 'true':
-                # Try to use lrc file in sub folder (for use without the write/delete lyrics option in the CU LRC Lyrics addon)
-                filename = song.path2(True)
-                if not xbmcvfs.exists(filename):
-                    return None
-                fd = xbmcvfs.File(filename, 'r')
-                subtitles = fd.read()
-                fd.close()
-                if len(subtitles) > 0:
-                    try:
-                        lyrics = Lyrics(settings=self.settings)
-                    except:
-                        lyrics = Lyrics()
-                    lyrics.song = song
-                    lyrics.source = __title__ + ' (file)'
-                    lyrics.lrc = True if re.search(r'(\[\d{2}\:\d{2}\.\d{2}\])', subtitles) else False
-                    lyrics.lyrics = subtitles
-                    return lyrics
+            try:
+                lrcaddon = xbmcaddon.Addon('script.cu.lrclyrics')
+                if lrcaddon.getSetting('search_lrc_file') == 'true' or lrcaddon.getSetting('search_file') == 'true':
+                    # Try to use lrc file in sub folder (for use without the write/delete lyrics option in the CU LRC Lyrics addon)
+                    filename = song.path2(True)
+                    if not xbmcvfs.exists(filename):
+                        return None
+                    fd = xbmcvfs.File(filename, 'r')
+                    subtitles = fd.read()
+                    fd.close()
+                    if len(subtitles) > 0:
+                        try:
+                            lyrics = Lyrics(settings=self.settings)
+                        except:
+                            lyrics = Lyrics()
+                        lyrics.song = song
+                        lyrics.source = __title__ + ' (file)'
+                        lyrics.lrc = True if re.search(r'(\[\d{2}\:\d{2}\.\d{2}\])', subtitles) else False
+                        lyrics.lyrics = subtitles
+                        return lyrics
+            except:
+                log("Error in TIDAL2 lyrics srcaper (file mode)", debug=self.DEBUG)
             return None
         lyrics = None
         try:
@@ -98,7 +100,7 @@ class LyricsFetcher:
             lyrics.lyrics = lyrics_text
             return lyrics
         except:
-            log("No lyrics found", debug=self.DEBUG)
+            log("Error in TIDAL2 lyrics scaper", debug=self.DEBUG)
         return None
 
 # End of FIle

@@ -23,6 +23,7 @@ import threading
 import traceback
 
 from kodi_six import xbmc, xbmcaddon
+from requests import HTTPError
 
 from .common import addon, toUnicode, PY2
 
@@ -77,9 +78,20 @@ class DebugHelper(object):
     def logException(self, e, txt=''):
         ''' Logs an Exception as Error Message '''
         try:
+            errtab = []
             if txt:
-                txt = toUnicode(txt)
-                xbmc.log("[%s] %s\n%s" % (self.pluginName, txt, str(e)), level=xbmc.LOGERROR) 
+                errtab.append(toUnicode(txt))
+            errtab.append(str(e))
+            try:
+                if isinstance(e, HTTPError) and e.response != None:
+                    msg = e.response.json()
+                    if 'userMessage' in msg:
+                        errtab.append(msg['userMessage'])
+                    if 'error_description' in msg:
+                        errtab.append(msg['error_description'])
+            except:
+                pass
+            xbmc.log("[%s] %s" % (self.pluginName, '\n'.join(errtab)), level=xbmc.LOGERROR) 
         except:
             pass
 

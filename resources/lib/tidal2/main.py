@@ -18,18 +18,19 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import sys
-import re
 import traceback
+from threading import Timer
 
-from kodi_six import xbmc, xbmcgui, xbmcplugin, xbmcaddon, py2_decode
+from kodi_six import xbmc, xbmcgui, xbmcplugin, xbmcaddon
 from requests import HTTPError
 
 from .common import Const, plugin
 from .textids import Msg, _T, _P
 from .debug import log
-from .tidalapi.models import Category, TrackUrl, VideoUrl, DeviceCode
+from .tidalapi.models import DeviceCode, Category
 from .config import settings
-from .koditidal import TidalSession, DirectoryItem
+from .koditidal import TidalSession
+from .items import DirectoryItem, TrackUrlItem, VideoUrlItem
 from .devices import DeviceSelectorDialog
 from .lyricsInstaller import LyricsInstaller
 try:
@@ -39,8 +40,10 @@ except:
     # Python 2.7
     from urllib import quote_plus, unquote_plus
 
+
 CONTENT_FOR_TYPE = {'artists': 'artists', 'albums': 'albums', 'playlists': 'albums', 'tracks': 'songs', 'videos': 'musicvideos', 'files': 'files', 'mixes': 'albums'}
-HOMEPAGE_ITEM_TYPES = {'PLAYLIST_LIST': 'playlists', 'ALBUM_LIST': 'albums', 'ARTIST_LIST': 'artists', 'TRACK_LIST': 'tracks', 'VIDEO_LIST': 'videos', 'MIX_LIST': 'mix'}
+MODULE_TYPES = {'PLAYLIST_LIST': 'playlists', 'ALBUM_LIST': 'albums', 'ARTIST_LIST': 'artists', 'TRACK_LIST': 'tracks', 'VIDEO_LIST': 'videos', 'MIX_LIST': 'mix', 'MIXED_TYPES_LIST': 'playlistitem'}
+SINGLE_ITEM_TYPES = {'ALBUM': 'album', 'PLAYLIST': 'playlist', 'ARTIST': 'artist', 'TRACK': 'track', 'VIDEO': 'video', 'MIX': 'mix'}
 
 #------------------------------------------------------------------------------
 # Initialization
@@ -56,12 +59,15 @@ add_directory = session.add_directory_item
 # Plugin Functions
 #------------------------------------------------------------------------------
 
+
 @plugin.route('/')
 def root():
     if session.is_logged_in:
         add_directory(_T(Msg.i30201), my_music)
-        add_directory(_T(Msg.i30212), plugin.url_for(homepage_items))
-    add_directory(_T(Msg.i30202), featured_playlists)
+        add_directory(_T(Msg.i30295), plugin.url_for(feed))
+    add_directory(_T(Msg.i30202), plugin.url_for(page, quote_plus('pages/home')))
+    add_directory(_T(Msg.i30212), plugin.url_for(page, quote_plus('pages/explore')))
+    add_directory(_P('videos'), plugin.url_for(page, quote_plus('pages/videos')))
     categories = Category.groups()
     for item in categories:
         add_directory(_T(item), plugin.url_for(category, group=item))
@@ -70,12 +76,20 @@ def root():
     if session.is_logged_in:
         add_directory(_T(Msg.i30207), logout, end=True, isFolder=False)
     else:
+        # add_directory(_T(Msg.i30293), login_direct, isFolder=False)
         add_directory(_T(Msg.i30208), login, end=True, isFolder=False)
+
+
+@plugin.route('/home')
+def home():
+    log.info('Jump to home screen')
+    xbmc.executebuiltin('Container.Update(%s,replace)' % plugin.url_for(root))
 
 
 @plugin.route('/settings')
 def settings_dialog():
     xbmc.executebuiltin('Addon.OpenSettings("%s")' % Const.addon_id)
+
 
 @plugin.route('/settings_choose_apk')
 def settings_choose_apk():
@@ -99,42 +113,88 @@ def settings_choose_apk():
             session.logout()
         xbmc.executebuiltin('Container.Refresh()')
 
-@plugin.route('/homepage_items')
-def homepage_items():
-    params = { 'locale': settings.locale, 'deviceType': 'BROWSER' }
-    apiPaths = []
+
+@plugin.route('/page/<page_url>')
+def page(page_url):
+    json = session._map_request(path=unquote_plus(page_url), params={'locale': settings.locale, 'deviceType': 'BROWSER'}, ret='json')
     items = []
-    for page_type in ['explore', 'home', 'videos']:
-        r = session.request('GET', path='pages/%s' % page_type, params=params)
-        if r.ok:
-            json_obj = r.json()
-            for row in json_obj['rows']:
-                for module in row['modules']:
-                    try:
-                        item_type = module['type']
-                        if item_type in HOMEPAGE_ITEM_TYPES:
-                            apiPath = module['pagedList']['dataApiPath']
-                            item = DirectoryItem(module['title'], plugin.url_for(homepage_item, item_type, quote_plus(apiPath)))
-                            if not apiPath in apiPaths:
-                                if item_type == 'MIX_LIST' and page_type == 'videos':
-                                    item.name = item.name + ' (' + _P('videos') + ')'
-                                items.append(item)
-                                apiPaths.append(apiPath)
-                        else:
-                            log.info('Unknown Homepage Item "%s": %s' % (item_type, module.get('title', 'Unknown')))
-                    except:
-                        pass
+    for row in json['rows']:
+        for m in row['modules']:
+            if m['type'] == 'PAGE_LINKS':
+                for p in m['pagedList']['items']:
+                    items.append(DirectoryItem(p['title'], plugin.url_for(page, quote_plus(p['apiPath']))))
+            elif m.get('pagedList', {}).get('dataApiPath', None):
+                items.append(DirectoryItem(m['title'], plugin.url_for(page_data, quote_plus(m['pagedList']['dataApiPath']), m['type'])))
+            elif m.get('showMore', None):
+                items.append(DirectoryItem(m['title'], plugin.url_for(page, quote_plus(m['showMore']['apiPath']))))
+            elif not m['type'] in ['TEXT_BLOCK', 'EXTURL']:
+                if m['title']:
+                    items.append(DirectoryItem(m['title'], plugin.url_for(module, page_url, quote_plus(repr(m['title'])), quote_plus(m['type']))))
+                elif 'items' in m:
+                    items += get_module_items(m)
+                else:
+                    items.append(DirectoryItem(m['type'], plugin.url_for(module_type, page_url, quote_plus(m['type']))))
     session.add_list_items(items, end=True)
 
 
-@plugin.route('/homepage_item/<item_type>/<path>')
-def homepage_item(item_type, path):
-    path = py2_decode(unquote_plus(path)).strip()
-    rettype = HOMEPAGE_ITEM_TYPES.get(item_type, 'NONE')
-    if rettype != 'NONE':
-        params = { 'locale': settings.locale, 'deviceType': 'BROWSER', 'offset': plugin.qs_offset, 'limit': min(50, settings.pageSize) }
-        items = session._map_request(path=path, method='GET', params=params, ret=rettype)
-        session.add_list_items(items, content=CONTENT_FOR_TYPE.get(rettype, 'files'), end=True, withNextPage=True)
+@plugin.route('/page_data/<page_url>/<item_type>')
+def page_data(page_url, item_type):
+    rettype = 'json'
+    if item_type in MODULE_TYPES:
+        rettype = MODULE_TYPES.get(item_type)
+    params = { 'locale': settings.locale, 'deviceType': 'BROWSER', 'offset': plugin.qs_offset, 'limit': min(50, settings.pageSize) }
+    items = session._map_request(path=unquote_plus(page_url), params=params, ret=rettype)
+    if item_type == 'PAGE_LINKS_CLOUD':
+        tab = items['items']
+        items = []
+        for p in tab:
+            items.append(DirectoryItem(p['title'], plugin.url_for(page, quote_plus(p['apiPath']))))
+    elif rettype == 'json':
+        log.info('Unknown item page type %s' % item_type)
+        items = []
+    session.add_list_items(items, content=CONTENT_FOR_TYPE.get(rettype, 'files'), end=True, withNextPage=True)
+
+
+@plugin.route('/module/<page_url>/<module_type>')
+def module_type(page_url, module_type):
+    module(page_url, '', module_type)
+
+
+@plugin.route('/module/<page_url>/<module_title>/<module_type>')
+def module(page_url, module_title, module_type):
+    json = session._map_request(path=unquote_plus(page_url), params={'locale': settings.locale, 'deviceType': 'BROWSER'}, ret='json')
+    module_title = eval(unquote_plus(module_title))
+    module_type = unquote_plus(module_type)
+    items = []
+    for row in json['rows']:
+        for m in row['modules']:
+            if m['title'] == module_title and m['type'] == module_type:
+                items += get_module_items(m)
+    session.add_list_items(items, content=CONTENT_FOR_TYPE.get(MODULE_TYPES.get(module_type, 'PLAYLIST_LIST'), 'albums'), end=True)
+
+
+def get_module_items(m):
+    items = []
+    if m['type'] == 'HIGHLIGHT_MODULE':
+        for pos in m['highlights']:
+            if pos['item']['type'] in SINGLE_ITEM_TYPES:
+                item = session._parse_one_item(pos['item']['item'], ret=SINGLE_ITEM_TYPES[pos['item']['type']])
+                if item:
+                    items.append(item)
+    elif m['type'] in ['FEATURED_PROMOTIONS', 'MULTIPLE_TOP_PROMOTIONS'] :
+        for pos in m['items']:
+            item = session._parse_promotion(pos)
+            if item:
+                items.append(item)
+        pass
+    else:
+        log.info('Unknown item module type %s' % m['type'])
+    return items
+
+
+@plugin.route('/feed')
+def feed():
+    add_items(session.get_feed_items(), content=CONTENT_FOR_TYPE.get('albums'), withNextPage=False)
 
 
 @plugin.route('/category')
@@ -146,7 +206,6 @@ def category_list():
 
 @plugin.route('/category/<group>')
 def category(group):
-    promoGroup = {'rising': 'RISING', 'discovery': 'DISCOVERY', 'featured': 'NEWS'}.get(group, None)
     items = session.get_category_items(group)
     totalCount = 0
     for item in items:
@@ -159,18 +218,11 @@ def category(group):
                 category_content(group, item.path, content_type)
                 return
     xbmcplugin.setContent(plugin.handle, CONTENT_FOR_TYPE.get('files'))
-    if promoGroup and totalCount > 10:
-        # Add Promotions as Folder on the Top if more than 10 Promotions available
-        add_directory(_T(Msg.i30120), plugin.url_for(featured, group=promoGroup))
+    if group == 'featured':
+        # MQA albums and playlists first
         add_directory('Master %s (MQA)' % _T(Msg.i30107), plugin.url_for(master_albums, offset=0))
         add_directory('Master %s (MQA)' % _T(Msg.i30108), plugin.url_for(master_playlists, offset=0))
-    # Add Category Items as Folders
-    add_items(items, content=None, end=not(promoGroup and totalCount <= 10))
-    if promoGroup and totalCount <= 10:
-        # Show up to 10 Promotions as single Items
-        promoItems = session.get_featured(promoGroup, types=['ALBUM', 'PLAYLIST', 'VIDEO'], limit=min(settings.pageSize, 999))
-        if promoItems:
-            add_items(promoItems, end=True)
+    add_items(items, content=None, end=True)
 
 
 @plugin.route('/category/<group>/<path>')
@@ -234,12 +286,6 @@ def featured(group):
     add_items(items, content=CONTENT_FOR_TYPE.get('files'))
 
 
-@plugin.route('/featured_playlists')
-def featured_playlists():
-    items = session.get_featured(limit=min(settings.pageSize, 999))
-    add_items(items, content=CONTENT_FOR_TYPE.get('albums'))
-
-
 @plugin.route('/my_music')
 def my_music():
     session.user.update_caches()
@@ -251,8 +297,8 @@ def my_music():
     add_directory(_T(Msg.i30217), plugin.url_for(favorites, content_type='tracks'))
     add_directory(_T(Msg.i30218), plugin.url_for(favorites, content_type='videos'))
     add_directory(_T(Msg.i30275), plugin.url_for(favorites, content_type='mixes'))
-    add_directory(_T(Msg.i30271), plugin.url_for(session_info))
-    add_directory(_T(Msg.i30272), plugin.url_for(refresh_token), end=True)
+    add_directory(_T(Msg.i30271), plugin.url_for(session_info), isFolder=False)
+    add_directory(_T(Msg.i30272), plugin.url_for(refresh_token), isFolder=False, end=True)
 
 
 @plugin.route('/album/<album_id>')
@@ -385,8 +431,8 @@ def mix_view(mix_id):
             for module in row['modules']:
                 try:
                     item_type = module['type']
-                    if item_type in HOMEPAGE_ITEM_TYPES:
-                        rettype = HOMEPAGE_ITEM_TYPES.get(item_type, 'NONE')
+                    if item_type in MODULE_TYPES:
+                        rettype = MODULE_TYPES.get(item_type, 'NONE')
                         if rettype != 'NONE':
                             mix_items = module['pagedList']['items']
                             for item in mix_items:
@@ -866,13 +912,18 @@ def cache_reset_confirmed():
         cache_reset()
 
 
+@plugin.route('/trigger_cache_reload')
+def trigger_cache_reload():
+    # Starts the cache reload as new plugin call
+    xbmc.executebuiltin('RunPlugin(%s)' % plugin.url_for(cache_reload))
+
+
 @plugin.route('/cache_reload')
 def cache_reload():
     if not session.is_logged_in:
         return
-    session.user.favorites.load_all(force_reload=True)
     session.user.load_cache()
-    session.user.playlists(flattened=True, allPlaylists=True)
+    session.user.update_caches(withProgress=True)
 
 
 @plugin.route('/favorite_toggle')
@@ -931,6 +982,7 @@ def favorite_toggle():
 
 
 @plugin.route('/search')
+@plugin.route('/search_type')
 def search():
     settings.setSetting('last_search_field', '')
     settings.setSetting('last_search_text', '')
@@ -939,6 +991,20 @@ def search():
     add_directory(_T(Msg.i30108), plugin.url_for(search_type, field='playlist'))
     add_directory(_T(Msg.i30109), plugin.url_for(search_type, field='track'))
     add_directory(_T(Msg.i30110), plugin.url_for(search_type, field='video'), end=True)
+
+
+@plugin.route('/search/<field>')
+def search_query(field):
+    search_text = plugin.args.get('query', [None])[0]
+    searchresults = []
+    if search_text:
+        searchresults = session.search(field.lower(), search_text)
+        add_items(searchresults.artists, end=False)
+        add_items(searchresults.albums, end=False)
+        add_items(searchresults.playlists, end=False)
+        add_items(searchresults.tracks, end=False)
+        add_items(searchresults.videos, end=False)
+    add_items([], end=True)
 
 
 @plugin.route('/search_type/<field>')
@@ -969,6 +1035,25 @@ def search_type(field):
 @plugin.route('/login')
 def login():
     try:
+        # Login via device code link
+        device_code = session.login_part1()
+        if device_code:
+            session.login_part2(device_code)
+            if session.is_logged_in:
+                Timer(3, trigger_cache_reload).start()
+    except Exception as e:
+        log.logException(e, 'Login failed !')
+        try:
+            errmsg = ' - %s' % e.response.json().get('error_description')
+        except:
+            errmsg = ''
+        xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30253) + errmsg, icon=xbmcgui.NOTIFICATION_ERROR)
+    xbmc.executebuiltin('Container.Refresh()')
+
+
+@plugin.route('/login_device_code')
+def login_device_code():
+    try:
         try:
             args = plugin.args
             code = None
@@ -986,35 +1071,48 @@ def login():
         except:
             code = None
         if not code and (settings.client_id == '' or settings.client_secret == ''):
-            url = 'http://{ip}:{port}/client'.format(ip=xbmc.getInfoLabel('Network.IPAddress'), port=settings.fanart_server_port)
+            url = 'http://{ip}:{port}/login'.format(ip=xbmc.getInfoLabel('Network.IPAddress'), port=settings.fanart_server_port)
             xbmcgui.Dialog().ok(_T(Msg.i30281), _T(Msg.i30257).format(url=url))
             settings_dialog()
         else:
-            session.login(device_code=code)
+            session.login_part2(device_code=code)
+            if session.is_logged_in:
+                Timer(3, trigger_cache_reload).start()
     except Exception as e:
         log.logException(e, 'Login failed !')
         xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30253), icon=xbmcgui.NOTIFICATION_ERROR)
-    xbmc.executebuiltin('Container.Refresh()')
+    xbmc.executebuiltin('Container.Update(%s,replace)' % plugin.url_for(root))
 
 
 @plugin.route('/logout')
 def logout():
-    if xbmcgui.Dialog().yesno(_T(Msg.i30207), _T(Msg.i30256)):
+    if Const.addon_id in xbmc.getInfoLabel('Container.FolderPath'):
+        if xbmcgui.Dialog().yesno(_T(Msg.i30207), _T(Msg.i30256)):
+            session.logout()
+            xbmc.executebuiltin('Container.Update(%s,replace)' % plugin.url_for(root))
+        else:
+            xbmc.executebuiltin('Container.Refresh()')
+    else:
         session.logout()
-    xbmc.executebuiltin('Container.Refresh()')
 
 
 @plugin.route('/session_info')
 def session_info():
     abo = session.user.subscription()
+    if settings.subscription_type != abo.subscription['type']:
+        settings.setSetting('subscription_type', abo.subscription['type'])
+    userinfo = session.user.info()
     info = session._map_request(path='sessions', method='GET', ret='json')
     dialog = xbmcgui.Dialog()
-    dialog.ok(_T(Msg.i30271),
-              '%s: %s  ' % (_T(Msg.i30008), info['userId']) +
-              '%s: %s\n' % (_T(Msg.i30010), abo.subscription['type']) +
-              '%s: %s\n' % (_T(Msg.i30019), info['sessionId']) +
-              '%s: %s\n' % (_T(Msg.i30020), re.sub(r'[0-9]+', '', info['client']['name']).replace('_', ' ').strip()) +
-              '%s: %s' % (_T(Msg.i30022), settings.expire_time))
+    dialog.textviewer(_T(Msg.i30271),
+                      '%s: %s\n' % (_T(Msg.i30291), userinfo.email) +
+                      '%s: %s\n' % (_T(Msg.i30011), settings.country_code) +
+                      '%s: %s\n' % (_T(Msg.i30008), info['userId']) +
+                      '%s: %s\n' % (_T(Msg.i30019), info['sessionId']) +
+                      '%s: %s\n' % (_T(Msg.i30020), info['client']['name']) +
+                      '%s: %s\n' % (_T(Msg.i30010), abo.subscription['type']) +
+                      '%s: %s\n' % (_T(Msg.i30034), userinfo.countryCode) +
+                      '%s: %s' % (_T(Msg.i30022), settings.expire_time))
 
 
 @plugin.route('/refresh_token')
@@ -1032,19 +1130,12 @@ def refresh_token():
 def play_track(track_id, album_id):
     try:
         media = session.get_track_url(track_id)
-        log.info("Playing: %s with MimeType: %s" % (media.url, media.get_mimeType()))
-        if settings.set_playback_info:
-            track = session.get_track(track_id, withAlbum=False)
-            url, li, isFolder = track.getListItem()
-            li.setPath(media.url)
-        else:
-            li = xbmcgui.ListItem(path=media.url)
+        track = session.get_track(track_id, withAlbum=False) if settings.set_playback_info else None
+        li = media.getListItem(track)
     except Exception as e:
-        xbmcgui.Dialog().notification('%s Fatal Error' % plugin.name, repr(e), xbmcgui.NOTIFICATION_ERROR)
+        xbmcgui.Dialog().notification('%s Fatal Error' % plugin.name, '%s' % e, xbmcgui.NOTIFICATION_ERROR)
         traceback.print_exc()
-        media = TrackUrl(url=settings.unplayable_m4a)
-        li = xbmcgui.ListItem(path=media.url)
-    li.setProperty('mimetype', media.get_mimeType())
+        li = TrackUrlItem.unplayableItem().getListItem()
     xbmcplugin.setResolvedUrl(plugin.handle, True, li)
 
 
@@ -1052,36 +1143,12 @@ def play_track(track_id, album_id):
 def play_video(video_id):
     try:
         media = session.get_video_url(video_id)
-        if isinstance(media, VideoUrl) and media.url:
-            log.info("Playing: %s with MimeType: %s" % (media.url, media.get_mimeType()))
-            if settings.set_playback_info:
-                video = session.get_video(video_id)
-                url, li, isFolder = video.getListItem()
-                li.setPath(media.url)
-            else:
-                li = xbmcgui.ListItem(path=media.url)
-        else:
-            log.warning("Got no video url. Playing silence for unplayable video %s to avoid kodi crash" % video_id)
-            media = TrackUrl(url = settings.unplayable_m4a)
-    except HTTPError as e:
-        r = e.response
-        if r.status_code in [401, 403]:
-            msg = _T(Msg.i30210)
-        else:
-            msg = r.reason
-        try:
-            msg = r.json().get('userMessage')
-        except:
-            pass
-        xbmcgui.Dialog().notification('%s Error %s' % (plugin.name, r.status_code), msg, xbmcgui.NOTIFICATION_WARNING)
-        log.warning("Playing silence for unplayable video %s to avoid kodi crash" % video_id)
-        media = TrackUrl(url = settings.unplayable_m4a)
+        video = session.get_video(video_id) if settings.set_playback_info else None
+        li = media.getListItem(video if isinstance(media, VideoUrlItem) else None)
     except Exception as e:
         xbmcgui.Dialog().notification('%s Fatal Error' % plugin.name, repr(e), xbmcgui.NOTIFICATION_ERROR)
         traceback.print_exc()
-        media = TrackUrl(url=settings.unplayable_m4a)
-    li = xbmcgui.ListItem(path=media.url)
-    li.setProperty('mimetype', media.get_mimeType())
+        li = VideoUrlItem.unplayableItem().getListItem()
     xbmcplugin.setResolvedUrl(plugin.handle, True, li)
 
 
@@ -1094,21 +1161,21 @@ def stream_locked():
 def install_lyrics_scraper():
     li = LyricsInstaller()
     li.install(checkInstalled=False)
-    log.info("Test %s" % "Erfolgreich" if li.success else "Fehlerhaft")
+    log.info("Test %s" % "successful" if li.success else "failed")
     li.show_protocol()
 
 @plugin.route('/check_lyrics_scraper')
 def check_lyrics_scraper():
     li = LyricsInstaller()
     li.install(checkInstalled=True)
-    log.info("Test %s" % "Erfolgreich" if li.success else "Fehlerhaft")
+    log.info("Test %s" % "successful" if li.success else "failed")
     li.show_protocol()
 
 @plugin.route('/uninstall_lyrics_scraper')
 def uninstall_lyrics_scraper():
     li = LyricsInstaller()
     li.uninstall()
-    log.info("Test %s" % "Erfolgreich" if li.success else "Fehlerhaft")
+    log.info("Test %s" % "successful" if li.success else "failed")
     li.show_protocol()
 
 @plugin.route('/install_lyrics_addon')

@@ -17,13 +17,23 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import re
 import sys
 import datetime
 
+try:
+    # Python 3
+    from urllib.parse import quote_plus
+except:
+    # Python 2.7
+    from urllib import quote_plus
+
 from kodi_six import xbmcgui
+from m3u8 import load as m3u8_load
 
 from .common import Const, KODI_VERSION, plugin
 from .textids import Msg, _T, _P
+from .debug import log
 from .config import settings
 from .tidalapi import models as tidal
 
@@ -56,6 +66,7 @@ class HasListItem(object):
             self.DEFAULT_PLAYLIST_MASK = '{label} [COLOR limegreen]({mediatype})[/COLOR]'
             self.MASTER_AUDIO_MASK = '{label} [COLOR blue]MQA[/COLOR]'
             self.DOLBY_ATMOS_MASK = '{label} [COLOR lightblue]Atmos[/COLOR]'
+            self.SONY_360RA_MASK = '{label} [COLOR cyan]360RA[/COLOR]'
         else:
             self.FOLDER_MASK = '{label}'
             if self._favorites_in_labels:
@@ -70,6 +81,7 @@ class HasListItem(object):
             self.DEFAULT_PLAYLIST_MASK = '{label} ({mediatype})'
             self.MASTER_AUDIO_MASK = '{label} (MQA)'
             self.DOLBY_ATMOS_MASK = '{label} (Atmos)'
+            self.SONY_360RA_MASK = '{label} (360RA)'
 
     def getLabel(self, extended=True):
         return self.name
@@ -152,6 +164,8 @@ class AlbumItem(tidal.Album, HasListItem):
             longTitle = self.MASTER_AUDIO_MASK.format(label=longTitle)
         if self.isDolbyAtmos and settings.mqa_in_labels:
             longTitle = self.DOLBY_ATMOS_MASK.format(label=longTitle)
+        if self.isSony360RA and settings.mqa_in_labels:
+            longTitle = self.SONY_360RA_MASK.format(label=longTitle)
         return longTitle
 
     def getSortText(self, mode=None):
@@ -510,6 +524,8 @@ class TrackItem(tidal.Track, HasListItem):
             longTitle = self.MASTER_AUDIO_MASK.format(label=longTitle)
         if self.isDolbyAtmos and settings.mqa_in_labels:
             longTitle = self.DOLBY_ATMOS_MASK.format(label=longTitle)
+        if self.isSony360RA and settings.mqa_in_labels:
+            longTitle = self.SONY_360RA_MASK.format(label=longTitle)
         return longTitle
 
     def getSortText(self, mode=None):
@@ -613,6 +629,13 @@ class TrackItem(tidal.Track, HasListItem):
         cm.append((_T(Msg.i30222), 'Container.Update(%s)' % plugin.url_for_path('/track_radio/%s' % self.id)))
         cm.append((_T(Msg.i30223), 'Container.Update(%s)' % plugin.url_for_path('/recommended/tracks/%s' % self.id)))
         return cm
+
+    @property
+    def fanart(self):
+        url = super(TrackItem, self).fanart
+        if url and 'localhost' in url and self._ftArtists:
+            url = url + '&' + '&'.join(['id=%s' % item.id for item in self._ftArtists])
+        return url
 
 
 class VideoItem(tidal.Video, HasListItem):
@@ -829,6 +852,16 @@ class PromotionItem(tidal.Promotion, HasListItem):
             li.addStreamInfo('video', { 'codec': 'h264', 'aspect': 1.78, 'width': 1920,
                              'height': 1080, 'duration': self.duration })
             li.addStreamInfo('audio', { 'codec': 'AAC', 'language': 'en', 'channels': 2 })
+        elif self.type == 'ARTIST':
+            url = plugin.url_for_path('/artist/%s' % self.id)
+            infoLabel = {
+                'artist': self.shortHeader,
+                'album': self.text,
+                'title': self.shortSubHeader
+            }
+            if KODI_VERSION >= (17, 0):
+                infoLabel.update({'userrating': '%s' % int(round(self.popularity / 10.0))})
+            li.setInfo('music', infoLabel)
         else:
             return (None, None, False)
         return (url, li, isFolder)
@@ -948,5 +981,126 @@ class DirectoryItem(tidal.BrowsableMedia, HasListItem):
     def fanart(self):
         return self._fanart
 
+
+class TrackUrlItem(tidal.TrackUrl, HasListItem):
+
+    @staticmethod
+    def unplayableItem():
+        return TrackUrlItem(tidal.TrackUrl(url=settings.unplayable_m4a, codec=tidal.Codec.M4A, mimeType=tidal.MimeType.audio_m4a))
+
+    def __init__(self, item):
+        self.__dict__.update(vars(item))
+
+    def getLabel(self, extended=False):
+        return _T('track') + '-%s' % self.trackId
+
+    def getListItem(self, track=None):
+        if isinstance(track, TrackItem):
+            li = track.getListItem()[1]
+        else:
+            li = xbmcgui.ListItem()
+        li.setProperty('mimetype', self.get_mimeType())
+        if self.isDASH:
+            log.info("Got Dash stream with MimeType: %s" % self.get_mimeType())
+            if (tidal.MimeType.isFLAC(self.get_mimeType()) and settings.dash_flac_mode == Const.is_ffmpegdirect) or \
+               (not tidal.MimeType.isFLAC(self.get_mimeType()) and settings.dash_aac_mode == Const.is_ffmpegdirect):
+                li.setContentLookup(False)
+                li.setProperty('inputstream' if KODI_VERSION >= (19, 0) else 'inputstreamaddon', 'inputstream.ffmpegdirect')
+                li.setProperty('inputstream.ffmpegdirect.open_mode', 'ffmpeg')
+                li.addStreamInfo('audio', { 'codec': 'flac', 'language': 'en', 'channels': 2 })
+                # li.setProperty('inputstream.ffmpegdirect.is_realtime_stream', 'true')
+                if settings.ffmpegdirect_has_mpd:
+                    log.info("Using inputstream.ffmpegdirect for MPD playback")
+                    self.url = 'http://localhost:%s/manifest.mpd?data=%s' % (settings.fanart_server_port, quote_plus(self.manifest))
+                    li.setMimeType('application/dash+xml')
+                    li.setProperty('inputstream.ffmpegdirect.manifest_type', 'mpd')
+                else:
+                    log.info("Using inputstream.ffmpegdirect for HLS playback")
+                    self.url = 'http://localhost:%s/manifest.m3u8?data=%s' % (settings.fanart_server_port, quote_plus(self.manifest))
+                    li.setMimeType('application/vnd.apple.mpegurl')
+                    li.setProperty('inputstream.ffmpegdirect.manifest_type', 'hls')
+            elif not tidal.MimeType.isFLAC(self.get_mimeType()) and settings.dash_aac_mode == Const.is_adaptive:
+                log.info("Using inputstream.adaptive for MPD playback")
+                self.url = 'http://localhost:%s/manifest.mpd?data=%s' % (settings.fanart_server_port, quote_plus(self.manifest))
+                li.setContentLookup(False)
+                li.setMimeType('application/dash+xml')
+                li.addStreamInfo('audio', { 'codec': 'aac', 'language': 'en', 'channels': 2 })
+                li.setProperty('inputstream' if KODI_VERSION >= (19, 0) else 'inputstreamaddon', 'inputstream.adaptive')
+                li.setProperty('inputstream.adaptive.manifest_type', 'mpd')
+                # li.setProperty('inputstream.adaptive.manifest_update_parameter', 'full')
+            else:
+                log.info("Using HLS converter for Dash playback")
+                self.url = 'http://localhost:%s/manifest.m3u8?data=%s' % (settings.fanart_server_port, quote_plus(self.manifest))
+                li.setMimeType('application/vnd.apple.mpegurl')
+        elif settings.ffmpegdirect_is_default_player:
+            li.setProperty('inputstream' if KODI_VERSION >= (19, 0) else 'inputstreamaddon', 'inputstream.ffmpegdirect')
+            li.setProperty('inputstream.ffmpegdirect.open_mode', 'ffmpeg')
+            li.addStreamInfo('audio', { 'codec': 'flac' if tidal.MimeType.isFLAC(self.get_mimeType()) else 'aac', 'language': 'en', 'channels': 2 })
+
+        li.setPath(self.url if self.url else settings.unplayable_m4a)
+        log.info("Playing: %s with MimeType: %s" % (self.url, self.get_mimeType()))
+        return li
+
+
+class VideoUrlItem(tidal.VideoUrl, HasListItem):
+
+    @staticmethod
+    def unplayableItem():
+        return TrackUrlItem(tidal.TrackUrl(url=settings.unplayable_m4a, codec=tidal.Codec.M4A, mimeType=tidal.MimeType.audio_m4a))
+
+    def __init__(self, item):
+        self.__dict__.update(vars(item))
+
+    def getLabel(self, extended=False):
+        return _T('video') + '-%s' % self.videoId
+
+    def selectStream(self, maxVideoHeight=9999):
+        if maxVideoHeight >= 9999 or self.url.lower().find('.m3u8') < 0:
+            log.debug('Playing M3U8 Playlist: %s' % self.url)
+            return False
+        log.debug('Parsing M3U8 Playlist: %s' % self.url)
+        m3u8obj = m3u8_load(self.url)
+        if not m3u8obj.is_variant:
+            log.debug('M3U8 Playlist is not a variant stream')
+            return False
+        # Select stream with highest resolution <= maxVideoHeight
+        selected_height = 0
+        selected_bandwidth = -1
+        for playlist in m3u8obj.playlists:
+            try:
+                width, height = playlist.stream_info.resolution
+                bandwidth = playlist.stream_info.average_bandwidth
+                if not bandwidth:
+                    bandwidth = playlist.stream_info.bandwidth
+                if not bandwidth:
+                    bandwidth = 0
+                if (height > selected_height or (height == selected_height and bandwidth > selected_bandwidth)) and height <= maxVideoHeight:
+                    if re.match(r'https?://', playlist.uri):
+                        self.url = playlist.uri
+                    else:
+                        self.url = m3u8obj.base_uri + playlist.uri
+                    if height == selected_height and bandwidth > selected_bandwidth:
+                        log.debug('Bandwidth %s > %s' % (bandwidth, selected_bandwidth))
+                    log.debug('Selected %sx%s %s: %s' % (width, height, bandwidth, playlist.uri.split('?')[0].split('/')[-1]))
+                    selected_height = height
+                    selected_bandwidth = bandwidth
+                    self.width = width
+                    self.height = height
+                    self.bandwidth = bandwidth
+                elif height > maxVideoHeight:
+                    log.debug('Skipped %sx%s %s: %s' % (width, height, bandwidth, playlist.uri.split('?')[0].split('/')[-1]))
+            except:
+                pass
+        return True
+
+    def getListItem(self, video=None):
+        if isinstance(video, VideoItem):
+            li = video.getListItem()[1]
+            li.setPath(self.url)
+        else:
+            li = xbmcgui.ListItem(path=self.url)
+        li.setProperty('mimetype', self.get_mimeType())
+        log.info("Playing: %s with MimeType: %s" % (self.url, self.get_mimeType()))
+        return li
 
 # End of File

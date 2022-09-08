@@ -19,21 +19,20 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import sys
 import traceback
-import re
 import datetime
 
 from kodi_six import xbmc, xbmcvfs, xbmcgui, xbmcplugin
 from requests import HTTPError
-from m3u8 import load as m3u8_load
 
 from .common import KODI_VERSION, plugin
 from .textids import Msg, _T
 from .debug import log
 from .config import settings
 from .tidalapi import Session, User, Favorites, models as tidal
-from .items import AlbumItem, ArtistItem, PlaylistItem, TrackItem, VideoItem, MixItem, FolderItem, CategoryItem, PromotionItem, DirectoryItem
+from .items import AlbumItem, ArtistItem, PlaylistItem, TrackItem, VideoItem, MixItem, \
+                   FolderItem, CategoryItem, PromotionItem, DirectoryItem, TrackUrlItem, VideoUrlItem
 
- 
+
 class TidalSession(Session):
 
     errorCodes = []
@@ -58,23 +57,42 @@ class TidalSession(Session):
             else:
                 settings.setSetting('country_code', self._config.country_code)
                 log.info('Initialized Country Code to "%s"' % self._config.country_code)
+        if not self._config.user_country_code or self._config.user_country_code == 'WW':
+            self._config.user_country_code = self._config.country_code
         if self.is_logged_in:
             self.user.favorites.load_cache()
             self.user.load_cache()
 
-    def login(self, device_code=None):
+    def check_subscription(self):
+        abo = None
+        if not self.is_logged_in:
+            return abo
+        try:
+            abo = self.user.subscription()
+            if abo:
+                self._config.subscription_type = abo.subscription['type']
+                log.info('Subscription type is: %s' % self._config.subscription_type)
+                settings.setSetting('subscription_type', self._config.subscription_type)
+        except Exception as e:
+            log.logException(e, 'Failed to get users subscription type')
+        return abo
+
+    def login_part1(self, client_id=None, client_secret=None):
+        return Session.login_part1(self, client_id=client_id, client_secret=client_secret)
+
+    def login_part2(self, device_code=None):
         try:
             auth = None
-            progress = xbmcgui.DialogProgress()
-            code = device_code if device_code else self.login_part1()
+            progress = None
             start_time = datetime.datetime.now()
-            message = _T(Msg.i30209)+'\n'+code.verificationUriComplete
+            message = _T(Msg.i30209)+'\n'+device_code.verificationUriComplete
+            progress = xbmcgui.DialogProgress()
             progress.create(_T(Msg.i30280), message)
             monitor = xbmc.Monitor()
             percent = 0
             while percent < 100:
                 progress.update(percent)
-                auth = self.login_part2(device_code=code)
+                auth = Session.login_part2(self, device_code)
                 if auth.success:
                     settings.save_client()
                     settings.save_session()
@@ -82,18 +100,21 @@ class TidalSession(Session):
                 if not auth.authorizationPending or progress.iscanceled() or monitor.waitForAbort(timeout=1):
                     log.warning('Login Session aborted')
                     break
-                percent = int(100 * min(code.expiresIn, (datetime.datetime.now() - start_time).seconds) / code.expiresIn)
+                percent = int(100 * min(device_code.expiresIn, (datetime.datetime.now() - start_time).seconds) / device_code.expiresIn)
         except Exception as e:
             log.logException(e, 'Login failed !')
             xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30253) , icon=xbmcgui.NOTIFICATION_ERROR)
         finally:
-            progress.close()
+            if progress:
+                progress.close()
         if auth and not auth.success and not auth.authorizationPending and auth.error:
-            xbmcgui.Dialog().ok(plugin.name+' - '+_T(Msg.i30253), auth.error)
+            xbmcgui.Dialog().ok(plugin.name, '\n'.join([_T(Msg.i30253), auth.error]))
+        if auth and auth.success:
+            xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30293), icon=xbmcgui.NOTIFICATION_INFO)
         return auth
 
     def logout(self):
-        Session.logout(self, signoff=False)
+        Session.logout(self, signoff=True)
         settings.save_session()
         self._config.load()
 
@@ -158,21 +179,41 @@ class TidalSession(Session):
         return self.get_item_albums(self.get_playlist_items(playlist, offset=offset, limit=limit))
 
     def get_artist_top_tracks(self, artist_id, offset=0, limit=999):
-        items = Session.get_artist_top_tracks(self, artist_id, offset=offset, limit=limit)
+        items = []
+        try:
+            items = Session.get_artist_top_tracks(self, artist_id, offset=offset, limit=limit)
+        except:
+            pass
         if not items and limit >= 100:
-            items = Session.get_artist_top_tracks(self, artist_id, offset=offset, limit=100)
+            try:
+                items = Session.get_artist_top_tracks(self, artist_id, offset=offset, limit=100)
+            except:
+                pass
         if not items and limit >= 50:
-            items = Session.get_artist_top_tracks(self, artist_id, offset=offset, limit=50)
+            try:
+                items = Session.get_artist_top_tracks(self, artist_id, offset=offset, limit=50)
+            except:
+                pass
         if not items:
             items = Session.get_artist_top_tracks(self, artist_id, offset=offset, limit=20)
         return items
 
-    def get_artist_radio(self, artist_id, offset=0, limit=999):
-        items = Session.get_artist_radio(self, artist_id, offset=offset, limit=limit)
+    def get_artist_radio(self, artist_id, offset=0, limit=100):
+        items = []
+        try:
+            items = Session.get_artist_radio(self, artist_id, offset=offset, limit=limit)
+        except:
+            pass
         if not items and limit >= 100:
-            items = Session.get_artist_radio(self, artist_id, offset=offset, limit=100)
+            try:
+                items = Session.get_artist_radio(self, artist_id, offset=offset, limit=100)
+            except:
+                pass
         if not items and limit >= 50:
-            items = Session.get_artist_radio(self, artist_id, offset=offset, limit=50)
+            try:
+                items = Session.get_artist_radio(self, artist_id, offset=offset, limit=50)
+            except:
+                pass
         if not items:
             items = Session.get_artist_radio(self, artist_id, offset=offset, limit=20)
         return items
@@ -186,6 +227,9 @@ class TidalSession(Session):
         if not items:
             items = Session.get_track_radio(self, track_id, offset=offset, limit=20)
         return items
+
+    def get_category_items(self, group):
+        return Session.get_category_items(self, group)
 
     def get_recommended_items(self, content_type, item_id, offset=0, limit=999):
         items = Session.get_recommended_items(self, content_type, item_id, offset=offset, limit=limit)
@@ -246,10 +290,8 @@ class TidalSession(Session):
         return track
 
     def _parse_track_url(self, json_obj):
-        media = Session._parse_track_url(self, json_obj)
-        if media.isEncrypted or not media.url:
-            media.url = settings.unplayable_m4a
-        return media
+        item = TrackUrlItem(Session._parse_track_url(self, json_obj))
+        return item
 
     def _parse_video(self, json_obj):
         video = VideoItem(Session._parse_video(self, json_obj))
@@ -262,7 +304,7 @@ class TidalSession(Session):
         return video
 
     def _parse_video_url(self, json_obj):
-        media = Session._parse_video_url(self, json_obj)
+        media = VideoUrlItem(Session._parse_video_url(self, json_obj))
         if media.isEncrypted or not media.url:
             media.url = settings.unplayable_m4a
         return media
@@ -284,7 +326,6 @@ class TidalSession(Session):
     def _parse_category(self, json_obj):
         return CategoryItem(Session._parse_category(self, json_obj))
 
-
     def get_track_url(self, track_id, quality=None):
         try:
             soundQuality = quality if quality else self._config.quality
@@ -292,7 +333,16 @@ class TidalSession(Session):
             if media.isEncrypted:
                 log.warning('Got encrypted track %s ! Playing silence track to avoid kodi to crash ...' % track_id)
                 xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30279).format(what=_T('track')), icon=xbmcgui.NOTIFICATION_WARNING)
-            elif quality in [tidal.Quality.lossless, tidal.Quality.hi_res] and media.codec not in ['FLAC', 'ALAC', 'MQA', 'EAC3']:
+                return TrackUrlItem.unplayableItem()
+            if media.codec == tidal.Codec.SONY360RA:
+                log.warning('Sony 360 RA not supported ! Playing silence track to avoid kodi to crash ...')
+                xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30296).format(codec=tidal.AudioMode.sony_360), icon=xbmcgui.NOTIFICATION_WARNING)
+                return TrackUrlItem.unplayableItem()
+            if media.codec == tidal.Codec.AC4:
+                log.warning('Dolby AC4 not supported ! Playing silence track to avoid kodi to crash ...')
+                xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30296).format(codec=tidal.Codec.AC4), icon=xbmcgui.NOTIFICATION_WARNING)
+                return TrackUrlItem.unplayableItem()
+            if quality in [tidal.Quality.lossless, tidal.Quality.hi_res] and media.codec not in tidal.Codec.HQCodecs:
                 xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30504), icon=xbmcgui.NOTIFICATION_WARNING)
             log.info('Got stream with soundQuality:%s, codec:%s' % (media.soundQuality, media.codec))
             return media
@@ -308,45 +358,28 @@ class TidalSession(Session):
                 pass
             xbmcgui.Dialog().notification('%s Error %s' % (plugin.name, r.status_code), msg, xbmcgui.NOTIFICATION_WARNING)
             log.warning("Playing silence for unplayable track %s to avoid kodi crash" % track_id)
-        return tidal.TrackUrl(url=settings.unplayable_m4a)
-
+        return TrackUrlItem.unplayableItem()
 
     def get_video_url(self, video_id, maxHeight=-1):
-        maxVideoHeight = maxHeight if maxHeight > 0 else self._config.maxVideoHeight
-        media = Session.get_video_url(self, video_id, quality=None)
-        if maxVideoHeight != 9999 and media.url.lower().find('.m3u8') > 0:
-            log.debug('Parsing M3U8 Playlist: %s' % media.url)
-            m3u8obj = m3u8_load(media.url)
-            if m3u8obj.is_variant:
-                # Select stream with highest resolution <= maxVideoHeight
-                selected_height = 0
-                selected_bandwidth = -1
-                for playlist in m3u8obj.playlists:
-                    try:
-                        width, height = playlist.stream_info.resolution
-                        bandwidth = playlist.stream_info.average_bandwidth
-                        if not bandwidth:
-                            bandwidth = playlist.stream_info.bandwidth
-                        if not bandwidth:
-                            bandwidth = 0
-                        if (height > selected_height or (height == selected_height and bandwidth > selected_bandwidth)) and height <= maxVideoHeight:
-                            if re.match(r'https?://', playlist.uri):
-                                media.url = playlist.uri
-                            else:
-                                media.url = m3u8obj.base_uri + playlist.uri
-                            if height == selected_height and bandwidth > selected_bandwidth:
-                                log.debug('Bandwidth %s > %s' % (bandwidth, selected_bandwidth))
-                            log.debug('Selected %sx%s %s: %s' % (width, height, bandwidth, playlist.uri.split('?')[0].split('/')[-1]))
-                            selected_height = height
-                            selected_bandwidth = bandwidth
-                            media.width = width
-                            media.height = height
-                            media.bandwidth = bandwidth
-                        elif height > maxVideoHeight:
-                            log.debug('Skipped %sx%s %s: %s' % (width, height, bandwidth, playlist.uri.split('?')[0].split('/')[-1]))
-                    except:
-                        pass
-        return media
+        try:
+            maxVideoHeight = maxHeight if maxHeight >= 0 else self._config.maxVideoHeight
+            media = Session.get_video_url(self, video_id, audioOnly=True if maxVideoHeight == 0 else False )
+            if isinstance(media, VideoUrlItem):
+                media.selectStream(maxVideoHeight)
+            return media
+        except HTTPError as e:
+            r = e.response
+            if r.status_code in [401, 403]:
+                msg = _T(Msg.i30210)
+            else:
+                msg = r.reason
+            try:
+                msg = r.json().get('userMessage')
+            except:
+                pass
+            xbmcgui.Dialog().notification('%s Error %s' % (plugin.name, r.status_code), msg, xbmcgui.NOTIFICATION_WARNING)
+            log.warning("Playing silence for unplayable video %s to avoid kodi crash" % video_id)
+        return VideoUrlItem.unplayableItem()
 
     def add_list_items(self, items, content=None, end=True, withNextPage=False):
         if content:
@@ -366,9 +399,9 @@ class TidalSession(Session):
             # Add folder for next page
             try:
                 totalNumberOfItems = items[0]._totalNumberOfItems
-                nextOffset = items[0]._offset + self._config.pageSize
-                if nextOffset < totalNumberOfItems and len(items) >= self._config.pageSize:
-                    self.add_directory_item(_T(Msg.i30244).format(pos1=nextOffset, pos2=min(nextOffset+self._config.pageSize, totalNumberOfItems), len=totalNumberOfItems),
+                nextOffset = items[0]._offset + items[0]._pageSize
+                if nextOffset < totalNumberOfItems and len(items) >= items[0]._pageSize:
+                    self.add_directory_item(_T(Msg.i30244).format(pos1=nextOffset + 1, pos2=min(nextOffset+items[0]._pageSize, totalNumberOfItems), len=totalNumberOfItems),
                                             plugin.url_with_qs(plugin.path, offset=nextOffset))
             except:
                 log.error('Next Page for URL %s not set' % sys.argv[0])
@@ -580,10 +613,22 @@ class TidalUser(User):
         self.folders_updated = False
         self.folders_cache = {}
 
-    def update_caches(self):
-        self.favorites.load_all(force_reload=True)
-        self.playlists(flattened=True, allPlaylists=True)
-        self.save_cache()
+    def update_caches(self, withProgress=False):
+        progress = xbmcgui.DialogProgressBG() if withProgress else None
+        if progress:
+            progress.create(heading=plugin.name)
+        try:
+            if progress:
+                progress.update(percent=1, message=_T(Msg.i30306))
+            self.favorites.load_all(force_reload=True)
+            self.playlists(flattened=True, allPlaylists=True, progress=progress)
+            self.save_cache()
+        except:
+            pass
+        finally:
+            if progress:
+                xbmc.sleep(500)
+                progress.close()
 
     def load_cache(self, force_reload=False):
         try:
@@ -600,7 +645,6 @@ class TidalUser(User):
             self.playlists_updated = True
             self.playlists_cache = {}
             self.save_cache()
-            self.playlists(flattened=True, allPlaylists=True)
         try:
             if not self.folders_loaded or force_reload:
                 fd = xbmcvfs.File(settings.folders_file, 'r')
@@ -615,7 +659,6 @@ class TidalUser(User):
             self.folders_updated = True
             self.folders_cache = {}
             self.save_cache()
-            self.playlists(flattened=True, allPlaylists=True)
         return self.playlists_loaded and self.folders_loaded
 
     def save_cache(self):
@@ -733,16 +776,25 @@ class TidalUser(User):
         except:
             pass
 
-    def playlists(self, flattened=True, allPlaylists=False):
+    def playlists(self, flattened=True, allPlaylists=False, progress=None):
+        if progress:
+            progress.update(percent=2, message=_T(Msg.i30307))
         items = User.playlists(self, flattened=flattened, allPlaylists=allPlaylists)
         # Refresh the Playlist Cache
         self.load_cache()
         # Update modified Playlists in Cache
+        item_no = 0
         for item in items:
+            item_no += 1
+            if progress:
+                progress.update(percent=int((item_no * 100) / len(items)),
+                                            message=_T(Msg.i30308).format(item=item_no, max=len(items), name=item.name))
             self.check_updated_playlist(item)
         if flattened:
             # in flattened mode all user playlists are loaded
             self.check_deleted_playlists(items, checkFolders=allPlaylists)
+        if progress:
+            progress.update(percent=100, message=_T(Msg.i30309))
         self.save_cache()
         if flattened and not allPlaylists:
             self.detect_default_playlists()

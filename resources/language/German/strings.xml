@@ -32,6 +32,7 @@
     <string id="30031">TIDAL lyrics scraper deinstallieren</string>
     <string id="30032">CU LRC Lyrics Addon Settings</string>
     <string id="30033">CU LRC Lyrics Addon installieren</string>
+    <string id="30034">Land des Benutzers</string>
 
     <!-- Video Settings -->
     <string id="30040">Video-Qualität</string>
@@ -42,6 +43,8 @@
     <string id="30045">Video (480p)</string>
     <string id="30046">Video (360p)</string>
     <string id="30047">Video (240p)</string>
+    <string id="30048">Nur Audio</string>
+    <string id="30049">30 Sekunden Vorschau</string>
 
     <!-- Program Text -->
     <string id="30101">Künstler</string>
@@ -71,7 +74,7 @@
 
     <!-- Main Menu -->
     <string id="30201">Meine Musiksammlung</string>
-    <string id="30202">Empfohlene Playlisten</string>
+    <string id="30202">Home</string>
     <string id="30203">Neuheiten</string>
     <string id="30206">Suchen</string>
     <string id="30207">Abmelden</string>
@@ -79,7 +82,7 @@
     <string id="30209">Bitte über einen Web-Broser hier anmelden:</string>  
     <string id="30210">Anmeldefehler !</string>
     <string id="30211">TIDAL Rising</string>
-    <string id="30212">Vorschläge für mich</string>
+    <string id="30212">Entdecken</string>
     <string id="30213">Alle meine Playlisten</string>
     <string id="30214">Favorisierte Künstler</string>
     <string id="30215">Favorisierte Alben</string>
@@ -120,10 +123,10 @@
     <string id="30250">Default für {what} zurücksetzen</string>
     <string id="30251">{what} umbenennen</string>
     <string id="30252">Playliste öffnen (nur Audio)</string>
-    <string id="30253">Login fehlgeschlagen !!</string>
+    <string id="30253">Login fehlgeschlagen !</string>
     <string id="30254">Als Track-/Video-Playliste öffnen</string>
     <string id="30255">Als Album-Playliste öffnen</string>
-    <string id="30256">Wirklich abmelden ?\nNeuanmeldung über Web-Browser notwendig !</string>
+    <string id="30256">Wirklich abmelden ?\nEine Neuanmeldung ist dann notwendig !</string>
     <string id="30257">Bitte Client-ID und Client-Secret in den Addon-Einstellungen setzen !\nOder über URL anmelden: {url}</string>
     <string id="30258">{what} leeren</string>
     <string id="30259">Die Playliste '{name}' enthält {count} Elemente. Sollen alle Elemente aus der Playliste entfernt werden ?</string>
@@ -158,19 +161,36 @@
     <string id="30288">°Achtung: Gerätetyp wurde nicht aus der TIDAL-APK übernommen !&lt;br&gt;Bitte funktionierende Client-ID und Client-Secret Werte direkt vorgeben !</string>
     <string id="30289">Gerätetyp aus TIDAL APK Datei lesen</string>
     <string id="30290">Kein Gerätetyp ausgewählt.\nSoll der vorhandene Gerätetyp entfernt werden ?\nClient-ID und Client-Secret müssen dann manuell gesetzt werden !</string>
+    <string id="30291">E-Mail-Adresse</string>
+    <string id="30293">Login erfolgreich !</string>
+    <string id="30294">Anmelde-Code abgelaufen (1 Minute)</string>
+    <string id="30295">Feed</string>
+    <string id="30296">Codec {codec} nicht abspielbar</string>
+    <string id="30306">Lade Favoriten ...</string>
+    <string id="30307">Lade Playlisten ...</string>
+    <string id="30308">Lade Playliste ({item}/{max}): {name}</string>
+    <string id="30309">Playlist-Cache speichern ...</string>
 
     <!-- Extended Settings -->
     <string id="30501">Farben in Label verwenden</string>
     <string id="30502">Debug-Logging aktivieren</string>
     <string id="30503">Playback-Informationen für Web-GUI setzen</string>
     <string id="30504">Kein FLAC-Stream !</string>
-    <string id="30505">--</string>
+    <string id="30505">Verwende inputstream.ffmpegdirect als Default-Player</string>
     <string id="30506">--</string>
     <string id="30507">Album-Cache löschen</string>
     <string id="30508">Soll der Album-Cache wirklich gelöscht werden ?</string>
     <string id="30509">--</string>
     <string id="30510">JSON-Daten der API loggen</string>
     <string id="30511">Fanart-HTTP-Server aktivieren</string>
-    <string id="30512">IP-Port für Fanart-HTTP-Server</string>
+    <string id="30512">IP-Port für internen HTTP-Server</string>
+
+    <!-- Dash playback modes -->
+    <string id="30513">Playback-Modus für AAC MPD</string>
+    <string id="30514">Playback-Modus für FLAC MPD</string>
+    <string id="30515">inputstream.ffmpegdirect spielt MPD</string>
+    <string id="30516">Als HLS abspielen</string>
+    <string id="30517">Benutze inputstream.adaptive</string>
+    <string id="30518">Benutze inputstream.ffmpegdirect</string>
 
 </strings>

@@ -144,6 +144,10 @@ msgctxt "#30033"
 msgid "Install CU LRC Lyrics addon"
 msgstr ""
 
+msgctxt "#30034"
+msgid "Country of the user"
+msgstr ""
+
 msgctxt "#30040"
 msgid "Video Quality"
 msgstr ""
@@ -174,6 +178,14 @@ msgstr ""
 
 msgctxt "#30047"
 msgid "Video (240p)"
+msgstr ""
+
+msgctxt "#30048"
+msgid "Audio Only"
+msgstr ""
+
+msgctxt "#30049"
+msgid "30 seconds preview"
 msgstr ""
 
 msgctxt "#30101"
@@ -277,7 +289,7 @@ msgid "My Music"
 msgstr ""
 
 msgctxt "#30202"
-msgid "Featured Playlists"
+msgid "Home"
 msgstr ""
 
 msgctxt "#30203"
@@ -309,7 +321,7 @@ msgid "TIDAL Rising"
 msgstr ""
 
 msgctxt "#30212"
-msgid "Suggestions for me"
+msgid "Explore"
 msgstr ""
 
 msgctxt "#30213"
@@ -473,7 +485,7 @@ msgid "Open Playlist (Audio only)"
 msgstr ""
 
 msgctxt "#30253"
-msgid "Login failed !!"
+msgid "Login failed !"
 msgstr ""
 
 msgctxt "#30254"
@@ -485,7 +497,7 @@ msgid "Open as Album Playlist"
 msgstr ""
 
 msgctxt "#30256"
-msgid "Do you really want to logout ?\nRelogin via web browswer necessary !"
+msgid "Do you really want to logout ?\nThen a relogin is necessary !"
 msgstr ""
 
 msgctxt "#30257"
@@ -581,7 +593,7 @@ msgid "{what} is DRM protected"
 msgstr ""
 
 msgctxt "#30280"
-msgid "TIDAL2 - OAuth2 Device Login"
+msgid "TIDAL2 - OAuth2 Login"
 msgstr ""
 
 msgctxt "#30281"
@@ -613,7 +625,7 @@ msgid "°Attention: Device type was selected from the TIDAL APK !<br>Client-ID a
 msgstr ""
 
 msgctxt "#30288"
-msgid "°Attention: No device type was selected from a TIDAL APK !<br>Please use a working Client-ID and Client-Secret values directly !"
+msgid "°Attention: No device type was selected from a TIDAL APK !<br>Please use working Client-ID and Client-Secret values directly !"
 msgstr ""
 
 msgctxt "#30289"
@@ -622,6 +634,42 @@ msgstr ""
 
 msgctxt "#30290"
 msgid "No device type selected.\nShould the existing device type be cleared ?\nThen the Client-ID and Client-Secret must be set manually !"
+msgstr ""
+
+msgctxt "#30291"
+msgid "E-Mail Address"
+msgstr ""
+
+msgctxt "#30293"
+msgid "Login Successful !"
+msgstr ""
+
+msgctxt "#30294"
+msgid "Authorization code expired (1 minute)"
+msgstr ""
+
+msgctxt "#30295"
+msgid "Feed"
+msgstr ""
+
+msgctxt "#30296"
+msgid "Codec {codec} not supported"
+msgstr ""
+
+msgctxt "#30306"
+msgid "Loading favorites ..."
+msgstr ""
+
+msgctxt "#30307"
+msgid "Loading playlists ..."
+msgstr ""
+
+msgctxt "#30308"
+msgid "Loading playlist ({item}/{max}): {name}"
+msgstr ""
+
+msgctxt "#30309"
+msgid "Saving playlist cache ..."
 msgstr ""
 
 msgctxt "#30501"
@@ -641,7 +689,7 @@ msgid "Not a FLAC Stream !"
 msgstr ""
 
 msgctxt "#30505"
-msgid "--"
+msgid "Use inputstream.ffmpegdirect as default player"
 msgstr ""
 
 msgctxt "#30506"
@@ -669,6 +717,30 @@ msgid "Activate Fanart HTTP Server"
 msgstr ""
 
 msgctxt "#30512"
-msgid "IP-Port for Fanart HTTP Server"
+msgid "IP-Port for internal HTTP Server"
+msgstr ""
+
+msgctxt "#30513"
+msgid "Playback Mode for AAC MPD"
+msgstr ""
+
+msgctxt "#30514"
+msgid "Playback Mode for FLAC MPD"
+msgstr ""
+
+msgctxt "#30515"
+msgid "inputstream.ffmpegdirect plays MPD"
+msgstr ""
+
+msgctxt "#30516"
+msgid "Play as HLS"
+msgstr ""
+
+msgctxt "#30517"
+msgid "Use inputstream.adaptive"
+msgstr ""
+
+msgctxt "#30518"
+msgid "Use inputstream.ffmpegdirect"
 msgstr ""
 

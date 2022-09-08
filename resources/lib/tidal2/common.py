@@ -96,6 +96,9 @@ class Const(object):
     bytes = str if PY2 else bytes
     int_types = integer_types
     locale = getLocale()
+    is_hls = 'hls'
+    is_adaptive = 'inputstream.adaptive'
+    is_ffmpegdirect = 'inputstream.ffmpegdirect'
 
 class KodiPlugin(Plugin):
 
@@ -133,6 +136,14 @@ def toBasestring(txt):
         return txt
     else:
         return txt.encode('utf-8')
+
+def isAddonInstalled(addonId):
+    try:
+        installed = False
+        installed = True if xbmc.getInfoLabel('System.AddonVersion(%s)' % addonId) else False
+    except:
+        pass
+    return installed
 
 plugin = KodiPlugin()
 

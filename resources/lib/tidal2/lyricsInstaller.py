@@ -21,7 +21,7 @@ import os
 import traceback
 from kodi_six import xbmcaddon, xbmcvfs, xbmcgui
 
-from .common import KODI_VERSION, addon as TIDAL2_ADDON
+from .common import KODI_VERSION, addon as TIDAL2_ADDON, isAddonInstalled
 from .debug import log
 
 if KODI_VERSION >= (19, 0):
@@ -38,8 +38,9 @@ SUBDIR = "tidal2"
 LYRICS_PLUGIN = 'script.cu.lrclyrics'
 SCRAPER_PY = 'lyricsScraper.py'
 try:
-    LYRICS_ADDON = xbmcaddon.Addon(LYRICS_PLUGIN)
-    LYRICS_CWD = translatePath(LYRICS_ADDON.getAddonInfo('path'))
+    if isAddonInstalled(LYRICS_PLUGIN):
+        LYRICS_ADDON = xbmcaddon.Addon(LYRICS_PLUGIN)
+        LYRICS_CWD = translatePath(LYRICS_ADDON.getAddonInfo('path'))
 except:
     LYRICS_ADDON = None
     LYRICS_CWD = TIDAL2_CWD.replace(TIDAL2_PLUGIN, LYRICS_PLUGIN)
