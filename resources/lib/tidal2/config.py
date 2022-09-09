@@ -166,8 +166,8 @@ class TidalConfig(Config):
                 self.setSetting('dash_aac_mode', '1')
             if isAddonInstalled(Const.is_ffmpegdirect):
                 self.setSetting('dash_flac_mode', '1')
-                if xbmc.getCondVisibility('system.platform.windows') or xbmc.getCondVisibility('system.platform.osx'):
-                    self.setSetting('ffmpegdirect_has_mpd', 'true')
+                if xbmc.getCondVisibility('system.platform.linux') and not xbmc.getCondVisibility('system.platform.android'):
+                    self.setSetting('ffmpegdirect_has_mpd', 'false')
                 if xbmc.getCondVisibility('system.platform.windows') or xbmc.getCondVisibility('system.platform.android'):
                     self.setSetting('ffmpegdirect_is_default', 'true')
             pass

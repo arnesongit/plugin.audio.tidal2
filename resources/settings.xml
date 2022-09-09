@@ -26,7 +26,7 @@
   <category label="30002">
     <setting label="30513" id="dash_aac_mode" type="select" lvalues="30516|30517|30518" default="0"/>
     <setting label="30514" id="dash_flac_mode" type="select" lvalues="30516|30518" default="0"/>
-    <setting label="30515" id="ffmpegdirect_has_mpd" type="bool" default="false"/>
+    <setting label="30515" id="ffmpegdirect_has_mpd" type="bool" default="true"/>
     <setting label="30505" id="ffmpegdirect_is_default" type="bool" default="false"/>
     <setting label="30501" id="color_mode" type="bool" default="true"/>
     <setting label="30016" id="favorites_in_labels" type="bool" default="true"/>
