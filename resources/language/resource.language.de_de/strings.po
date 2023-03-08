@@ -105,8 +105,8 @@ msgid "Show Album Year in Labels"
 msgstr "Album-Jahr im Label anzeigen"
 
 msgctxt "#30024"
-msgid "Add MQA or Atmos to Labels"
-msgstr "MQA bzw. Atmos zum Label hinzufügen"
+msgid "Add MQA/Atmos/360RA to Labels"
+msgstr "MQA/Atmos/360RA zum Label hinzufügen"
 
 msgctxt "#30025"
 msgid "Options"
@@ -183,10 +183,6 @@ msgstr "Video (240p)"
 msgctxt "#30048"
 msgid "Audio Only"
 msgstr "Nur Audio"
-
-msgctxt "#30049"
-msgid "30 seconds preview"
-msgstr "30 Sekunden Vorschau"
 
 msgctxt "#30101"
 msgid "Artist"
@@ -283,6 +279,14 @@ msgstr "Mix"
 msgctxt "#30124"
 msgid "Mixes"
 msgstr "Mixe"
+
+msgctxt "#30125"
+msgid "User Profile"
+msgstr "Benutzerprofil"
+
+msgctxt "#30126"
+msgid "User Profiles"
+msgstr "Benutzerprofile"
 
 msgctxt "#30201"
 msgid "My Music"
@@ -441,8 +445,8 @@ msgid "Are you sure to remove item number {entry} from this playlist ?"
 msgstr "Soll Eintrag Nr. {entry} aus der Playliste entfernt werden ?"
 
 msgctxt "#30242"
-msgid "Stream locked"
-msgstr "Stream gesperrt"
+msgid "blocked"
+msgstr "gesperrt"
 
 msgctxt "#30243"
 msgid "Tracks:{tracks} / Videos:{videos}"
@@ -640,6 +644,10 @@ msgctxt "#30291"
 msgid "E-Mail Address"
 msgstr "E-Mail-Adresse"
 
+msgctxt "#30292"
+msgid "Show {what}"
+msgstr "{what} anzeigen"
+
 msgctxt "#30293"
 msgid "Login Successful !"
 msgstr "Login erfolgreich !"
@@ -655,6 +663,42 @@ msgstr "Feed"
 msgctxt "#30296"
 msgid "Codec {codec} not supported"
 msgstr "Codec {codec} nicht abspielbar"
+
+msgctxt "#30297"
+msgid "Step 1: Use following link to login at TIDAL"
+msgstr "1. Schritt: Bei TIDAL über folgenden Link einloggen"
+
+msgctxt "#30298"
+msgid "Please login here"
+msgstr "Bitte hier einloggen"
+
+msgctxt "#30299"
+msgid "After logging in, an 'oops' page will appear. The URL of this page contains a one-time authorization code to retrieve the access tokens. This authorization code is valid for one minute !"
+msgstr "Nach der Anmeldung erscheint eine 'Hoppla'-Seite. Die URL dieser Seite enthält einen Anmelde-Code, der nur einmal gültig ist und nach einer Minute abläuft !"
+
+msgctxt "#30300"
+msgid "Step 2: Copy the URL into the following input field"
+msgstr "2. Schritt: Diese URL in folgendes Eingabefeld kopieren"
+
+msgctxt "#30301"
+msgid "Step 3: Use the one-time authorization code to finish the login process"
+msgstr "3. Schritt: Mit dem Anmelde-Code der URL die TIDAL-Anmeldung abschließen"
+
+msgctxt "#30302"
+msgid "Finish login"
+msgstr "Anmeldung abschließen"
+
+msgctxt "#30303"
+msgid "The authorization code has been sent to the TIDAL2 addon."
+msgstr "Der Anmelde-Code wurde an das TIDAL2-Addon übergeben."
+
+msgctxt "#30304"
+msgid "The login process continues in Kodi."
+msgstr "Der Anmeldeprozess wird in Kodi fortgesetzt."
+
+msgctxt "#30305"
+msgid "Back to the login page"
+msgstr "Zurück zur Anmelde-Seite"
 
 msgctxt "#30306"
 msgid "Loading favorites ..."
@@ -672,6 +716,58 @@ msgctxt "#30309"
 msgid "Saving playlist cache ..."
 msgstr "Playlist-Cache speichern ..."
 
+msgctxt "#30310"
+msgid "Followers"
+msgstr "Follower"
+
+msgctxt "#30311"
+msgid "Public"
+msgstr "Öffentlich"
+
+msgctxt "#30312"
+msgid "General Search"
+msgstr "Allgemeine Suche"
+
+msgctxt "#30313"
+msgid "I'm following"
+msgstr "Folge ich"
+
+msgctxt "#30314"
+msgid "Set to public"
+msgstr "Veröffentlichen"
+
+msgctxt "#30315"
+msgid "Set to private"
+msgstr "Auf privat setzen"
+
+msgctxt "#30316"
+msgid "Public Playlists"
+msgstr "Öffentliche Playlisten"
+
+msgctxt "#30317"
+msgid "Profile {user} follows"
+msgstr "Profile, denen {user} folgt"
+
+msgctxt "#30318"
+msgid "Follow this profile"
+msgstr "Diesem Profil folgen"
+
+msgctxt "#30319"
+msgid "Unfollow this profile"
+msgstr "Nicht mehr folgen"
+
+msgctxt "#30320"
+msgid "Block {what}"
+msgstr "Blockiere {what}"
+
+msgctxt "#30321"
+msgid "Staff Picks"
+msgstr "Wir empfehlen"
+
+msgctxt "#30322"
+msgid "Clean Content"
+msgstr "Familienfreundliche Inhalte"
+
 msgctxt "#30501"
 msgid "Use Colors in Labels"
 msgstr "Farben in Label verwenden"
@@ -681,7 +777,7 @@ msgid "Enable Debug-Logging"
 msgstr "Debug-Logging aktivieren"
 
 msgctxt "#30503"
-msgid "Set placback informations for Web-GUI"
+msgid "Set playback informations for Web-GUI"
 msgstr "Playback-Informationen für Web-GUI setzen"
 
 msgctxt "#30504"
@@ -693,8 +789,8 @@ msgid "Use inputstream.ffmpegdirect as default player"
 msgstr "Verwende inputstream.ffmpegdirect als Default-Player"
 
 msgctxt "#30506"
-msgid "--"
-msgstr "--"
+msgid "UI"
+msgstr "UI"
 
 msgctxt "#30507"
 msgid "Delete Album Cache"
@@ -705,8 +801,8 @@ msgid "Are you sure to delete the Album Cache Database ?"
 msgstr "Soll der Album-Cache wirklich gelöscht werden ?"
 
 msgctxt "#30509"
-msgid "--"
-msgstr "--"
+msgid "Add sort methods for item lists"
+msgstr "Sortierkriterien in Listen aktivieren"
 
 msgctxt "#30510"
 msgid "Log API JSON data"
@@ -743,4 +839,120 @@ msgstr "Benutze inputstream.adaptive"
 msgctxt "#30518"
 msgid "Use inputstream.ffmpegdirect"
 msgstr "Benutze inputstream.ffmpegdirect"
+
+msgctxt "#30519"
+msgid "Folder"
+msgstr "Ordner"
+
+msgctxt "#30520"
+msgid "Favorites"
+msgstr "Favoriten"
+
+msgctxt "#30521"
+msgid "Locked Streams"
+msgstr "Gesperrte Streams"
+
+msgctxt "#30522"
+msgid "Own Playlists"
+msgstr "Eigene Playlisten"
+
+msgctxt "#30523"
+msgid "Master/MQA Audio"
+msgstr "Master/MQA Audio"
+
+msgctxt "#30524"
+msgid "Dolby Atmos"
+msgstr "Dolby Atmos"
+
+msgctxt "#30525"
+msgid "Sony Real Audio 360"
+msgstr "Sony Real Audio 360"
+
+msgctxt "#30526"
+msgid "Follower Profiles"
+msgstr "Follower-Profile"
+
+msgctxt "#30527"
+msgid "MPD Cache size"
+msgstr "MPD-Cache Größe"
+
+msgctxt "#30900"
+msgid "Without color"
+msgstr "Ohne Farbe"
+
+msgctxt "#30901"
+msgid "[COLOR maroon]maroon[/COLOR]"
+msgstr "[COLOR maroon]Kastanienbraun[/COLOR]"
+
+msgctxt "#30902"
+msgid "[COLOR brown]brown[/COLOR]"
+msgstr "[COLOR brown]Braun[/COLOR]"
+
+msgctxt "#30903"
+msgid "[COLOR red]red[/COLOR]"
+msgstr "[COLOR red]Rot[/COLOR]"
+
+msgctxt "#30904"
+msgid "[COLOR magenta]magenta[/COLOR]"
+msgstr "[COLOR magenta]Magenta[/COLOR]"
+
+msgctxt "#30905"
+msgid "[COLOR pink]pink[/COLOR]"
+msgstr "[COLOR pink]Pink[/COLOR]"
+
+msgctxt "#30906"
+msgid "[COLOR orange]orange[/COLOR]"
+msgstr "[COLOR orange]Orange[/COLOR]"
+
+msgctxt "#30907"
+msgid "[COLOR gold]gold[/COLOR]"
+msgstr "[COLOR gold]Gold[/COLOR]"
+
+msgctxt "#30908"
+msgid "[COLOR yellow]yellow[/COLOR]"
+msgstr "[COLOR yellow]Gelb[/COLOR]"
+
+msgctxt "#30909"
+msgid "[COLOR lightyellow]lightyellow[/COLOR]"
+msgstr "[COLOR lightyellow]Hellgelb[/COLOR]"
+
+msgctxt "#30910"
+msgid "[COLOR green]green[/COLOR]"
+msgstr "[COLOR green]Grün[/COLOR]"
+
+msgctxt "#30911"
+msgid "[COLOR limegreen]limegreen[/COLOR]"
+msgstr "[COLOR limegreen]Limettengrün[/COLOR]"
+
+msgctxt "#30912"
+msgid "[COLOR greenyellow]greenyellow[/COLOR]"
+msgstr "[COLOR greenyellow]Gelbgrün[/COLOR]"
+
+msgctxt "#30913"
+msgid "[COLOR blue]blue[/COLOR]"
+msgstr "[COLOR blue]Blau[/COLOR]"
+
+msgctxt "#30914"
+msgid "[COLOR lightblue]lightblue[/COLOR]"
+msgstr "[COLOR lightblue]Hellblau[/COLOR]"
+
+msgctxt "#30915"
+msgid "[COLOR cyan]cyan[/COLOR]"
+msgstr "[COLOR cyan]Türkis[/COLOR]"
+
+msgctxt "#30916"
+msgid "[COLOR gray]gray[/COLOR]"
+msgstr "[COLOR gray]Grau[/COLOR]"
+
+msgctxt "#30917"
+msgid "[COLOR lightgray]lightgray[/COLOR]"
+msgstr "[COLOR lightgray]Hellgrau[/COLOR]"
+
+msgctxt "#30918"
+msgid "[COLOR white]white[/COLOR]"
+msgstr "[COLOR white]Weiß[/COLOR]"
+
+msgctxt "#30919"
+msgid "[COLOR black]black[/COLOR]"
+msgstr "[COLOR black]Schwarz[/COLOR]"
 

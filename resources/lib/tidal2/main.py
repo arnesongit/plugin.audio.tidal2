@@ -41,7 +41,7 @@ except:
     from urllib import quote_plus, unquote_plus
 
 
-CONTENT_FOR_TYPE = {'artists': 'artists', 'albums': 'albums', 'playlists': 'albums', 'tracks': 'songs', 'videos': 'musicvideos', 'files': 'files', 'mixes': 'albums'}
+CONTENT_FOR_TYPE = {'artists': 'artists', 'albums': 'albums', 'playlists': 'albums', 'tracks': 'songs', 'videos': 'musicvideos', 'files': 'files', 'mixes': 'albums', 'userprofiles': 'artists'}
 MODULE_TYPES = {'PLAYLIST_LIST': 'playlists', 'ALBUM_LIST': 'albums', 'ARTIST_LIST': 'artists', 'TRACK_LIST': 'tracks', 'VIDEO_LIST': 'videos', 'MIX_LIST': 'mix', 'MIXED_TYPES_LIST': 'playlistitem'}
 SINGLE_ITEM_TYPES = {'ALBUM': 'album', 'PLAYLIST': 'playlist', 'ARTIST': 'artist', 'TRACK': 'track', 'VIDEO': 'video', 'MIX': 'mix'}
 
@@ -116,7 +116,7 @@ def settings_choose_apk():
 
 @plugin.route('/page/<page_url>')
 def page(page_url):
-    json = session._map_request(path=unquote_plus(page_url), params={'locale': settings.locale, 'deviceType': 'BROWSER'}, ret='json')
+    json = session._map_request(path=unquote_plus(page_url), params={'locale': settings.locale, 'deviceType': 'TABLET'}, ret='json')
     items = []
     for row in json['rows']:
         for m in row['modules']:
@@ -134,6 +134,13 @@ def page(page_url):
                     items += get_module_items(m)
                 else:
                     items.append(DirectoryItem(m['type'], plugin.url_for(module_type, page_url, quote_plus(m['type']))))
+
+    if page_url == quote_plus('pages/explore'):
+        add_directory('Dolby Atmos', plugin.url_for(page, quote_plus('pages/dolby_atmos')))
+        add_directory('Masters (MQA)', plugin.url_for(page, quote_plus('pages/masters')))
+        add_directory('360', plugin.url_for(page, quote_plus('pages/360')))
+        add_directory(_T(Msg.i30321), plugin.url_for(page, quote_plus('pages/staff_picks')))
+        add_directory(_T(Msg.i30322), plugin.url_for(page, quote_plus('pages/clean_content')))
     session.add_list_items(items, end=True)
 
 
@@ -142,7 +149,7 @@ def page_data(page_url, item_type):
     rettype = 'json'
     if item_type in MODULE_TYPES:
         rettype = MODULE_TYPES.get(item_type)
-    params = { 'locale': settings.locale, 'deviceType': 'BROWSER', 'offset': plugin.qs_offset, 'limit': min(50, settings.pageSize) }
+    params = { 'locale': settings.locale, 'deviceType': 'TABLET', 'offset': plugin.qs_offset, 'limit': min(50, settings.pageSize) }
     items = session._map_request(path=unquote_plus(page_url), params=params, ret=rettype)
     if item_type == 'PAGE_LINKS_CLOUD':
         tab = items['items']
@@ -152,7 +159,7 @@ def page_data(page_url, item_type):
     elif rettype == 'json':
         log.info('Unknown item page type %s' % item_type)
         items = []
-    session.add_list_items(items, content=CONTENT_FOR_TYPE.get(rettype, 'files'), end=True, withNextPage=True)
+    session.add_list_items(items, content=CONTENT_FOR_TYPE.get(rettype, 'files'), end=True, withNextPage=True, withSortModes=True)
 
 
 @plugin.route('/module/<page_url>/<module_type>')
@@ -162,7 +169,7 @@ def module_type(page_url, module_type):
 
 @plugin.route('/module/<page_url>/<module_title>/<module_type>')
 def module(page_url, module_title, module_type):
-    json = session._map_request(path=unquote_plus(page_url), params={'locale': settings.locale, 'deviceType': 'BROWSER'}, ret='json')
+    json = session._map_request(path=unquote_plus(page_url), params={'locale': settings.locale, 'deviceType': 'TABLET'}, ret='json')
     module_title = eval(unquote_plus(module_title))
     module_type = unquote_plus(module_type)
     items = []
@@ -170,7 +177,7 @@ def module(page_url, module_title, module_type):
         for m in row['modules']:
             if m['title'] == module_title and m['type'] == module_type:
                 items += get_module_items(m)
-    session.add_list_items(items, content=CONTENT_FOR_TYPE.get(MODULE_TYPES.get(module_type, 'PLAYLIST_LIST'), 'albums'), end=True)
+    session.add_list_items(items, content=CONTENT_FOR_TYPE.get(MODULE_TYPES.get(module_type, 'playlists'), 'albums'), end=True, withSortModes=True)
 
 
 def get_module_items(m):
@@ -194,7 +201,7 @@ def get_module_items(m):
 
 @plugin.route('/feed')
 def feed():
-    add_items(session.get_feed_items(), content=CONTENT_FOR_TYPE.get('albums'), withNextPage=False)
+    add_items(session.get_feed_items(), content=CONTENT_FOR_TYPE.get('albums'), withNextPage=False, withSortModes=True)
 
 
 @plugin.route('/category')
@@ -239,19 +246,19 @@ def category_item(group, path):
 @plugin.route('/category/<group>/<path>/<content_type>')
 def category_content(group, path, content_type):
     items = session.get_category_content(group, path, content_type, offset=int('%s' % plugin.qs_offset), limit=settings.pageSize)
-    add_items(items, content=CONTENT_FOR_TYPE.get(content_type, 'songs'), withNextPage=True)
+    add_items(items, content=CONTENT_FOR_TYPE.get(content_type, 'songs'), withNextPage=True, withSortModes=True)
 
 
 @plugin.route('/master_albums')
 def master_albums():
     items = session.master_albums(offset=int('%s' % plugin.qs_offset), limit=settings.pageSize)
-    add_items(items, content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True)
+    add_items(items, content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True, withSortModes=True)
 
 
 @plugin.route('/master_playlists')
 def master_playlists():
     items = session.master_playlists(offset=int('%s' % plugin.qs_offset), limit=settings.pageSize)
-    add_items(items, content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True)
+    add_items(items, content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True, withSortModes=True)
 
 
 @plugin.route('/track_radio/<track_id>')
@@ -267,17 +274,17 @@ def track_radio(track_id):
     if mixItems:
         session.add_list_items(mixItems, content=CONTENT_FOR_TYPE.get('mixes'), end=True)
     else:
-        add_items(session.get_track_radio(track_id, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('tracks'))
+        add_items(session.get_track_radio(track_id, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('tracks'), withSortModes=True)
 
 
 @plugin.route('/recommended/tracks/<track_id>')
 def recommended_tracks(track_id):
-    add_items(session.get_recommended_items('tracks', track_id, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('tracks'))
+    add_items(session.get_recommended_items('tracks', track_id, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('tracks'), withSortModes=True)
 
 
 @plugin.route('/recommended/videos/<video_id>')
 def recommended_videos(video_id):
-    add_items(session.get_recommended_items('videos', video_id, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('videos'))
+    add_items(session.get_recommended_items('videos', video_id, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('videos'), withSortModes=True)
 
 
 @plugin.route('/featured/<group>')
@@ -291,12 +298,15 @@ def my_music():
     session.user.update_caches()
     add_directory(_T(Msg.i30273), user_folders)
     add_directory(_T(Msg.i30213), user_playlists)
+    add_directory(_T(Msg.i30316), my_public_playlists)
     add_directory(_T(Msg.i30214), plugin.url_for(favorites, content_type='artists'))
     add_directory(_T(Msg.i30215), plugin.url_for(favorites, content_type='albums'))
     add_directory(_T(Msg.i30216), plugin.url_for(favorites, content_type='playlists'))
     add_directory(_T(Msg.i30217), plugin.url_for(favorites, content_type='tracks'))
     add_directory(_T(Msg.i30218), plugin.url_for(favorites, content_type='videos'))
     add_directory(_T(Msg.i30275), plugin.url_for(favorites, content_type='mixes'))
+    add_directory(_T(Msg.i30313), im_following)
+    add_directory(_T(Msg.i30310), my_followers)
     add_directory(_T(Msg.i30271), plugin.url_for(session_info), isFolder=False)
     add_directory(_T(Msg.i30272), plugin.url_for(refresh_token), isFolder=False, end=True)
 
@@ -371,7 +381,7 @@ def artist_bio(artist_id):
 
 @plugin.route('/artist/<artist_id>/top')
 def top_tracks(artist_id):
-    add_items(session.get_artist_top_tracks(artist_id, offset=plugin.qs_offset, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('tracks'), withNextPage=True)
+    add_items(session.get_artist_top_tracks(artist_id, offset=plugin.qs_offset, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('tracks'), withNextPage=True, withSortModes=True)
 
 
 @plugin.route('/artist/<artist_id>/radio')
@@ -386,32 +396,32 @@ def artist_radio(artist_id):
     if mixItems:
         session.add_list_items(mixItems, content=CONTENT_FOR_TYPE.get('mixes'), end=True)
     else:
-        add_items(session.get_artist_radio(artist_id, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('tracks'))
+        add_items(session.get_artist_radio(artist_id, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('tracks'), withSortModes=True)
 
 
 @plugin.route('/artist/<artist_id>/albums')
 def artist_albums(artist_id):
-    add_items(session.get_artist_albums(artist_id, offset=plugin.qs_offset, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True)
+    add_items(session.get_artist_albums(artist_id, offset=plugin.qs_offset, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True, withSortModes=True)
 
 
 @plugin.route('/artist/<artist_id>/singles')
 def artist_singles(artist_id):
-    add_items(session.get_artist_albums_ep_singles(artist_id, offset=plugin.qs_offset, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True)
+    add_items(session.get_artist_albums_ep_singles(artist_id, offset=plugin.qs_offset, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True, withSortModes=True)
 
 
 @plugin.route('/artist/<artist_id>/compilations')
 def artist_compilations(artist_id):
-    add_items(session.get_artist_albums_other(artist_id, offset=plugin.qs_offset, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True)
+    add_items(session.get_artist_albums_other(artist_id, offset=plugin.qs_offset, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True, withSortModes=True)
 
 
 @plugin.route('/artist/<artist_id>/videos')
 def artist_videos(artist_id):
-    add_items(session.get_artist_videos(artist_id, offset=plugin.qs_offset, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('videos'), withNextPage=True)
+    add_items(session.get_artist_videos(artist_id, offset=plugin.qs_offset, limit=settings.pageSize), content=CONTENT_FOR_TYPE.get('videos'), withNextPage=True, withSortModes=True)
 
 
 @plugin.route('/artist/<artist_id>/playlists')
 def artist_playlists(artist_id):
-    add_items(session.get_artist_playlists(artist_id), content=CONTENT_FOR_TYPE.get('albums'))
+    add_items(session.get_artist_playlists(artist_id), content=CONTENT_FOR_TYPE.get('albums'), withSortModes=True)
 
 
 @plugin.route('/artist/<artist_id>/similar')
@@ -439,34 +449,31 @@ def mix_view(mix_id):
                                 items.append(session._parse_one_item(item, ret=rettype))
                 except:
                     pass
-    session.add_list_items(items, content=CONTENT_FOR_TYPE.get(rettype, 'files'), end=True, withNextPage=True)
+    session.add_list_items(items, content=CONTENT_FOR_TYPE.get(rettype, 'files'), end=True, withNextPage=True, withSortModes=True)
 
 
 @plugin.route('/playlist/<playlist_id>/items')
 def playlist_view(playlist_id):
     items = session.get_playlist_items(playlist_id, offset=int('0%s' % plugin.qs_offset), limit=settings.pageSize)
-    #items = sorted(items, key=lambda line: line.getSortCriteria(sortType=1), reverse=True)
-    add_items(items, content=CONTENT_FOR_TYPE.get('tracks'), withNextPage=True)
+    add_items(items, content=CONTENT_FOR_TYPE.get('tracks'), withNextPage=True, withSortModes=True)
 
 
 @plugin.route('/playlist/<playlist_id>/tracks')
 def playlist_tracks(playlist_id):
     items = session.get_playlist_tracks(playlist_id, offset=int('0%s' % plugin.qs_offset), limit=settings.pageSize)
-    #items = sorted(items, key=lambda line: line.getSortCriteria(sortType=1), reverse=True)
-    add_items(items, content=CONTENT_FOR_TYPE.get('tracks'), withNextPage=True)
+    add_items(items, content=CONTENT_FOR_TYPE.get('tracks'), withNextPage=True, withSortModes=True)
 
 
 @plugin.route('/playlist/<playlist_id>/albums')
 def playlist_albums(playlist_id):
     items = session.get_playlist_albums(playlist_id, offset=int('0%s' % plugin.qs_offset), limit=settings.pageSize)
-    #items = sorted(items, key=lambda line: line.getSortCriteria(sortType=1), reverse=True)
-    add_items(items, content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True)
+    add_items(items, content=CONTENT_FOR_TYPE.get('albums'), withNextPage=True, withSortModes=True)
 
 
 @plugin.route('/user_playlists')
 def user_playlists():
     items = session.user.playlists(flattened=True, allPlaylists=False)
-    add_items(items, content=CONTENT_FOR_TYPE.get('albums'), withNextPage=False)
+    add_items(items, content=CONTENT_FOR_TYPE.get('albums'), withNextPage=False, withSortModes=True)
 
 
 @plugin.route('/user_playlist/rename/<playlist_id>')
@@ -612,6 +619,53 @@ def user_playlist_move_entry(playlist_id, entry_no, item_id):
             traceback.print_exc()
         session.hide_busydialog()
         xbmc.executebuiltin('Container.Refresh()')
+
+
+@plugin.route('/user_playlist/set_public/<playlist_id>')
+def user_playlist_set_public(playlist_id):
+    playlist = session.get_playlist(playlist_id)
+    try:
+        session.user.set_playlist_public(playlist=playlist)
+        xbmc.sleep(1000)
+    except Exception as e:
+        log.logException(e, txt='Couldn''t set playlist %s to public' % playlist_id)
+        traceback.print_exc()
+    xbmc.executebuiltin('Container.Refresh()')
+
+
+@plugin.route('/user_playlist/set_private/<playlist_id>')
+def user_playlist_set_private(playlist_id):
+    playlist = session.get_playlist(playlist_id)
+    try:
+        session.user.set_playlist_private(playlist=playlist)
+        xbmc.sleep(1000)
+    except Exception as e:
+        log.logException(e, txt='Couldn''t set playlist %s to private' % playlist_id)
+        traceback.print_exc()
+    xbmc.executebuiltin('Container.Refresh()')
+
+
+@plugin.route('/user_playlist/toggle_public')
+def user_playlist_toggle_public():
+    url = xbmc.getInfoLabel( "ListItem.FilenameandPath" )
+    if not Const.addon_id in url:
+        return
+    if not 'playlist/' in url:
+        return
+    playlist_id = url.split('playlist/')[1].split('/')[0]
+    playlist = session.get_playlist(playlist_id)
+    if not playlist or not playlist.isUserPlaylist:
+        return
+    try:
+        if playlist.isPublic:
+            session.user.set_playlist_private(playlist=playlist)
+        else:
+            session.user.set_playlist_public(playlist=playlist)
+        xbmc.sleep(1000)
+    except Exception as e:
+        log.logException(e, txt='Couldn''t set playlist %s to private' % playlist_id)
+        traceback.print_exc()
+    xbmc.executebuiltin('Container.Refresh()')
 
 
 @plugin.route('/user_playlist_set_default/<item_type>/<playlist_id>')
@@ -788,13 +842,13 @@ def user_folders():
     folder_ids = [f.id for f in folders]
     items = session.user.playlists(flattened=False, allPlaylists=False)
     playlists = [p for p in items if p.parentFolderId not in folder_ids]
-    add_items(folders + playlists, content=CONTENT_FOR_TYPE.get('albums'))
+    add_items(folders + playlists, content=CONTENT_FOR_TYPE.get('albums'), withSortModes=True)
 
 
 @plugin.route('/user_folders/<folder_id>')
 def user_folder_items(folder_id):
     items = session.user.folder_items(folder_id)
-    add_items(items, content=CONTENT_FOR_TYPE.get('albums'))
+    add_items(items, content=CONTENT_FOR_TYPE.get('albums'), withSortModes=True)
 
 
 @plugin.route('/user_folder/add/<playlist_id>')
@@ -847,7 +901,9 @@ def favorites_menu():
 @plugin.route('/favorites/<content_type>')
 def favorites(content_type):
     limit = min(settings.pageSize, 100 if content_type == 'videos' else 9999)
+    withNextPage=True
     if content_type in ['playlists', 'mixes']:
+        withNextPage = False
         items = session.user.favorites.get(content_type, offset=0, limit=50)
     else:
         items = session.user.favorites.get(content_type, offset=plugin.qs_offset, limit=limit)
@@ -857,7 +913,7 @@ def favorites(content_type):
             items = items[plugin.qs_offset:plugin.qs_offset+limit]
     else:
         items.sort(key=lambda line: '%s - %s' % (line.artist.name, line.title), reverse=False)
-    add_items(items, content=CONTENT_FOR_TYPE.get(content_type, 'songs'), withNextPage=True)
+    add_items(items, content=CONTENT_FOR_TYPE.get(content_type, 'songs'), withNextPage=withNextPage, withSortModes=True)
 
 
 @plugin.route('/favorites/add/<content_type>/<item_id>')
@@ -981,11 +1037,68 @@ def favorite_toggle():
         pass
 
 
+@plugin.route('/userprofile/<user_id>')
+def userprofile(user_id):
+    user = session.get_userprofile(user_id)
+    add_directory(_T(Msg.i30317).format(user=user.name), plugin.url_for(following_users, user_id))
+    add_directory(_P('artists'), plugin.url_for(following_artists, user_id))
+    add_items(session.get_public_playlists(user_id), content=CONTENT_FOR_TYPE.get('playlists'), end=True, withSortModes=True)
+
+@plugin.route('/follow_user/<user_id>')
+def follow_user(user_id):
+    if session.is_logged_in:
+        session.user.follow_user(user_id)
+        xbmc.sleep(2000)
+    xbmc.executebuiltin('Container.Refresh()')
+
+@plugin.route('/unfollow_user/<user_id>')
+def unfollow_user(user_id):
+    if session.is_logged_in:
+        session.user.unfollow_user(user_id)
+        xbmc.sleep(2000)
+    xbmc.executebuiltin('Container.Refresh()')
+
+@plugin.route('/im_following')
+def im_following():
+    following_users(settings.user_id)
+
+
+@plugin.route('/my_followers')
+def my_followers():
+    followers(settings.user_id)
+
+
+@plugin.route('/my_public_playlists')
+def my_public_playlists():
+    public_playlists(settings.user_id)
+
+
+@plugin.route('/following_users/<user_id>')
+def following_users(user_id):
+    add_items(session.get_following_users(user_id), content=CONTENT_FOR_TYPE.get('userprofiles'))
+
+
+@plugin.route('/following_artists/<user_id>')
+def following_artists(user_id):
+    add_items(session.get_following_artists(user_id), content=CONTENT_FOR_TYPE.get('artists'))
+
+
+@plugin.route('/followers/<user_id>')
+def followers(user_id):
+    add_items(session.get_followers(user_id), content=CONTENT_FOR_TYPE.get('userprofiles'))
+
+
+@plugin.route('/public_playlists/<user_id>')
+def public_playlists(user_id):
+    add_items(session.get_public_playlists(user_id), content=CONTENT_FOR_TYPE.get('playlists'), withSortModes=True)
+
+
 @plugin.route('/search')
 @plugin.route('/search_type')
 def search():
     settings.setSetting('last_search_field', '')
     settings.setSetting('last_search_text', '')
+    add_directory(_T(Msg.i30312), plugin.url_for(search_type, field='top-hits'))
     add_directory(_T(Msg.i30106), plugin.url_for(search_type, field='artist'))
     add_directory(_T(Msg.i30107), plugin.url_for(search_type, field='album'))
     add_directory(_T(Msg.i30108), plugin.url_for(search_type, field='playlist'))
@@ -1021,8 +1134,12 @@ def search_type(field):
             search_text = ''
     settings.setSetting('last_search_text', search_text)
     if search_text:
-        searchresults = session.search(field, search_text)
-        add_items(searchresults.artists, content=CONTENT_FOR_TYPE.get('files'), end=False)
+        if field.lower() == 'top-hits':
+            searchresults = session.search('ALL', search_text, subtype='top-hits')
+        else:
+            searchresults = session.search(field, search_text)
+        add_items(searchresults.userProfiles, content=CONTENT_FOR_TYPE.get('albums'), end=False, withSortModes=True)
+        add_items(searchresults.artists, end=False)
         add_items(searchresults.albums, end=False)
         add_items(searchresults.playlists, end=False)
         add_items(searchresults.tracks, end=False)
@@ -1041,13 +1158,13 @@ def login():
             session.login_part2(device_code)
             if session.is_logged_in:
                 Timer(3, trigger_cache_reload).start()
+        else:
+            # Fallback: Show login URL
+            url = 'http://{ip}:{port}/login'.format(ip=xbmc.getInfoLabel('Network.IPAddress'), port=settings.fanart_server_port)
+            xbmcgui.Dialog().ok(_T(Msg.i30281), _T(Msg.i30298) + ':\n\n' + url)
     except Exception as e:
         log.logException(e, 'Login failed !')
-        try:
-            errmsg = ' - %s' % e.response.json().get('error_description')
-        except:
-            errmsg = ''
-        xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30253) + errmsg, icon=xbmcgui.NOTIFICATION_ERROR)
+        xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30253), icon=xbmcgui.NOTIFICATION_ERROR)
     xbmc.executebuiltin('Container.Refresh()')
 
 
@@ -1084,6 +1201,25 @@ def login_device_code():
     xbmc.executebuiltin('Container.Update(%s,replace)' % plugin.url_for(root))
 
 
+@plugin.route('/login_with_code')
+def login_with_code():
+    try:
+        try:
+            code = session.login_with_code(plugin.args)
+            if code and session.is_logged_in:
+                Timer(3, trigger_cache_reload).start()
+        except:
+            code = None
+        if not code and settings.client_id == '':
+            url = 'http://{ip}:{port}/login'.format(ip=xbmc.getInfoLabel('Network.IPAddress'), port=settings.fanart_server_port)
+            xbmcgui.Dialog().ok(_T(Msg.i30281), _T(Msg.i30257).format(url=url))
+            settings_dialog()
+    except Exception as e:
+        log.logException(e, 'Login failed !')
+        xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30253), icon=xbmcgui.NOTIFICATION_ERROR)
+    xbmc.executebuiltin('Container.Update(%s,replace)' % plugin.url_for(root))
+
+
 @plugin.route('/logout')
 def logout():
     if Const.addon_id in xbmc.getInfoLabel('Container.FolderPath'):
@@ -1106,6 +1242,7 @@ def session_info():
     dialog = xbmcgui.Dialog()
     dialog.textviewer(_T(Msg.i30271),
                       '%s: %s\n' % (_T(Msg.i30291), userinfo.email) +
+                      '%s: %s\n' % (_T(Msg.i30125), userinfo.profileName) +
                       '%s: %s\n' % (_T(Msg.i30011), settings.country_code) +
                       '%s: %s\n' % (_T(Msg.i30008), info['userId']) +
                       '%s: %s\n' % (_T(Msg.i30019), info['sessionId']) +

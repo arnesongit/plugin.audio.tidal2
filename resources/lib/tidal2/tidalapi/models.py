@@ -44,6 +44,7 @@ DEFAULT_ARTIST_IMG = '1e01cdb6-f15d-4d8b-8440-a047976c1cac'
 DEFAULT_ALBUM_IMG = '0dfd3368-3aa1-49a3-935f-10ffb39803c0'
 DEFAULT_PLAYLIST_IMG = '443331e2-0421-490c-8918-5a4867949589' 
 DEFAULT_VIDEO_IMB = 'fa6f0650-76ac-41d1-a4a3-7fe4c89fca90'
+DEFAULT_PROFILE_IMG = '443331e2-0421-490c-8918-5a4867949589' 
 
 VARIOUS_ARTIST_ID = '2935'
 TIDAL_ARTIST_ID = '6712922'
@@ -215,6 +216,11 @@ class Model(object):
     def parse_date(self, datestring, default=None):
         return Iso8601.parse_date(datestring, default)
 
+    def __eq__(self, other):
+        return True if isinstance(other, Model) and self.id == other.id else False
+
+    def __ne__(self, other):
+        return False if isinstance(other, Model) and self.id == other.id else True
 
 class BrowsableMedia(Model):
 
@@ -309,6 +315,7 @@ class Artist(BrowsableMedia):
     picture = None
     url = None
     popularity = 0
+    imFollowing = False
     mix_ids = {}
 
     def __init__(self, **kwargs):
@@ -413,14 +420,19 @@ class Folder(BrowsableMedia):
 class Playlist(BrowsableMedia):
     description = None
     creator = None
-    type = None
+    type = 'TIDAL'
+    publicPlaylist = False
+    sharingLevel = ''
     uuid = None
     trn = None
     title = 'Unknown'
     created = None
     creationDate = None
     creatorId = None
-    publicPlaylist = None
+    creatorName = ''
+    creatorType = 'TIDAL'
+    imFollowing = False
+    publicPlaylist = False
     lastUpdated = None
     lastItemAddedAt = None
     squareImage = None
@@ -460,13 +472,26 @@ class Playlist(BrowsableMedia):
         except:
             pass
         try:
-            self.creatorId = kwargs['creator']['id']
+            creator = kwargs['creator']
+            self.creatorId = creator.get('id', None) or self.creatorId
+            self.creatorName = creator.get('name', None) or self.creatorName
+            self.creatorType = creator.get('type', None) or self.creatorType
+        except:
+            pass
+        try:
+            userprofile = kwargs['profile']
+            if not self.creatorName:
+                self.creatorName = userprofile.get('name', None) or self.creatorName
         except:
             pass
 
     @property
     def isUserPlaylist(self):
         return True if self.type == 'USER' else False
+
+    @property
+    def isPublic(self):
+        return True if (self.type == 'USER' and self.publicPlaylist) or (self.creatorType == 'USER' and self.sharingLevel == 'PUBLIC') else False
 
     @property
     def numberOfItems(self):
@@ -746,6 +771,42 @@ class Category(BrowsableMedia):
         return types
 
 
+class UserProfile(BrowsableMedia):
+    userId = 0
+    trn = None
+    imFollowing = False
+    followType = 'USER'
+    blocked = False
+    picture = None
+
+    # Internal Properties
+    _own_id = 0 # Set by parser
+
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+        if self.userId and not self.id:
+            self.id = self.userId
+        elif self.id and not self.userId:
+            self.userId = self.id
+        if not self.trn:
+            self.trn = 'trn:user:%s' % self.id
+
+    @property
+    def image(self):
+        return IMG_URL.format(picture=DEFAULT_PROFILE_IMG.replace('-', '/'), size='320x214')
+
+    @property
+    def fanart(self):
+        return None
+
+    @property
+    def is_me(self):
+        return True if '%s' % self.id == '%s' % self._own_id else False
+
+    def get_name(self):
+        return self.name if self.name else '%s' % self.id
+
+
 class Role(object):
     main = 'MAIN'
     featured = 'FEATURED'
@@ -762,6 +823,7 @@ class SearchResult(Model):
         self.tracks = []
         self.playlists = []
         self.videos = []
+        self.userProfiles = []
 
 
 class DeviceCode(Model):
@@ -822,6 +884,7 @@ class AuthToken(Model):
 
 class UserInfo(Model):
     username = ''
+    profileName = ''
     firstName = ''
     lastName = ''
     email = ''
@@ -905,6 +968,7 @@ class TrackUrl(StreamUrl):
     manifestMimeType  = ''
     manifest = None
     manifestHash = None
+    _requested_quality = Quality.hi_res
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)

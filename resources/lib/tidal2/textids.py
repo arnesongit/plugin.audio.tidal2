@@ -68,6 +68,7 @@ class Msg(object):
     i30045 = 30045 # Video (480p)
     i30046 = 30046 # Video (360p)
     i30047 = 30047 # Video (240p)
+    i30048 = 30048 # Audio Only
 
     # Program Text
     i30101 = 30101 # Artist
@@ -94,6 +95,8 @@ class Msg(object):
     i30122 = 30122 # Folders
     i30123 = 30123 # Mix
     i30124 = 30124 # Mixes
+    i30125 = 30125 # User Profile
+    i30126 = 30126 # User Profiles
 
     # Main Menu
     i30201 = 30201 # My Music
@@ -185,27 +188,67 @@ class Msg(object):
     i30289 = 30289 # Select device type from TIDAL APK file
     i30290 = 30290 # No device type selected.\nDo you want to keep the existing device type ?
     i30291 = 30291 # E-Mail Address
+    i30292 = 30292 # Show {what}
     i30293 = 30293 # Login Successful !
+    i30294 = 30294 # Login Token expired (1 minute)
     i30295 = 30295 # Feed
     i30296 = 30296 # Codec {codec} not supported
+    i30297 = 30297 # Step 1: Use following link to login at TIDAL 
+    i30298 = 30298 # Please login here
+    i30299 = 30299 # After logging in, an oops page will appear
+    i30300 = 30300 # Step 2: Copy the URL into the following input field
+    i30301 = 30301 # Step 3: Use the one-time authorization code to finish the login process
+    i30302 = 30302 # Finish login
+    i30303 = 30303 # The authorization code has been sent to the TIDAL2 addon.
+    i30304 = 30304 # The login process continues in Kodi.
+    i30305 = 30305 # Back to the login page
     i30306 = 30306 # Loading favorites ...
     i30307 = 30307 # Loading playlists ...
     i30308 = 30308 # Loading playlist ({item}/{max}): {name}
     i30309 = 30309 # Saving playlist cache ...
+    i30310 = 30310 # Followers
+    i30311 = 30311 # Public
+    i30312 = 30312 # General Search
+    i30313 = 30313 # I'm following
+    i30314 = 30314 # Set to public
+    i30315 = 30315 # Set to private
+    i30316 = 30316 # Public Playlists
+    i30317 = 30317 # Profile {user} follows
+    i30318 = 30318 # Follow this profile
+    i30319 = 30319 # Unfollow this profile
+    i30320 = 30320 # Block {what}
+    i30321 = 30321 # Staff Picks
+    i30322 = 30322 # Clean Content
 
     # Extended Settings
     i30501 = 30501 # Use Colors in Labels
     i30502 = 30502 # Enable Debug-Logging
-    i30503 = 30503 # --
+    i30503 = 30503 # Set playback informations for Web-GUI
     i30504 = 30504 # Not a FLAC Stream !
-    i30505 = 30505 # --
-    i30506 = 30506 # --
+    i30505 = 30505 # Use inputstream.ffmpegdirect as default player
+    i30506 = 30506 # UI
     i30507 = 30507 # Delete Album Cache
     i30508 = 30508 # Are you sure to delete the Album Cache Database ?
-    i30509 = 30509 # --
+    i30509 = 30509 # Add sort methods for item lists
     i30510 = 30510 # Log API JSON data
     i30511 = 30511 # Activate Fanart HTTP Server
     i30512 = 30512 # IP-Port for Fanart HTTP Server
+    i30513 = 30513 # Playback Mode for AAC MPD
+    i30514 = 30514 # Playback Mode for FLAC MPD
+    i30515 = 30515 # inputstream.ffmpegdirect plays MPD
+    i30516 = 30516 # Play as HLS
+    i30517 = 30517 # Use inputstream.adaptive
+    i30518 = 30518 # Use inputstream.ffmpegdirect
+    i30519 = 30519 # Folder
+    i30520 = 30520 # Favorites
+    i30521 = 30521 # Locked Streams
+    i30522 = 30522 # Own Playlists
+    i30523 = 30523 # Master/MQA Audio
+    i30524 = 30524 # Dolby Atmos
+    i30525 = 30525 # Sony Real Audio 360
+    i30526 = 30526 # Follower Profiles
+    i30527 = 30527 # MPD Cache size
+
 
 def _T(txtid):
     if isinstance(txtid, Const.string_types):
@@ -213,7 +256,8 @@ def _T(txtid):
         newid = {'artist': Msg.i30101, 'album': Msg.i30102, 'playlist': Msg.i30103, 'track': Msg.i30104, 'video': Msg.i30105,
                  'artists': Msg.i30101, 'albums': Msg.i30102, 'playlists': Msg.i30103, 'tracks': Msg.i30104, 'videos': Msg.i30105,
                  'featured': Msg.i30203, 'rising': Msg.i30211, 'discovery': Msg.i30212, 'movies': Msg.i30115, 'shows': Msg.i30116, 
-                 'genres': Msg.i30117, 'moods': Msg.i30118, 'folder': Msg.i30121, 'folders': Msg.i30121, 'mix': Msg.i30123, 'mixes': Msg.i30123
+                 'genres': Msg.i30117, 'moods': Msg.i30118, 'folder': Msg.i30121, 'folders': Msg.i30121, 'mix': Msg.i30123, 'mixes': Msg.i30123,
+                 'userprofile': Msg.i30125, 'userprofiles': Msg.i30125
                  }.get(txtid.lower(), None)
         if not newid: return txtid
         txtid = newid
@@ -229,7 +273,8 @@ def _P(key, default_txt=None):
     newid = {'new': Msg.i30111, 'local': Msg.i30112, 'exclusive': Msg.i30113, 'recommended': Msg.i30114, 'top': Msg.i30119,
              'artist': Msg.i30106, 'album': Msg.i30107, 'playlist': Msg.i30108, 'track': Msg.i30109, 'video': Msg.i30110,
              'artists': Msg.i30106, 'albums': Msg.i30107, 'playlists': Msg.i30108, 'tracks': Msg.i30109, 'videos': Msg.i30110,
-             'folder': Msg.i30122, 'folders': Msg.i30122, 'mix': Msg.i30124, 'mixes': Msg.i30124
+             'folder': Msg.i30122, 'folders': Msg.i30122, 'mix': Msg.i30124, 'mixes': Msg.i30124,
+             'userprofile': Msg.i30126, 'userprofiles': Msg.i30126
              }.get(key.lower(), None)
     if newid:
         return _T(newid)

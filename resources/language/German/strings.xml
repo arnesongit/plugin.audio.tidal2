@@ -22,7 +22,7 @@
     <string id="30021">MQA (Master Audio)</string>
     <string id="30022">Access-Token läuft ab am</string>
     <string id="30023">Album-Jahr im Label anzeigen</string>
-    <string id="30024">MQA bzw. Atmos zum Label hinzufügen</string>
+    <string id="30024">MQA/Atmos/360RA zum Label hinzufügen</string>
     <string id="30025">Optionen</string>
     <string id="30026">Client-ID</string>
     <string id="30027">Addon-Einstellungen</string>
@@ -44,7 +44,6 @@
     <string id="30046">Video (360p)</string>
     <string id="30047">Video (240p)</string>
     <string id="30048">Nur Audio</string>
-    <string id="30049">30 Sekunden Vorschau</string>
 
     <!-- Program Text -->
     <string id="30101">Künstler</string>
@@ -71,6 +70,8 @@
     <string id="30122">Ordner</string>
     <string id="30123">Mix</string>
     <string id="30124">Mixe</string>
+    <string id="30125">Benutzerprofil</string>
+    <string id="30126">Benutzerprofile</string>
 
     <!-- Main Menu -->
     <string id="30201">Meine Musiksammlung</string>
@@ -112,7 +113,7 @@
     <string id="30239">In {what} einfügen</string>
     <string id="30240">Aus {what} entfernen</string>
     <string id="30241">Soll Eintrag Nr. {entry} aus der Playliste entfernt werden ?</string>
-    <string id="30242">Stream gesperrt</string>
+    <string id="30242">gesperrt</string>
     <string id="30243">Tracks:{tracks} / Videos:{videos}</string>
     <string id="30244">Nächste Seite ({pos1}-{pos2} von {len})</string>
     <string id="30245">Album anzeigen</string>
@@ -162,14 +163,37 @@
     <string id="30289">Gerätetyp aus TIDAL APK Datei lesen</string>
     <string id="30290">Kein Gerätetyp ausgewählt.\nSoll der vorhandene Gerätetyp entfernt werden ?\nClient-ID und Client-Secret müssen dann manuell gesetzt werden !</string>
     <string id="30291">E-Mail-Adresse</string>
+    <string id="30292">{what} anzeigen</string>
     <string id="30293">Login erfolgreich !</string>
     <string id="30294">Anmelde-Code abgelaufen (1 Minute)</string>
     <string id="30295">Feed</string>
     <string id="30296">Codec {codec} nicht abspielbar</string>
+    <string id="30297">1. Schritt: Bei TIDAL über folgenden Link einloggen</string>
+    <string id="30298">Bitte hier einloggen</string>
+    <string id="30299">Nach der Anmeldung erscheint eine "Hoppla"-Seite. Die URL dieser Seite enthält einen Anmelde-Code, der nur einmal gültig ist und nach einer Minute abläuft !</string>
+    <string id="30300">2. Schritt: Diese URL in folgendes Eingabefeld kopieren</string>
+    <string id="30301">3. Schritt: Mit dem Anmelde-Code der URL die TIDAL-Anmeldung abschließen</string>
+    <string id="30302">Anmeldung abschließen</string>
+    <string id="30303">Der Anmelde-Code wurde an das TIDAL2-Addon übergeben.</string>
+    <string id="30304">Der Anmeldeprozess wird in Kodi fortgesetzt.</string>
+    <string id="30305">Zurück zur Anmelde-Seite</string>
     <string id="30306">Lade Favoriten ...</string>
     <string id="30307">Lade Playlisten ...</string>
     <string id="30308">Lade Playliste ({item}/{max}): {name}</string>
     <string id="30309">Playlist-Cache speichern ...</string>
+    <string id="30310">Follower</string>
+    <string id="30311">Öffentlich</string>
+    <string id="30312">Allgemeine Suche</string>
+    <string id="30313">Folge ich</string>
+    <string id="30314">Veröffentlichen</string>
+    <string id="30315">Auf privat setzen</string>
+    <string id="30316">Öffentliche Playlisten</string>
+    <string id="30317">Profile, denen {user} folgt</string>
+    <string id="30318">Diesem Profil folgen</string>
+    <string id="30319">Nicht mehr folgen</string>
+    <string id="30320">Blockiere {what}</string>
+    <string id="30321">Wir empfehlen</string>
+    <string id="30322">Familienfreundliche Inhalte</string>
 
     <!-- Extended Settings -->
     <string id="30501">Farben in Label verwenden</string>
@@ -177,20 +201,49 @@
     <string id="30503">Playback-Informationen für Web-GUI setzen</string>
     <string id="30504">Kein FLAC-Stream !</string>
     <string id="30505">Verwende inputstream.ffmpegdirect als Default-Player</string>
-    <string id="30506">--</string>
+    <string id="30506">UI</string>
     <string id="30507">Album-Cache löschen</string>
     <string id="30508">Soll der Album-Cache wirklich gelöscht werden ?</string>
-    <string id="30509">--</string>
+    <string id="30509">Sortierkriterien in Listen aktivieren</string>
     <string id="30510">JSON-Daten der API loggen</string>
     <string id="30511">Fanart-HTTP-Server aktivieren</string>
     <string id="30512">IP-Port für internen HTTP-Server</string>
-
-    <!-- Dash playback modes -->
     <string id="30513">Playback-Modus für AAC MPD</string>
     <string id="30514">Playback-Modus für FLAC MPD</string>
     <string id="30515">inputstream.ffmpegdirect spielt MPD</string>
     <string id="30516">Als HLS abspielen</string>
     <string id="30517">Benutze inputstream.adaptive</string>
     <string id="30518">Benutze inputstream.ffmpegdirect</string>
+    <string id="30519">Ordner</string>
+    <string id="30520">Favoriten</string>
+    <string id="30521">Gesperrte Streams</string>
+    <string id="30522">Eigene Playlisten</string>
+    <string id="30523">Master/MQA Audio</string>
+    <string id="30524">Dolby Atmos</string>
+    <string id="30525">Sony Real Audio 360</string>
+    <string id="30526">Follower-Profile</string>
+    <string id="30527">MPD-Cache Größe</string>
+
+	<!-- Color values -->
+    <string id="30900">Ohne Farbe</string>
+    <string id="30901">[COLOR maroon]Kastanienbraun[/COLOR]</string>
+    <string id="30902">[COLOR brown]Braun[/COLOR]</string>
+    <string id="30903">[COLOR red]Rot[/COLOR]</string>
+    <string id="30904">[COLOR magenta]Magenta[/COLOR]</string>
+    <string id="30905">[COLOR pink]Pink[/COLOR]</string>
+    <string id="30906">[COLOR orange]Orange[/COLOR]</string>
+    <string id="30907">[COLOR gold]Gold[/COLOR]</string>
+    <string id="30908">[COLOR yellow]Gelb[/COLOR]</string>
+    <string id="30909">[COLOR lightyellow]Hellgelb[/COLOR]</string>
+    <string id="30910">[COLOR green]Grün[/COLOR]</string>
+    <string id="30911">[COLOR limegreen]Limettengrün[/COLOR]</string>
+    <string id="30912">[COLOR greenyellow]Gelbgrün[/COLOR]</string>
+    <string id="30913">[COLOR blue]Blau[/COLOR]</string>
+    <string id="30914">[COLOR lightblue]Hellblau[/COLOR]</string>
+    <string id="30915">[COLOR cyan]Türkis[/COLOR]</string>
+    <string id="30916">[COLOR gray]Grau[/COLOR]</string>
+    <string id="30917">[COLOR lightgray]Hellgrau[/COLOR]</string>
+    <string id="30918">[COLOR white]Weiß[/COLOR]</string>
+    <string id="30919">[COLOR black]Schwarz[/COLOR]</string>
 
 </strings>

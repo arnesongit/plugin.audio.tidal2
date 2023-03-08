@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.audio.tidal2" name="TIDAL2" version="2.1.1" provider-name="arneson">
+<addon id="plugin.audio.tidal2" name="TIDAL2" version="2.1.2" provider-name="arneson">
   <requires>
     <import addon="xbmc.python" version="2.24.0"/>
     <import addon="script.module.requests"/>
@@ -30,22 +30,25 @@ Es wird ein Abbonement benötigt. Siehe tidal.com für Details.</description>
     <license>GNU GENERAL PUBLIC LICENSE. Version 3, 29 June 2007</license>
     <forum>http://forum.xbmc.org/showthread.php?tid=200555</forum>
     <source>https://github.com/arnesongit/plugin.audio.tidal2</source>
-    <news>v2.1.1 (2022-09-08)
-- Rebuild the TIDAL browsing pages for "Feed", "Home", "Explore" and "Videos" as folders to have more content available
-- Removed old menu items "Suggestions for me", "Featured Playlists", "TIDAL Rising" and "Promotions"
-- Support for unencrypted DASH playback:
-  - AAC streams are played using the inputstream.adaptive addon (Kodi >= 18)
-  - FLAC streams are played using the inputstream.ffmpegdirect addon (Kodi >= 19)
-  - FLAC DASH streams can be converted into HLS streams if the DASH demuxer is not compiled into inputstream.ffmpegdirect
-  - If no inputstream addon is installed, the DASH streams are played with an internal MPD to HLS converter
-- Using inputstream.ffmpegdirect as default player for HTTP streams on Windows and Android platforms
-  because HTTP streaming is buggy on these platforms (very long loading times). inputstream.ffmpegdirect as default player
-  can also be enabled/disabled in the TIDAL2 addon settings.
-- New quality mode "Audio only" for videos
-- Splitted country codes for browsing and streaming
-- New colored label extension for Sony 360 Real Audio
-- Skipping playback for Sony 360 Real Audio and Dolby AC-4, because Kodi can't play them. Otherwise Kodi will crash.
-- Added externally callable search function: plugin://plugin.audio.tidal2/search/&lt;field&gt;?query=&lt;text&gt;
+    <news>v2.1.2 (2023-03-08)
+- Modifications for Nexus API changes:
+  - Use InfoTagMusic and InfoTagVideo classes instead of the deprecated setInfo method
+  - Use addAudioStream and addVideoStream for video items instead of the deprecated addStreamInfo method
+  - Use a window label to pass the DASH manifest to the inputstream addons because the URL length is now limited to 2083 characters
+- Added 'Dolby Atmos', 'Masters (MQA)', '360', 'Staff Picks' and 'Clean Content' to the 'Explore' page.
+- Added duration time to album and playlist items
+- New addon settings tab 'UI' with:
+  - Customizable label colors (for folders, favorites, playlists, MQA, etc.)
+  - Enable Kodi Sort-Methods (only for Kodi >= 19). Item lists can now be sorted within the Kodi UI.
+- Support for user profiles:
+  - View user profiles of your followers
+  - View user profiles you follow
+  - View public playlists and artists of other profiles
+  - View the followers of other profiles
+  - View your public playlists
+  - Make your own playlists public or private (via context menu)
+  - To follow a different users playlist, just add it to your favorites
+  - Public playlists are marked with the users profile name (orange label extension)
     </news>
     <assets>
       <icon>resources/icon.png</icon>

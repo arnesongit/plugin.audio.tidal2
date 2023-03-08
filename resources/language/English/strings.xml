@@ -22,7 +22,7 @@
     <string id="30021">MQA (Master Audio)</string>
     <string id="30022">Access Token expires at</string>
     <string id="30023">Show Album Year in Labels</string>
-    <string id="30024">Add MQA or Atmos to Labels</string>
+    <string id="30024">Add MQA/Atmos/360RA to Labels</string>
     <string id="30025">Options</string>
     <string id="30026">Client-ID</string>
     <string id="30027">Addon-Settings</string>
@@ -44,7 +44,6 @@
     <string id="30046">Video (360p)</string>
     <string id="30047">Video (240p)</string>
     <string id="30048">Audio Only</string>
-    <string id="30049">30 seconds preview</string>
 
     <!-- Program Text -->
     <string id="30101">Artist</string>
@@ -71,6 +70,8 @@
     <string id="30122">Folders</string>
     <string id="30123">Mix</string>
     <string id="30124">Mixes</string>
+    <string id="30125">User Profile</string>
+    <string id="30126">User Profiles</string>
 
     <!-- Main Menu -->
     <string id="30201">My Music</string>
@@ -112,7 +113,7 @@
     <string id="30239">Add to {what}</string>
     <string id="30240">Remove from {what}</string>
     <string id="30241">Are you sure to remove item number {entry} from this playlist ?</string>
-    <string id="30242">Stream locked</string>
+    <string id="30242">blocked</string>
     <string id="30243">Tracks:{tracks} / Videos:{videos}</string>
     <string id="30244">Next Page ({pos1}-{pos2} from {len})</string>
     <string id="30245">Show Album</string>
@@ -162,35 +163,87 @@
     <string id="30289">Select device type from TIDAL APK file</string>
     <string id="30290">No device type selected.\nShould the existing device type be cleared ?\nThen the Client-ID and Client-Secret must be set manually !</string>
     <string id="30291">E-Mail Address</string>
+    <string id="30292">Show {what}</string>
     <string id="30293">Login Successful !</string>
     <string id="30294">Authorization code expired (1 minute)</string>
     <string id="30295">Feed</string>
     <string id="30296">Codec {codec} not supported</string>
+    <string id="30297">Step 1: Use following link to login at TIDAL</string>
+    <string id="30298">Please login here</string>
+    <string id="30299">After logging in, an "oops" page will appear. The URL of this page contains a one-time authorization code to retrieve the access tokens. This authorization code is valid for one minute !</string>
+    <string id="30300">Step 2: Copy the URL into the following input field</string>
+    <string id="30301">Step 3: Use the one-time authorization code to finish the login process</string>
+    <string id="30302">Finish login</string>
+    <string id="30303">The authorization code has been sent to the TIDAL2 addon.</string>
+    <string id="30304">The login process continues in Kodi.</string>
+    <string id="30305">Back to the login page</string>
     <string id="30306">Loading favorites ...</string>
     <string id="30307">Loading playlists ...</string>
     <string id="30308">Loading playlist ({item}/{max}): {name}</string>
     <string id="30309">Saving playlist cache ...</string>
+    <string id="30310">Followers</string>
+    <string id="30311">Public</string>
+    <string id="30312">General Search</string>
+    <string id="30313">I'm following</string>
+    <string id="30314">Set to public</string>
+    <string id="30315">Set to private</string>
+    <string id="30316">Public Playlists</string>
+    <string id="30317">Profile {user} follows</string>
+    <string id="30318">Follow this profile</string>
+    <string id="30319">Unfollow this profile</string>
+    <string id="30320">Block {what}</string>
+    <string id="30321">Staff Picks</string>
+    <string id="30322">Clean Content</string>
 
     <!-- Extended Settings -->
     <string id="30501">Use Colors in Labels</string>
     <string id="30502">Enable Debug-Logging</string>
-    <string id="30503">Set placback informations for Web-GUI</string>
+    <string id="30503">Set playback informations for Web-GUI</string>
     <string id="30504">Not a FLAC Stream !</string>
     <string id="30505">Use inputstream.ffmpegdirect as default player</string>
-    <string id="30506">--</string>
+    <string id="30506">UI</string>
     <string id="30507">Delete Album Cache</string>
     <string id="30508">Are you sure to delete the Album Cache Database ?</string>
-    <string id="30509">--</string>
+    <string id="30509">Add sort methods for item lists</string>
     <string id="30510">Log API JSON data</string>
     <string id="30511">Activate Fanart HTTP Server</string>
     <string id="30512">IP-Port for internal HTTP Server</string>
-
-    <!-- Dash playback modes -->
     <string id="30513">Playback Mode for AAC MPD</string>
     <string id="30514">Playback Mode for FLAC MPD</string>
     <string id="30515">inputstream.ffmpegdirect plays MPD</string>
     <string id="30516">Play as HLS</string>
     <string id="30517">Use inputstream.adaptive</string>
     <string id="30518">Use inputstream.ffmpegdirect</string>
+    <string id="30519">Folder</string>
+    <string id="30520">Favorites</string>
+    <string id="30521">Locked Streams</string>
+    <string id="30522">Own Playlists</string>
+    <string id="30523">Master/MQA Audio</string>
+    <string id="30524">Dolby Atmos</string>
+    <string id="30525">Sony Real Audio 360</string>
+    <string id="30526">Follower Profiles</string>
+    <string id="30527">MPD Cache size</string>
+
+	<!-- Color values -->
+    <string id="30900">Without color</string>
+    <string id="30901">[COLOR maroon]maroon[/COLOR]</string>
+    <string id="30902">[COLOR brown]brown[/COLOR]</string>
+    <string id="30903">[COLOR red]red[/COLOR]</string>
+    <string id="30904">[COLOR magenta]magenta[/COLOR]</string>
+    <string id="30905">[COLOR pink]pink[/COLOR]</string>
+    <string id="30906">[COLOR orange]orange[/COLOR]</string>
+    <string id="30907">[COLOR gold]gold[/COLOR]</string>
+    <string id="30908">[COLOR yellow]yellow[/COLOR]</string>
+    <string id="30909">[COLOR lightyellow]lightyellow[/COLOR]</string>
+    <string id="30910">[COLOR green]green[/COLOR]</string>
+    <string id="30911">[COLOR limegreen]limegreen[/COLOR]</string>
+    <string id="30912">[COLOR greenyellow]greenyellow[/COLOR]</string>
+    <string id="30913">[COLOR blue]blue[/COLOR]</string>
+    <string id="30914">[COLOR lightblue]lightblue[/COLOR]</string>
+    <string id="30915">[COLOR cyan]cyan[/COLOR]</string>
+    <string id="30916">[COLOR gray]gray[/COLOR]</string>
+    <string id="30917">[COLOR lightgray]lightgray[/COLOR]</string>
+    <string id="30918">[COLOR white]white[/COLOR]</string>
+    <string id="30919">[COLOR black]black[/COLOR]</string>
 
 </strings>

@@ -58,7 +58,8 @@ OAUTH_BASE_URL = 'https://auth.tidal.com/v1/oauth2/'
 DEFAULT_SCOPE = 'r_usr+w_usr+w_sub' # w_usr=WRITE_USR, r_usr=READ_USR_DATA, w_sub=WRITE_SUBSCRIPTION
 REFRESH_SCOPE = 'r_usr+w_usr'
 
-ALL_SAERCH_FIELDS = ['ARTISTS', 'ALBUMS', 'PLAYLISTS', 'TRACKS', 'VIDEOS']
+ALL_SAERCH_FIELDS = ['ARTISTS', 'ALBUMS', 'PLAYLISTS', 'TRACKS', 'VIDEOS', 'USERPROFILES']
+
 
 
 class Session(object):
@@ -210,6 +211,8 @@ class Session(object):
         request_params = {}
         if (url.startswith(URL_API_V1) or url.startswith(URL_API_V2)) and not 'countryCode' in request_params:
             request_params['countryCode'] = self._config.country_code
+        if url.startswith(URL_API_V2) and not 'locale' in request_params:
+            request_params['locale'] = self._config.locale
         if headers:
             request_headers.update(headers)
         if params:
@@ -482,6 +485,21 @@ class Session(object):
             pass
         return items
 
+    def get_userprofile(self, user_id):
+        return self._map_request('profiles/%s' % user_id, url=URL_API_V2, ret='userprofiles')
+
+    def get_followers(self, user_id, offset=0, limit=500):
+        return self._map_request_v2('profiles/%s/followers' % user_id, params={'offset': offset, 'limit': limit}, ret='userprofiles')
+
+    def get_following_users(self, user_id, offset=0, limit=500):
+        return self._map_request_v2('profiles/%s/following' % user_id, params={'offset': offset, 'limit': limit, 'includeOnly': 'USER'}, ret='userprofiles')
+
+    def get_following_artists(self, user_id, offset=0, limit=500):
+        return self._map_request_v2('profiles/%s/following' % user_id, params={'offset': offset, 'limit': limit, 'includeOnly': 'ARTIST'}, ret='artists')
+
+    def get_public_playlists(self, user_id, offset=0, limit=50):
+        return self._map_request_v2('user-playlists/%s/public' % user_id, params={'offset': offset, 'limit': limit}, ret='playlists')
+
     def _map_request(self, path, url=URL_API_V1, method='GET', params=None, data=None, headers=None, authenticate=True, ret=None):
         r = self.request(method, url=url, path=path, params=params, data=data, headers=headers, authenticate=authenticate)
         if not r.ok:
@@ -522,7 +540,14 @@ class Session(object):
                     item = item['track']
                 elif 'video' in item and ret.startswith('video'):
                     item = item['video']
+                elif 'playlist' in item and ret.startswith('playlist'):
+                    userprofile = item.get('profile', None)
+                    item = item['playlist']
+                    if userprofile:
+                        item['profile'] = userprofile
                 nextItem = self._parse_one_item(item, retType)
+                if isinstance(nextItem, TrackUrl) and ret == 'track_url':
+                    nextItem._requested_quality = params.get('audioquality', Quality.hi_res)
                 if isinstance(nextItem, BrowsableMedia):
                     nextItem._itemPosition = itemPosition
                     nextItem._offset = offset
@@ -540,6 +565,8 @@ class Session(object):
                     json_obj['parent'] = parent if isinstance(parent, dict) else {}
                 retType = json_obj.get('itemType', ret).lower()
             result = self._parse_one_item(json_obj, ret)
+            if isinstance(result, TrackUrl) and ret == 'track_url':
+                result._requested_quality = params.get('audioquality', Quality.hi_res)
             if isinstance(result, Playlist) and result.isUserPlaylist:
                 # Get ETag of Playlist which must be used to add/remove entries of playlists
                 try: 
@@ -607,7 +634,7 @@ class Session(object):
                 ret_type = 'track_url'
         return self._map_request(url,  params=params, ret=ret_type)
 
-    def search(self, field, value, limit=50):
+    def search(self, field, value, subtype='', limit=100):
         search_field = field
         if isinstance(search_field, string_types) and search_field.upper() == 'ALL':
             search_field = ALL_SAERCH_FIELDS
@@ -620,7 +647,10 @@ class Session(object):
             params.update({'types': what if what == 'ALL' or what.endswith('S') else what + 'S'})
         elif isinstance(search_field, Iterable):
             params.update({'types': ','.join(search_field)})
-        return self._map_request('search', params=params, ret='search')
+        if 'USERPROFILES' in params['types']:
+            subtype = 'top-hits'
+            params.update({'includeUserPlaylists': 'TRUE'})
+        return self._map_request('search' + ('/%s' % subtype if subtype else ''), params=params, ret='search')
 
 #------------------------------------------------------------------------------
 # Parse JSON Data into Media-Item-Objects
@@ -629,13 +659,7 @@ class Session(object):
     def _parse_one_item(self, json_obj, ret=None):
         parse = None
         ret = ret.lower()
-        if ret.startswith('user'):
-            parse = self._parse_user
-        elif ret.startswith('refresh_token'):
-            parse = self._parse_refresh_token
-        elif ret.startswith('subscription'):
-            parse = self._parse_subscription
-        elif ret.startswith('artist'):
+        if ret.startswith('artist'):
             parse = self._parse_artist
         elif ret.startswith('album'):
             parse = self._parse_album
@@ -647,10 +671,10 @@ class Session(object):
             parse = self._parse_video_url
         elif ret.startswith('video'):
             parse = self._parse_video
-        elif ret.startswith('folder'):
-            parse = self._parse_folder
         elif ret.startswith('playlist'):
             parse = self._parse_playlist
+        elif ret.startswith('folder'):
+            parse = self._parse_folder
         elif ret.startswith('category'):
             parse = self._parse_category
         elif ret.startswith('search'):
@@ -659,6 +683,14 @@ class Session(object):
             parse = self._parse_mix
         elif ret.startswith('lyrics'):
             parse = self._parse_lyrics
+        elif ret.startswith('userprofile'):
+            parse = self._parse_userprofile
+        elif ret.startswith('user'):
+            parse = self._parse_user
+        elif ret.startswith('refresh_token'):
+            parse = self._parse_refresh_token
+        elif ret.startswith('subscription'):
+            parse = self._parse_subscription
         elif ret.startswith('device_code'):
             parse = self._parse_device_code
         elif ret.startswith('auth_token'):
@@ -712,10 +744,10 @@ class Session(object):
 
     def _parse_playlist(self, json_obj):
         playlist = Playlist(**json_obj)
-        if self.is_logged_in and self.user.favorites:
-            playlist._isFavorite = self.user.favorites.isFavoritePlaylist(playlist.id)
-        if self.is_logged_in and playlist.isUserPlaylist and playlist.creatorId != None and '%s' % playlist.creatorId != '%s' % self._config.user_id:
+        if self.is_logged_in and playlist.isUserPlaylist and '%s' % playlist.creatorId != '%s' % self._config.user_id:
             playlist.type = 'OTHER_USER' # This is a User Playlist from a different user
+        if self.is_logged_in and self.user.favorites:
+            playlist._isFavorite = True if self.user.favorites.isFavoritePlaylist(playlist.id) and not playlist.isUserPlaylist else False
         return playlist
 
     def _parse_promotion(self, json_obj):
@@ -775,6 +807,20 @@ class Session(object):
 
     def _parse_search(self, json_obj):
         result = SearchResult()
+        if len(json_obj.get('topHits', [])) > 0:
+            result.topHits = []
+            for json in json_obj['topHits']:
+                if json['type'] == 'ARTISTS':
+                    result.artists.append(self._parse_artist(json['value']))
+                elif json['type'] == 'ALBUMS':
+                    result.albums.append(self._parse_album(json['value']))
+                elif json['type'] == 'TRACKS':
+                    result.tracks.append(self._parse_track(json['value']))
+                elif json['type'] == 'PLAYLISTS':
+                    result.playlists.append(self._parse_playlist(json['value']))
+                elif json['type'] == 'VIDEOS':
+                    result.videos.append(self._parse_video(json['value']))
+            return result
         if 'artists' in json_obj:
             result.artists = [self._parse_artist(json) for json in json_obj['artists']['items']]
         if 'albums' in json_obj:
@@ -785,6 +831,8 @@ class Session(object):
             result.playlists = [self._parse_playlist(json) for json in json_obj['playlists']['items']]
         if 'videos' in json_obj:
             result.videos = [self._parse_video(json) for json in json_obj['videos']['items']]
+        if 'userProfiles' in json_obj:
+            result.userProfiles = [self._parse_userprofile(json) for json in json_obj['userProfiles']['items']]
         return result
 
     def _parse_mix(self, json_obj):
@@ -802,6 +850,10 @@ class Session(object):
     def _parse_auth_token(self, json_obj):
         return AuthToken(**json_obj)
 
+    def _parse_userprofile(self, json_obj):
+        item = UserProfile(**json_obj)
+        item._own_id = self._config.user_id
+        return item
 
 #------------------------------------------------------------------------------
 # Class to work with user favorites
@@ -1009,8 +1061,8 @@ class User(object):
     def subscription(self):
         return self._session._map_request(path=self._base_url + '/subscription', ret='subscription')
 
-    def playlists(self, flattened=True, allPlaylists=False):
-        params = {'folderId': 'root', 'offset': 0, 'limit': 50, 'order': 'NAME', 'includeOnly': 'PLAYLIST' if allPlaylists else 'USER_PLAYLIST'}
+    def playlists(self, flattened=True, allPlaylists=False, offset=0, limit=50):
+        params = {'folderId': 'root', 'offset': offset, 'limit': limit, 'order': 'NAME', 'includeOnly': 'PLAYLIST' if allPlaylists else 'USER_PLAYLIST'}
         path = 'my-collection/playlists/folders'
         if flattened:
             path = path + '/flattened'
@@ -1049,7 +1101,7 @@ class User(object):
         ok = False
         if playlist and playlist._etag:
             headers = {'if-none-match': '%s' % playlist._etag}
-            data = {'trackIds': trackIds}  # , 'toIndex': playlist.numberOfItems}
+            data = {'trackIds': trackIds, 'onDupes': 'SKIP', 'onArtifactNotFound': 'SKIP'}  # , 'toIndex': playlist.numberOfItems}
             ok = self._session.request('POST', path='playlists/%s/items' % playlist.id, data=data, headers=headers).ok
         else:
             log.warning('Got no ETag for playlist %s' & playlist.title)
@@ -1091,8 +1143,76 @@ class User(object):
             i = i + 1
         return self.remove_playlist_entry(playlist, entry_no=','.join(entries))
 
-    def folders(self):
-        params = {'folderId': 'root', 'offset': 0, 'limit': 50, 'order': 'NAME', 'includeOnly': 'FOLDER'}
+    def set_playlist_public(self, playlist):
+        if isinstance(playlist, Playlist):
+            playlist_id = playlist.id
+        else:
+            playlist_id = playlist
+        r = self._session.request(method='PUT', url=URL_API_V2, path='playlists/%s/set-public' % playlist_id, params={'deviceType': 'BROWSER'})
+        return r.ok
+
+    def set_playlist_private(self, playlist):
+        if isinstance(playlist, Playlist):
+            playlist_id = playlist.id
+        else:
+            playlist_id = playlist
+        r = self._session.request(method='PUT', url=URL_API_V2, path='playlists/%s/set-private' % playlist_id, params={'deviceType': 'BROWSER'})
+        return r.ok
+
+    def get_userprofile(self):
+        return self._session.get_userprofile(self.id)
+
+    def get_followers(self, offset=0, limit=500):
+        return self._session.get_followers(self._session.config.user_id, offset=offset, limit=limit)
+
+    def get_following_users(self, offset=0, limit=500):
+        return self._session.get_following_users(self._session.config.user_id, offset=offset, limit=limit)
+
+    def get_blocked_users(self, offset=0, limit=50):
+        items = self._session._map_request_v2(path='profiles/blocked-profiles', params={'offset': offset, 'limit': limit, 'deviceType': 'BROWSER'}, ret='userprofiles')
+        return items
+
+    def get_public_playlists(self, offset=0, limit=50):
+        return self._session.get_public_playlists(self._session.config.user_id, offset=offset, limit=limit)
+
+    def follow_user(self, userProfile):
+        if isinstance(userProfile, UserProfile):
+            user_trn = userProfile.trn
+        elif isinstance(userProfile, string_types) and 'trn:user:' in userProfile:
+            user_trn = userProfile
+        else:
+            user_trn = 'trn:user:%s' % userProfile
+        r = self._session.request(method='PUT', url=URL_API_V2, path='follow', params={'trn': user_trn, 'deviceType': 'BROWSER'})
+        return r.ok
+
+    def unfollow_user(self, userProfile):
+        if isinstance(userProfile, UserProfile):
+            user_trn = userProfile.trn
+        elif isinstance(userProfile, string_types) and 'trn:user:' in userProfile:
+            user_trn = userProfile
+        else:
+            user_trn = 'trn:user:%s' % userProfile
+        r = self._session.request(method='DELETE', url=URL_API_V2, path='follow', params={'trn': user_trn, 'deviceType': 'BROWSER'})
+        return r.ok
+
+    def block_user(self, userProfile):
+        if isinstance(userProfile, UserProfile):
+            user_id = userProfile.id
+        else:
+            user_id = '%s' % userProfile
+        r = self._session.request(method='PUT', url=URL_API_V2, path='profiles/block/%s' % user_id, params={'deviceType': 'BROWSER'})
+        return r.ok
+
+    def unblock_user(self, userProfile):
+        if isinstance(userProfile, UserProfile):
+            user_id = userProfile.id
+        else:
+            user_id = '%s' % userProfile
+        r = self._session.request(method='DELETE', url=URL_API_V2, path='profiles/block/%s' % user_id, params={'deviceType': 'BROWSER'})
+        return r.ok
+
+    def folders(self, offset=0, limit=50):
+        params = {'folderId': 'root', 'offset': offset, 'limit': limit, 'order': 'NAME', 'includeOnly': 'FOLDER'}
         items = self._session._map_request_v2(path='my-collection/playlists/folders', url=URL_API_V2, params=params, ret='folders')
         return items
 
@@ -1102,8 +1222,8 @@ class User(object):
             if item.id == folder_id: return item
         return None
 
-    def folder_items(self, folder_id):
-        params = {'folderId': folder_id, 'offset': 0, 'limit': 50, 'order': 'NAME', 'includeOnly': 'PLAYLIST'}
+    def folder_items(self, folder_id, offset=0, limit=50):
+        params = {'folderId': folder_id, 'offset': offset, 'limit': limit, 'order': 'NAME', 'includeOnly': 'PLAYLIST'}
         items = self._session._map_request_v2(path='my-collection/playlists/folders', url=URL_API_V2, params=params, ret='folders')
         return items
 

@@ -25,7 +25,8 @@ import pyaes
 from kodi_six import xbmc, xbmcvfs
 
 from .common import addon, Const, getLocale, isAddonInstalled
-from .tidalapi.models import Config, Quality, Model
+from .textids import _T
+from .tidalapi.models import Config, Quality, Model, SubscriptionType
 
 #------------------------------------------------------------------------------
 # Configuration Class
@@ -67,6 +68,7 @@ class TidalConfig(Config):
         self.locked_artist_file = os.path.join(self.cache_dir, 'locked_artists.cfg')
         self.playlist_file = os.path.join(self.cache_dir, 'playlists.cfg')
         self.folders_file = os.path.join(self.cache_dir, 'folders.cfg')
+        self.profiles_file = os.path.join(self.cache_dir, 'userprofiles.cfg')
 
         self.default_trackplaylist_id = self.getSetting('default_trackplaylist_id')
         self.default_videoplaylist_id = self.getSetting('default_videoplaylist_id')
@@ -91,11 +93,6 @@ class TidalConfig(Config):
             self.user_country_code = self.country_code
             self.setSetting('user_country_code', self.country_code)
         self.enable_lyrics = True if self.getSetting('enable_lyrics') == 'true' else False
-
-        # Set playback modes for MPD Dash streams
-        self.dash_aac_mode = [Const.is_hls, Const.is_adaptive, Const.is_ffmpegdirect][min(2,int('0%s' % self.getSetting('dash_aac_mode')))]
-        self.dash_flac_mode = [Const.is_hls, Const.is_ffmpegdirect][min(1,int('0%s' % self.getSetting('dash_flac_mode')))]
-        self.ffmpegdirect_has_mpd = True if self.getSetting('ffmpegdirect_has_mpd') == 'true' else False
 
         # Determine the locale of the system
         self.locale = getLocale(self.country_code)
@@ -124,16 +121,61 @@ class TidalConfig(Config):
         self.debug = True if self.getSetting('debug_log') == 'true' else False
         self.debug_json = True if self.getSetting('debug_json') == 'true' else False
 
-        # Extended Options
-        self.ffmpegdirect_is_default_player = True if self.getSetting('ffmpegdirect_is_default') == 'true' else False
+        # UI Options
         self.color_mode = True if self.getSetting('color_mode') == 'true' else False
         self.favorites_in_labels = True if self.getSetting('favorites_in_labels') == 'true' else False
         self.user_playlists_in_labels = True if self.getSetting('user_playlists_in_labels') == 'true' else False
         self.album_year_in_labels = True if self.getSetting('album_year_in_labels') == 'true' else False
         self.mqa_in_labels = True if self.getSetting('mqa_in_labels') == 'true' else False
         self.set_playback_info = True if self.getSetting('set_playback_info') == 'true' else False
+        self.add_sort_methods = True if self.getSetting('add_sort_methods') == 'true' else False
+
+        # Get colors for labels
+        if self.color_mode:
+            self.folder_mask = self.get_color_mask('folder_color', '{label}', defaultColor=13) # Blue
+            if self.favorites_in_labels:
+                self.favorite_mask = self.get_color_mask('favorite_color', '{label}', defaultColor=8) # Yellow
+            else:
+                self.favorite_mask = '{label}'
+            self.stream_locked_mask = self.get_color_mask('stream_locked_color', '{label} ({info})', defaultColor=1) # Maroon
+            if self.user_playlists_in_labels:
+                self.user_playlist_mask = '{label} ' + self.get_color_mask('user_playlist_color', '[{userpl}]', defaultColor=11) # Limegreen
+                self.default_playlist_mask = '{label} ' + self.get_color_mask('user_playlist_color', '({mediatype})', defaultColor=11) # Limegreen
+            else:
+                self.user_playlist_mask = '{label}'
+                self.default_playlist_mask = '{label} ({mediatype})'
+            self.master_audio_mask = '{label} ' + self.get_color_mask('master_audio_color', 'MQA', defaultColor=13) # Blue
+            self.dolby_atmos_mask = '{label} ' + self.get_color_mask('dolby_atmos_color', 'Atmos', defaultColor=14)  # LightBlue
+            self.sony_360ra_mask = '{label} ' + self.get_color_mask('sony_360ra_color', '360RA', defaultColor=15)   # Cyan
+            self.follower_mask = '{label} ' + self.get_color_mask('follower_color', '({follower})', defaultColor=6)  # Orange
+        else:
+            self.folder_mask = '{label}'
+            if self.favorites_in_labels:
+                self.favorite_mask = '<{label}>'
+            else:
+                self.favorite_mask = '{label}'
+            self.stream_locked_mask = '{label} ({info})'
+            if self.user_playlists_in_labels:
+                self.user_playlist_mask = '{label} [{userpl}]'
+            else:
+                self.user_playlist_mask = '{label}'
+            self.default_playlist_mask = '{label} ({mediatype})'
+            self.master_audio_mask = '{label} (MQA)'
+            self.dolby_atmos_mask = '{label} (Atmos)'
+            self.sony_360ra_mask = '{label} (360RA)'
+            self.follower_mask = '{label} ({follower})'
+
+        # Extended Options
+        self.dash_aac_mode = [Const.is_hls, Const.is_adaptive, Const.is_ffmpegdirect][min(2,int('0%s' % self.getSetting('dash_aac_mode')))]
+        self.dash_flac_mode = [Const.is_hls, Const.is_ffmpegdirect][min(1,int('0%s' % self.getSetting('dash_flac_mode')))]
+        self.ffmpegdirect_has_mpd = True if self.getSetting('ffmpegdirect_has_mpd') == 'true' else False
+        self.ffmpegdirect_is_default_player = True if self.getSetting('ffmpegdirect_is_default') == 'true' else False
         self.fanart_server_enabled = True
         self.fanart_server_port = int('0%s' % self.getSetting('fanart_server_port'))
+        self.mpd_cache_size = max(0, min(999, int('0%s' % self.getSetting('mpd_cache_size'))))
+
+    def isFreeSubscription(self):
+        return True if self.subscription_type in SubscriptionType.FreeSubscriptions else False
 
     @property
     def token_secret(self):
@@ -190,6 +232,20 @@ class TidalConfig(Config):
         settings.setSetting('refresh_time',  self.refresh_time.isoformat())
         settings.setSetting('expire_time',  self.expire_time.isoformat())
 
+    def get_color_mask(self, setting, labelName, defaultColor=0):
+        colorNum = defaultColor
+        colorMask = '%s' % labelName
+        try: 
+            colorNum = int('0%s' % self.getSetting(setting))
+        except:
+            pass
+        try:
+            # Convert color settings text '[COLOR pink]Pink[/COLOR]' to '[COLOR pink]{labelName}[/COLOR]'
+            colorText = _T(30900+colorNum)
+            colorMask = colorText.split(']', 1)[0] + ']' + colorMask + '[' + colorText.rsplit('[', 1)[1]
+        except:
+            pass
+        return colorMask
 
 #------------------------------------------------------------------------------
 # Configuration

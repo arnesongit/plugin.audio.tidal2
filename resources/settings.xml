@@ -23,17 +23,29 @@
     <setting label="30502" id="debug_log" type="bool" default="false" />
     <setting label="30510" id="debug_json" type="bool" default="false" visible="eq(-1,true)"/>
   </category>
+  <category label="30506">
+    <setting label="30509" id="add_sort_methods" type="bool" default="false"/>
+    <setting label="30023" id="album_year_in_labels" type="bool" default="true"/>
+    <setting label="30016" id="favorites_in_labels" type="bool" default="true"/>
+    <setting label="30017" id="user_playlists_in_labels" type="bool" default="true"/>
+    <setting label="30024" id="mqa_in_labels" type="bool" default="true"/>
+    <setting label="30501" id="color_mode" type="bool" default="true"/>
+    <setting label="30519" id="folder_color"        type="select" visible="eq(-1,true)" lvalues="30900|30901|30902|30903|30904|30905|30906|30907|30908|30909|30910|30911|30912|30913|30914|30915|30916|30917|30918|30919" default="13"/>
+    <setting label="30526" id="follower_color"      type="select" visible="eq(-2,true)" lvalues="30900|30901|30902|30903|30904|30905|30906|30907|30908|30909|30910|30911|30912|30913|30914|30915|30916|30917|30918|30919" default="6"/>
+    <setting label="30521" id="stream_locked_color" type="select" visible="eq(-3,true)" lvalues="30900|30901|30902|30903|30904|30905|30906|30907|30908|30909|30910|30911|30912|30913|30914|30915|30916|30917|30918|30919" default="1"/>
+    <setting label="30520" id="favorite_color"      type="select" visible="eq(-4,true)" lvalues="30900|30901|30902|30903|30904|30905|30906|30907|30908|30909|30910|30911|30912|30913|30914|30915|30916|30917|30918|30919" default="8"/>
+    <setting label="30522" id="user_playlist_color" type="select" visible="eq(-5,true)" lvalues="30900|30901|30902|30903|30904|30905|30906|30907|30908|30909|30910|30911|30912|30913|30914|30915|30916|30917|30918|30919" default="11"/>
+    <setting label="30523" id="master_audio_color"  type="select" visible="eq(-6,true)" lvalues="30900|30901|30902|30903|30904|30905|30906|30907|30908|30909|30910|30911|30912|30913|30914|30915|30916|30917|30918|30919" default="13"/>
+    <setting label="30524" id="dolby_atmos_color"   type="select" visible="eq(-7,true)" lvalues="30900|30901|30902|30903|30904|30905|30906|30907|30908|30909|30910|30911|30912|30913|30914|30915|30916|30917|30918|30919" default="14"/>
+    <setting label="30525" id="sony_360ra_color"    type="select" visible="eq(-8,true)" lvalues="30900|30901|30902|30903|30904|30905|30906|30907|30908|30909|30910|30911|30912|30913|30914|30915|30916|30917|30918|30919" default="15"/>
+  </category>
   <category label="30002">
     <setting label="30513" id="dash_aac_mode" type="select" lvalues="30516|30517|30518" default="0"/>
     <setting label="30514" id="dash_flac_mode" type="select" lvalues="30516|30518" default="0"/>
     <setting label="30515" id="ffmpegdirect_has_mpd" type="bool" default="true"/>
     <setting label="30505" id="ffmpegdirect_is_default" type="bool" default="false"/>
-    <setting label="30501" id="color_mode" type="bool" default="true"/>
-    <setting label="30016" id="favorites_in_labels" type="bool" default="true"/>
-    <setting label="30017" id="user_playlists_in_labels" type="bool" default="true"/>
-    <setting label="30023" id="album_year_in_labels" type="bool" default="true"/>
-    <setting label="30024" id="mqa_in_labels" type="bool" default="true"/>
     <setting label="30503" id="set_playback_info" type="bool" default="false"/>
     <setting label="30512" id="fanart_server_port" type="number" default="5555"/>
+    <setting label="30527" id="mpd_cache_size" type="number" default="10"/>
   </category>
 </settings>

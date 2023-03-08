@@ -29,8 +29,8 @@ from .textids import Msg, _T
 from .debug import log
 from .config import settings
 from .tidalapi import Session, User, Favorites, models as tidal
-from .items import AlbumItem, ArtistItem, PlaylistItem, TrackItem, VideoItem, MixItem, \
-                   FolderItem, CategoryItem, PromotionItem, DirectoryItem, TrackUrlItem, VideoUrlItem
+from .items import AlbumItem, ArtistItem, PlaylistItem, TrackItem, VideoItem, MixItem, ItemSortType, \
+                   FolderItem, CategoryItem, PromotionItem, DirectoryItem, TrackUrlItem, VideoUrlItem, UserProfileItem
 
 
 class TidalSession(Session):
@@ -78,7 +78,11 @@ class TidalSession(Session):
         return abo
 
     def login_part1(self, client_id=None, client_secret=None):
-        return Session.login_part1(self, client_id=client_id, client_secret=client_secret)
+        try:
+            return Session.login_part1(self, client_id=client_id, client_secret=client_secret)
+        except HTTPError as e:
+            log.info(str(e))
+        return False
 
     def login_part2(self, device_code=None):
         try:
@@ -113,8 +117,11 @@ class TidalSession(Session):
             xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30293), icon=xbmcgui.NOTIFICATION_INFO)
         return auth
 
+    def login_with_code(self, args):
+        raise Exception('Not implemented yet !')
+
     def logout(self):
-        Session.logout(self, signoff=True)
+        Session.logout(self, signoff=False)
         settings.save_session()
         self._config.load()
 
@@ -131,6 +138,12 @@ class TidalSession(Session):
             if album:
                 for item in items:
                     item.album = album
+        return items
+
+    def get_playlist_items(self, playlist, offset=0, limit=9999, ret='playlistitems'):
+        if not isinstance(playlist, tidal.Playlist):
+            playlist = self.get_playlist(playlist)
+        items = Session.get_playlist_items(self, playlist, offset=offset, limit=limit, ret=ret)
         return items
 
     def get_playlist_tracks(self, playlist_id, offset=0, limit=9999):
@@ -274,6 +287,10 @@ class TidalSession(Session):
                 playlist.parentFolderName = cached.get('parentFolderName', '')
                 log.debug('Cached: %s %s' % (playlist.id, playlist.parentFolderName))
                 playlist._parentFolderIdFromCache = True
+        if self.is_logged_in and not playlist.creatorName and playlist.creatorId:
+            cached = self.user.profiles_cache.get('%s' % playlist.creatorId, None)
+            if cached:
+                playlist.creatorName = cached.get('name', '')
         return playlist
 
     def _parse_track(self, json_obj):
@@ -298,7 +315,7 @@ class TidalSession(Session):
         video._is_logged_in = self.is_logged_in
         if self.is_logged_in:
             video._userplaylists = self.user.playlists_of_id(video.id, video.album.id if video.album else None)
-        elif video.duration > 30:
+        if video.duration > 30 and (not self.is_logged_in or self._config.isFreeSubscription() and self._config.maxVideoHeight > 0):
             # 30 Seconds Limit in Trial Mode
             video.duration = 30
         return video
@@ -325,6 +342,12 @@ class TidalSession(Session):
 
     def _parse_category(self, json_obj):
         return CategoryItem(Session._parse_category(self, json_obj))
+
+    def _parse_userprofile(self, json_obj):
+        item = UserProfileItem(Session._parse_userprofile(self, json_obj))
+        if self.is_logged_in:
+            self.user.check_cached_userprofile(item)
+        return item
 
     def get_track_url(self, track_id, quality=None):
         try:
@@ -363,7 +386,7 @@ class TidalSession(Session):
     def get_video_url(self, video_id, maxHeight=-1):
         try:
             maxVideoHeight = maxHeight if maxHeight >= 0 else self._config.maxVideoHeight
-            media = Session.get_video_url(self, video_id, audioOnly=True if maxVideoHeight == 0 else False )
+            media = Session.get_video_url(self, video_id, audioOnly=True if maxVideoHeight == 0 else False, preview=True if self._config.isFreeSubscription() and self._config.maxVideoHeight > 0 else False )
             if isinstance(media, VideoUrlItem):
                 media.selectStream(maxVideoHeight)
             return media
@@ -381,9 +404,15 @@ class TidalSession(Session):
             log.warning("Playing silence for unplayable video %s to avoid kodi crash" % video_id)
         return VideoUrlItem.unplayableItem()
 
-    def add_list_items(self, items, content=None, end=True, withNextPage=False):
+    def add_list_items(self, items, content=None, end=True, withNextPage=False, withSortModes=False):
         if content:
             xbmcplugin.setContent(plugin.handle, content)
+            if settings.add_sort_methods and withSortModes and content in ['albums', 'songs', 'musicvideos', 'videos'] and KODI_VERSION >= (19, 0):
+                # Label formats, see here: https://github.com/xbmc/xbmc/blob/master/xbmc/utils/LabelFormatter.cpp
+                xbmcplugin.addSortMethod(plugin.handle, xbmcplugin.SORT_METHOD_NONE, labelMask='%L')
+                xbmcplugin.addSortMethod(plugin.handle, xbmcplugin.SORT_METHOD_LABEL_IGNORE_FOLDERS, labelMask='%L')
+                xbmcplugin.addSortMethod(plugin.handle, xbmcplugin.SORT_METHOD_TITLE_IGNORE_THE, labelMask='%L')
+                xbmcplugin.addSortMethod(plugin.handle, xbmcplugin.SORT_METHOD_DATE, labelMask='%L')
         list_items = []
         for item in items:
             if isinstance(item, tidal.Category):
@@ -457,6 +486,25 @@ class TidalSession(Session):
             for item in items:
                 self.user.check_updated_playlist(playlist=item, reloadPlaylist=reloadPlaylist)
             self.user.save_cache()
+
+    def get_userprofile(self, user_id):
+        item = Session.get_userprofile(self, user_id)
+        if self.is_logged_in:
+            self.user.save_cache()
+        return item
+
+    def get_followers(self, user_id, offset=0, limit=500):
+        items = Session.get_followers(self, user_id, offset=offset, limit=limit)
+        if self.is_logged_in:
+            self.user.save_cache()
+        return items
+
+    def get_following_users(self, user_id, offset=0, limit=500):
+        items = Session.get_following_users(self, user_id, offset=offset, limit=limit)
+        if self.is_logged_in:
+            self.user.save_cache()
+        return items
+
 
 
 class TidalFavorites(Favorites):
@@ -612,6 +660,9 @@ class TidalUser(User):
         self.folders_loaded = False
         self.folders_updated = False
         self.folders_cache = {}
+        self.profiles_loaded = False
+        self.profiles_updated = False
+        self.profiles_cache = {}
 
     def update_caches(self, withProgress=False):
         progress = xbmcgui.DialogProgressBG() if withProgress else None
@@ -622,6 +673,9 @@ class TidalUser(User):
                 progress.update(percent=1, message=_T(Msg.i30306))
             self.favorites.load_all(force_reload=True)
             self.playlists(flattened=True, allPlaylists=True, progress=progress)
+            self.get_followers()
+            self.get_following_users()
+            self.get_blocked_users()
             self.save_cache()
         except:
             pass
@@ -659,7 +713,21 @@ class TidalUser(User):
             self.folders_updated = True
             self.folders_cache = {}
             self.save_cache()
-        return self.playlists_loaded and self.folders_loaded
+        try:
+            if not self.profiles_loaded or force_reload:
+                fd = xbmcvfs.File(settings.profiles_file, 'r')
+                self.profiles_cache = eval(fd.read())
+                fd.close()
+                self.profiles_loaded = True
+                self.profiles_updated = False
+                log.debug('Loaded %s Userprofile entries from disk.' % len(list(self.profiles_cache.keys())))
+        except:
+            log.warning('Userprofile Cache file not found. Creating a new one ...')
+            self.profiles_loaded = True
+            self.profiles_updated = True
+            self.profiles_cache = {}
+            self.save_cache()
+        return self.playlists_loaded and self.folders_loaded and self.profiles_loaded
 
     def save_cache(self):
         ok = self.favorites.save_cache()
@@ -683,7 +751,33 @@ class TidalUser(User):
         except:
             log.error('Error writing Folders Cache file')
             ok = False
+        try:
+            if self.profiles_loaded and self.profiles_updated:
+                self.profiles_updated = False
+                fd = xbmcvfs.File(settings.profiles_file, 'w')
+                fd.write(repr(self.profiles_cache))
+                fd.close()
+                log.info('Saved %s Userprofiles to disk.' % len(list(self.profiles_cache.keys())))
+        except:
+            log.error('Error writing Userprofile Cache file')
+            ok = False
         return ok
+
+    def check_cached_userprofile(self, userprofile):
+        if not isinstance(userprofile, tidal.UserProfile):
+            return False
+        item = self.profiles_cache.get('%s' % userprofile.id, {})
+        if userprofile.name and not item.get('name', ''):
+            self.profiles_cache.update({'%s' % userprofile.id: {'name': userprofile.name}})
+            self.profiles_updated = True
+        elif not userprofile.name:
+            userprofile.name = item.get('name', userprofile.name)
+        return True if self.profiles_updated else False
+
+    def get_blocked_users(self, offset=0, limit=50):
+        items = User.get_blocked_users(self, offset=offset, limit=limit)
+        self.save_cache()
+        return items
 
     def check_updated_playlist(self, playlist, reloadPlaylist=False):
         if not isinstance(playlist, tidal.Playlist):
@@ -737,6 +831,7 @@ class TidalUser(User):
         return True if self.playlists_updated or self.folders_updated else False
 
     def delete_cache(self):
+        ok = True
         try:
             if xbmcvfs.exists(settings.playlist_file):
                 xbmcvfs.delete(settings.playlist_file)
@@ -744,8 +839,16 @@ class TidalUser(User):
                 self.playlists_loaded = False
                 self.playlists_cache = {}
         except:
-            return False
-        return True
+            ok = False
+        try:
+            if xbmcvfs.exists(settings.profiles_file):
+                xbmcvfs.delete(settings.profiles_file)
+                log.debug('Deleted Userprofiles file.')
+                self.profiles_loaded = False
+                self.profiles_cache = {}
+        except:
+            ok = False
+        return ok
 
     def playlists_of_id(self, item_id, album_id=None):
         userpl = {}

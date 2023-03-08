@@ -22,6 +22,7 @@ import traceback
 import base64
 import time
 from threading import Thread
+from collections import OrderedDict
 
 try:
     # Python 3
@@ -38,7 +39,7 @@ except:
     # Python 2.7
     from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
-from kodi_six import xbmc, xbmcaddon
+from kodi_six import xbmc, xbmcaddon, xbmcgui
 
 from .common import plugin, __addon_id__
 from .textids import Msg, _T
@@ -83,16 +84,16 @@ class LocalHttpRequestHandler(BaseHTTPRequestHandler):
                     self.send_lyrics(params['id'][0])
 
             elif url.path == '/manifest.mpd':
-                if 'data' not in params:
-                    self.send_error(501, 'Missing Parameter "data"')
+                if 'track_id' in params and 'quality' in params:
+                    self.send_mpd_manifest(params['track_id'][0], params['quality'][0])
                 else:
-                    self.send_mpd_manifest(params['data'][0])
+                    self.send_error(501, 'Missing Parameter "track_id" or "quality"')
 
             elif url.path == '/manifest.m3u8':
-                if 'data' not in params:
-                    self.send_error(501, 'Missing Parameter "data"')
+                if 'track_id' in params and 'quality' in params:
+                    self.send_m3u8_playlist(params['track_id'][0], params['quality'][0])
                 else:
-                    self.send_m3u8_playlist(params['data'][0])
+                    self.send_error(501, 'Missing Parameter "track_id" or "quality"')
 
             elif url.path == '/login':
                 self.send_login_page()
@@ -101,7 +102,9 @@ class LocalHttpRequestHandler(BaseHTTPRequestHandler):
                 # User pressed Login button on the login page
                 client_id = params.get('client_id', [''])[0]
                 client_secret = params.get('client_secret', [''])[0]
-                self.send_login_page2(client_id, client_secret)
+                client_unique_key = params.get('client_unique_key', [''])[0]
+                code_verifier = params.get('code_verifier', [''])[0]
+                self.send_login_page2(client_id, client_secret, client_unique_key, code_verifier)
 
             else:
                 self.send_error(501, 'Illegal Request: %s' % self.path)
@@ -174,6 +177,9 @@ class LocalHttpRequestHandler(BaseHTTPRequestHandler):
             if not session._config.enable_lyrics:
                 self.send_error(404, 'Lyrics are disabled in settings.')
                 return
+            if session._config.isFreeSubscription():
+                self.send_error(404, 'No Lyrics available for TIDAL Free subscriptions')
+                return
             r = session.request(method='GET', path='tracks/%s/lyrics' % track_id, params={'countryCode': session._config.user_country_code})
             if not r.ok:
                 self.send_error(404, 'No lyrics for track %s' % track_id)
@@ -193,29 +199,70 @@ class LocalHttpRequestHandler(BaseHTTPRequestHandler):
         finally:
             session = None
 
-    def send_mpd_manifest(self, mpd_data):
+    def get_mpd_manifest(self, track_id, quality):
+        try:
+            prop = 'tidal2.%s' % track_id
+            mpd_data = xbmcgui.Window(10000).getProperty(prop)
+            xbmcgui.Window(10000).clearProperty(prop)
+            if mpd_data:
+                log.info("Got MPD-Data from window property %s" % prop)
+                mpd_data = unquote_plus(mpd_data)
+                self.server.add_cached_mpd(prop, mpd_data)
+            else:
+                mpd_data = self.server.get_cached_mpd(prop)
+                if mpd_data:
+                    log.info("Got MPD-Data from cached entry %s" % prop)
+                else:
+                    session = Session(config=TidalConfig(tidal_addon=xbmcaddon.Addon(__addon_id__)))
+                    track_url = session.get_track_url(track_id, quality)
+                    if track_url:
+                        mpd_data = track_url.manifest
+                        if mpd_data:
+                            log.info("Got new MPD-Data for track %s" % track_id)
+                            self.server.add_cached_mpd(prop, mpd_data)
+                    session.cleanup()
+                    del session
+            if mpd_data:
+                return mpd_data
+        except Exception as e:
+            log.logException(e, txt='Error getting MPD data for track %s' % track_id)
+        finally:
+            session = None
+        self.send_error(404, 'MPD data for track %s not found' % track_id)
+        return None
+
+    def send_mpd_manifest(self, track_id, quality):
         # mpd_data is the base64 encoded MPD manifest
         # This call returns the MPD data to play with inputstream.adaptive addon
-        mpd_xml = base64.b64decode(mpd_data)
-        if xbmcaddon.Addon(__addon_id__).getSetting('debug_json') == 'true':
-            log.info("MPD-Data: %s" % mpd_xml)
-        self.send_response(200)
-        self._send_headers(content_type='application/dash+xml', content_length=len(mpd_xml))
-        self.wfile.write(mpd_xml)
+        try:
+            mpd_data = self.get_mpd_manifest(track_id, quality)
+            if mpd_data:
+                mpd_xml = base64.b64decode(mpd_data)
+                if xbmcaddon.Addon(__addon_id__).getSetting('debug_json') == 'true':
+                    log.info("MPD-Data: %s" % mpd_xml)
+                self.send_response(200)
+                self._send_headers(content_type='application/dash+xml', content_length=len(mpd_xml))
+                self.wfile.write(mpd_xml)
+        except:
+            self.send_error(501, 'MPD contains invalid data')
 
-    def send_m3u8_playlist(self, mpd_data):
+    def send_m3u8_playlist(self, track_id, quality):
         # mpd_data is the base64 encoded MPD manifest
         # Convert the MPD data into an M3U8 HLS playlist to play with inputstream.ffmpegdirect
-        hls = DashInfo.fromBase64(mpd_data)
-        if not hls:
+        try:
+            mpd_data = self.get_mpd_manifest(track_id, quality)
+            if mpd_data:
+                hls = DashInfo.fromBase64(mpd_data)
+                if xbmcaddon.Addon(__addon_id__).getSetting('debug_json') == 'true':
+                    log.info("M3U8-Data: %s" % hls.m3u8())
+                else:
+                    log.info("Converting MPD manifest to HLS stream")
+                m3u8 = hls.m3u8().encode("utf-8")
+                self.send_response(200)
+                self._send_headers(content_type='application/vnd.apple.mpegurl', content_length=len(m3u8))
+                self.wfile.write(m3u8)
+        except:
             self.send_error(501, 'MPD contains invalid data')
-            return
-        if xbmcaddon.Addon(__addon_id__).getSetting('debug_json') == 'true':
-            log.info("M3U8-Data: %s" % hls.m3u8())
-        m3u8 = hls.m3u8().encode("utf-8")
-        self.send_response(200)
-        self._send_headers(content_type='application/vnd.apple.mpegurl', content_length=len(m3u8))
-        self.wfile.write(m3u8)
 
     def send_login_page(self):
         try:
@@ -226,7 +273,7 @@ class LocalHttpRequestHandler(BaseHTTPRequestHandler):
                     msg = _T(Msg.i30022) + ' %s' % settings.expire_time
             except:
                 traceback.print_exc()
-            html = Pages().login_page(settings, msg).encode('utf-8')
+            html = self.server.pages.login_page(settings, msg).encode('utf-8')
             del settings
             self.send_response(200)
             self._send_headers(content_type='text/html;charset=utf-8')
@@ -235,11 +282,10 @@ class LocalHttpRequestHandler(BaseHTTPRequestHandler):
             self.send_error(404, 'Failed to start OAuth login')
             traceback.print_exc()
 
-    def send_login_page2(self, client_id, client_secret):
+    def send_login_page2(self, client_id, client_secret, client_unique_key, code_verifier):
         try:
             try:
                 linkurl = _T(Msg.i30253)
-                footer = '&nbsp;'
                 settings = TidalConfig(tidal_addon=xbmcaddon.Addon(__addon_id__))
                 session = Session(config=settings)
                 if settings.client_name:
@@ -263,13 +309,11 @@ class LocalHttpRequestHandler(BaseHTTPRequestHandler):
                 code = session.login_part1(client_id, client_secret)
                 linkurl = code.verificationUriComplete
                 xbmc.executebuiltin('RunPlugin(%s)' % plugin.url_with_qs('/login_device_code', **vars(code)))
+                html = self.server.pages.code_link_page(settings, linkurl).encode('utf-8')
             except Exception as e:
                 log.logException(e, 'Failed to get login url with device code')
-                try:
-                    footer = '%s' % e.response.json().get('error_description')
-                except:
-                    footer = '%s' % e
-            html = Pages().code_link_page(settings, linkurl, footer=footer).encode('utf-8')
+            if linkurl == _T(Msg.i30253):
+                html = self.server.pages.login_fallback_page(settings, client_unique_key, code_verifier).encode('utf-8')
             try:
                 session.cleanup() # Cleanup TIDAL session object
                 session = None
@@ -292,9 +336,25 @@ class LocalHTTPServer(HTTPServer):
         self.socket.settimeout(float(2))
         self.timeout = 2
         self.enable_messages = True
+        self.pages = Pages()
         # Cache for the last Fanart (because Kodi calls the same URL multiple times)
         self.last_fanart_ids = ''
         self.last_fanart_data = b''
+        self.mpd_cache_size = 10
+        self.mpd_cache = OrderedDict()
+
+    def get_cached_mpd(self, key):
+        while len(self.mpd_cache) > self.mpd_cache_size:
+            # Remove the oldest if cache is full (if cache size changes)
+            self.mpd_cache.popitem(last=False)
+        return self.mpd_cache.get(key, None)
+
+    def add_cached_mpd(self, key, mpd_data):
+        self.mpd_cache.pop(key, None)   # Remove old data if exist
+        self.mpd_cache[key] = mpd_data  # Add new data at the end of the OrderedDict
+        while len(self.mpd_cache) > self.mpd_cache_size:
+            # Remove the oldest if cache is full
+            self.mpd_cache.popitem(last=False)
 
     def process_request(self, request, client_address):
         try:
@@ -328,6 +388,7 @@ class TidalMonitor(xbmc.Monitor):
             try:
                 self.http_server = LocalHTTPServer(('', self.settings.fanart_server_port), LocalHttpRequestHandler)
                 self.http_server.enable_messages = self.settings.debug_json
+                self.http_server.mpd_cache_size = self.settings.mpd_cache_size
             except:
                 log.error('HTTP Server not startet on port %d' % self.settings.fanart_server_port)
                 self.http_server = LocalHTTPServer(('', 0), LocalHttpRequestHandler)
@@ -357,6 +418,7 @@ class TidalMonitor(xbmc.Monitor):
         self.settings = TidalConfig(tidal_addon=xbmcaddon.Addon(__addon_id__))
         if self.http_server:
             self.http_server.enable_messages = self.settings.debug_json
+            self.http_server.mpd_cache_size = self.settings.mpd_cache_size
 
     def run(self):
         log.info('TidalMonitor: Service Started')
@@ -450,6 +512,7 @@ class Pages(object):
             '    </div>\n'
             '  </div>\n'
             '</body>\n</html>'
+
     }
 
     def css(self, width=615, height=220, label_width=140):
@@ -462,7 +525,6 @@ class Pages(object):
         return html
 
     def login_page(self, settings, msg):
-        # Prepare login screen
         html = self.html['login_page']
         html = html.format(css=self.css(), title=settings.getAddonInfo('name'), header=_T(Msg.i30280),
                            client_name_head=_T(Msg.i30028),
@@ -477,18 +539,20 @@ class Pages(object):
                            submit=_T(Msg.i30208),  msg_head=_T(Msg.i30281), msg_text=msg)
         return html
 
-    def code_link_page(self, settings, url, footer='&nbsp;'):
+    def ok_page(self, settings, line1='&nbsp;', line2='&nbsp;', line3='&nbsp;', line4='&nbsp;', footer='&nbsp;'):
         html = self.html['ok_page']
+        return html.format(css=self.css(), title=settings.getAddonInfo('name'), header=_T(Msg.i30280),
+                           line1=line1, line2=line2, line3=line3, line4=line4, footer=footer)
+        return html
+
+    def code_link_page(self, settings, url):
         if url.lower().startswith('http'):
             redirect = '<a href="{url}">{url}</a>'
         else:
             redirect = '{url}'
-        html = html.format(css=self.css(), title=settings.getAddonInfo('name'), header=_T(Msg.i30280),
-                           line1=_T(Msg.i30209),
-                           line2='&nbsp;',
-                           line3='&nbsp;',
-                           line4=redirect.format(url=url),
-                           footer=footer)
-        return html
+        return self.ok_page(settings, line1=_T(Msg.i30209), line4=redirect.format(url=url))
+
+    def login_fallback_page(self, settings, client_unique_key, code_verifier):
+        return self.ok_page(settings, line4=_T(Msg.i30253))
 
 # End of File

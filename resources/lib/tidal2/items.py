@@ -28,7 +28,7 @@ except:
     # Python 2.7
     from urllib import quote_plus
 
-from kodi_six import xbmcgui
+from kodi_six import xbmc, xbmcgui
 from m3u8 import load as m3u8_load
 
 from .common import Const, KODI_VERSION, plugin
@@ -49,39 +49,15 @@ class HasListItem(object):
     _is_logged_in = False
 
     def setLabelFormat(self):
-        self._favorites_in_labels = settings.favorites_in_labels
-        self._user_playlists_in_labels = settings.user_playlists_in_labels
-        self._colored_labels = settings.color_mode
-        if self._colored_labels:
-            self.FOLDER_MASK = '[COLOR blue]{label}[/COLOR]'
-            if self._favorites_in_labels:
-                self.FAVORITE_MASK = '[COLOR yellow]{label}[/COLOR]'
-            else:
-                self.FAVORITE_MASK = '{label}'
-            self.STREAM_LOCKED_MASK = '[COLOR maroon]{label} ({info})[/COLOR]'
-            if self._user_playlists_in_labels:
-                self.USER_PLAYLIST_MASK = '{label} [COLOR limegreen][{userpl}][/COLOR]'
-            else:
-                self.USER_PLAYLIST_MASK = '{label}'
-            self.DEFAULT_PLAYLIST_MASK = '{label} [COLOR limegreen]({mediatype})[/COLOR]'
-            self.MASTER_AUDIO_MASK = '{label} [COLOR blue]MQA[/COLOR]'
-            self.DOLBY_ATMOS_MASK = '{label} [COLOR lightblue]Atmos[/COLOR]'
-            self.SONY_360RA_MASK = '{label} [COLOR cyan]360RA[/COLOR]'
-        else:
-            self.FOLDER_MASK = '{label}'
-            if self._favorites_in_labels:
-                self.FAVORITE_MASK = '<{label}>'
-            else:
-                self.FAVORITE_MASK = '{label}'
-            self.STREAM_LOCKED_MASK = '{label} ({info})'
-            if self._user_playlists_in_labels:
-                self.USER_PLAYLIST_MASK = '{label} [{userpl}]'
-            else:
-                self.USER_PLAYLIST_MASK = '{label}'
-            self.DEFAULT_PLAYLIST_MASK = '{label} ({mediatype})'
-            self.MASTER_AUDIO_MASK = '{label} (MQA)'
-            self.DOLBY_ATMOS_MASK = '{label} (Atmos)'
-            self.SONY_360RA_MASK = '{label} (360RA)'
+        self.FOLDER_MASK = settings.folder_mask
+        self.STREAM_LOCKED_MASK = settings.stream_locked_mask
+        self.FAVORITE_MASK = settings.favorite_mask
+        self.USER_PLAYLIST_MASK = settings.user_playlist_mask
+        self.DEFAULT_PLAYLIST_MASK = settings.default_playlist_mask
+        self.MASTER_AUDIO_MASK = settings.master_audio_mask
+        self.DOLBY_ATMOS_MASK = settings.dolby_atmos_mask
+        self.SONY_360RA_MASK = settings.sony_360ra_mask
+        self.FOLLOWER_MASK = settings.follower_mask
 
     def getLabel(self, extended=True):
         return self.name
@@ -186,26 +162,47 @@ class AlbumItem(tidal.Album, HasListItem):
     def getListItem(self):
         li = HasListItem.getListItem(self)
         url = plugin.url_for_path('/album/%s' % self.id)
-        infoLabels = {
-            'title': self.title,
-            'album': self.title,
-            'artist': self.artist.name,
-            'year': getattr(self, 'year', None),
-            'tracknumber': self._itemPosition + 1 if self._itemPosition >= 0 else 0,
-        }
-        try:
-            if self.streamStartDate:
-                infoLabels.update({'date': self.streamStartDate.date().strftime('%d.%m.%Y')})
-            elif self.releaseDate:
-                infoLabels.update({'date': self.releaseDate.date().strftime('%d.%m.%Y')})
-        except:
-            pass
-        if KODI_VERSION >= (17, 0):
-            infoLabels.update({'mediatype': 'album',
-                               'rating': '%s' % int(round(self.popularity / 10.0)),
-                               'userrating': '%s' % int(round(self.popularity / 10.0))
-                               })
-        li.setInfo('music', infoLabels)
+        if KODI_VERSION >= (20, 0):
+            tag = li.getMusicInfoTag()
+            tag.setMediaType('album')
+            tag.setTitle(self.title)
+            tag.setAlbum(self.title)
+            tag.setArtist(self.artist.name)
+            tag.setAlbumArtist(self.artist.name)
+            tag.setDuration(self.duration if self.duration > 0 else 0)
+            tag.setTrack(self._itemPosition + 1 if self._itemPosition >= 0 else 0)
+            if isinstance(self.releaseDate, datetime.datetime):
+                tag.setReleaseDate(self.releaseDate.date().strftime('%Y-%m-%d'))
+                li.setDateTime(self.releaseDate.date().strftime('%Y-%m-%dT00:00:00'))
+            elif isinstance(self.streamStartDate, datetime.datetime):
+                tag.setReleaseDate(self.streamStartDate.date().strftime('%Y-%m-%d'))
+                li.setDateTime(self.streamStartDate.date().strftime('%Y-%m-%dT00:00:00'))
+            else:
+                if self.year: tag.setYear(self.year)
+            tag.setRating(self.popularity / 10.0)
+            tag.setUserRating(int(round(self.popularity / 10.0)))
+        else:
+            infoLabels = {
+                'title': self.title,
+                'album': self.title,
+                'artist': self.artist.name,
+                'year': getattr(self, 'year', None),
+                'duration': self.duration,
+                'tracknumber': self._itemPosition + 1 if self._itemPosition >= 0 else 0,
+            }
+            try:
+                if self.streamStartDate:
+                    infoLabels.update({'date': self.streamStartDate.date().strftime('%d.%m.%Y')})
+                elif self.releaseDate:
+                    infoLabels.update({'date': self.releaseDate.date().strftime('%d.%m.%Y')})
+            except:
+                pass
+            if KODI_VERSION >= (17, 0):
+                infoLabels.update({'mediatype': 'album',
+                                   'rating': '%s' % int(round(self.popularity / 10.0)),
+                                   'userrating': '%s' % int(round(self.popularity / 10.0))
+                                   })
+            li.setInfo('music', infoLabels)
         return (url, li, True)
 
     def getContextMenuItems(self):
@@ -250,13 +247,20 @@ class ArtistItem(tidal.Artist, HasListItem):
     def getListItem(self):
         li = HasListItem.getListItem(self)
         url = plugin.url_for_path('/artist/%s' % self.id)
-        infoLabel = {'artist': self.name}
-        if KODI_VERSION >= (17, 0):
-            infoLabel.update({'mediatype': 'artist',
-                              'rating': '%s' % int(round(self.popularity / 10.0)),
-                              'userrating': '%s' % int(round(self.popularity / 10.0))
-                              })
-        li.setInfo('music', infoLabel)
+        if KODI_VERSION >= (20, 0):
+            tag = li.getMusicInfoTag()
+            tag.setMediaType('artist')
+            tag.setArtist(self.name)
+            tag.setRating(self.popularity / 10.0)
+            tag.setUserRating(int(round(self.popularity / 10.0)))
+        else:
+            infoLabel = {'artist': self.name}
+            if KODI_VERSION >= (17, 0):
+                infoLabel.update({'mediatype': 'artist',
+                                  'rating': '%s' % int(round(self.popularity / 10.0)),
+                                  'userrating': '%s' % int(round(self.popularity / 10.0))
+                                  })
+            li.setInfo('music', infoLabel)
         return (url, li, True)
 
     def getContextMenuItems(self):
@@ -299,22 +303,36 @@ class FolderItem(tidal.Folder, HasListItem):
     def getListItem(self):
         li = HasListItem.getListItem(self)
         url = plugin.url_for_path('/user_folders/%s' % self.id)
-        infoLabel = {
-            'artist': self.name,
-            'title': '%s: %s' % (_P('playlists'), self.totalNumberOfItems),
-            'genre': '%s: %s' % (_P('playlists'), self.totalNumberOfItems),
-            'tracknumber': self._itemPosition + 1 if self._itemPosition >= 0 else 0
-        }
-        if KODI_VERSION >= (17, 0):
-            infoLabel.update({'mediatype': 'music'})
-        try:
-            if self.lastModifiedAt:
-                infoLabel.update({'date': self.lastModifiedAt.date().strftime('%d.%m.%Y')})
-            elif self.createdAt:
-                infoLabel.update({'date': self.createdAt.date().strftime('%d.%m.%Y')})
-        except:
-            pass
-        li.setInfo('music', infoLabel)
+        if KODI_VERSION >= (20, 0):
+            tag = li.getMusicInfoTag()
+            tag.setMediaType('music')
+            tag.setArtist(self.name)
+            tag.setTitle('%s: %s' % (_P('playlists'), self.totalNumberOfItems))
+            tag.setGenres(['%s: %s' % (_P('playlists'), self.totalNumberOfItems)])
+            tag.setTrack(self._itemPosition + 1 if self._itemPosition >= 0 else 0)
+            if isinstance(self.lastModifiedAt, datetime.datetime):
+                tag.setReleaseDate(self.lastModifiedAt.date().strftime('%Y-%m-%d'))
+                li.setDateTime(self.lastModifiedAt.date().strftime('%Y-%m-%dT00:00:00'))
+            elif isinstance(self.createdAt, datetime.datetime):
+                tag.setReleaseDate(self.createdAt.date().strftime('%Y-%m-%d'))
+                li.setDateTime(self.createdAt.date().strftime('%Y-%m-%dT00:00:00'))
+        else:
+            infoLabel = {
+                'artist': self.name,
+                'title': '%s: %s' % (_P('playlists'), self.totalNumberOfItems),
+                'genre': '%s: %s' % (_P('playlists'), self.totalNumberOfItems),
+                'tracknumber': self._itemPosition + 1 if self._itemPosition >= 0 else 0
+            }
+            if KODI_VERSION >= (17, 0):
+                infoLabel.update({'mediatype': 'music'})
+            try:
+                if self.lastModifiedAt:
+                    infoLabel.update({'date': self.lastModifiedAt.date().strftime('%d.%m.%Y')})
+                elif self.createdAt:
+                    infoLabel.update({'date': self.createdAt.date().strftime('%d.%m.%Y')})
+            except:
+                pass
+            li.setInfo('music', infoLabel)
         return (url, li, True)
 
     def getContextMenuItems(self):
@@ -338,7 +356,7 @@ class MixItem(tidal.Mix, HasListItem):
     def getLabel(self, extended=True):
         self.setLabelFormat()
         label = self.getLongTitle()
-        if extended and self._isFavorite and not '/favorites/' in sys.argv[0] and not '/folder/' in sys.argv[0]:
+        if extended and self._isFavorite and not '/favorites/' in sys.argv[0]:
             label = self.FAVORITE_MASK.format(label=label)
         return label
 
@@ -357,8 +375,8 @@ class MixItem(tidal.Mix, HasListItem):
             if sortType == ItemSortType.DATE:
                 if isinstance(self.dateAdded, datetime.datetime):
                     criteria = '%04d%02d%02d%08d' % (self.dateAdded.year, self.dateAdded.month, self.dateAdded.day, self._itemPosition)
-                elif isinstance(self.streamStartDate, datetime.datetime):
-                    criteria = '%04d%02d%02d%08d' % (self.streamStartDate.year, self.streamStartDate.month, self.streamStartDate.day, self._itemPosition)
+                elif isinstance(self.updated, datetime.datetime):
+                    criteria = '%04d%02d%02d%08d' % (self.updated.year, self.updated.month, self.updated.day, self._itemPosition)
         except:
             pass
         return criteria
@@ -366,13 +384,25 @@ class MixItem(tidal.Mix, HasListItem):
     def getListItem(self):
         li = HasListItem.getListItem(self)
         url = plugin.url_for_path('/mix/%s' % self.id)
-        infoLabel = {
-            'title': self.title,
-            'album': self.subTitle
-        }
-        if KODI_VERSION >= (17, 0):
-            infoLabel.update({'mediatype': 'music'})
-        li.setInfo('music', infoLabel)
+        if KODI_VERSION >= (20, 0):
+            tag = li.getMusicInfoTag()
+            tag.setMediaType('music')
+            tag.setTitle(self.title)
+            tag.setAlbum(self.subTitle)
+            if isinstance(self.dateAdded, datetime.datetime):
+                tag.setReleaseDate(self.dateAdded.date().strftime('%Y-%m-%d'))
+                li.setDateTime(self.dateAdded.date().strftime('%Y-%m-%dT00:00:00'))
+            elif isinstance(self.updated, datetime.datetime):
+                tag.setReleaseDate(self.updated.date().strftime('%Y-%m-%d'))
+                li.setDateTime(self.updated.date().strftime('%Y-%m-%dT00:00:00'))
+        else:
+            infoLabel = {
+                'title': self.title,
+                'album': self.subTitle
+            }
+            if KODI_VERSION >= (17, 0):
+                infoLabel.update({'mediatype': 'music'})
+            li.setInfo('music', infoLabel)
         return (url, li, True)
 
     def getContextMenuItems(self):
@@ -403,7 +433,7 @@ class PlaylistItem(tidal.Playlist, HasListItem):
     def getLabel(self, extended=True):
         self.setLabelFormat()
         label = self.name
-        if extended and self._isFavorite and not '/favorites/' in sys.argv[0] and not '/folder/' in sys.argv[0]:
+        if extended and self._isFavorite and not '/favorites/' in sys.argv[0]:
             label = self.FAVORITE_MASK.format(label=label)
         if self.isUserPlaylist and ('user_playlists' in sys.argv[0] or 'user_folders' in sys.argv[0]):
             defaultpl = []
@@ -414,9 +444,11 @@ class PlaylistItem(tidal.Playlist, HasListItem):
             if str(self.id) == settings.default_albumplaylist_id:
                 defaultpl.append(_P('albums'))
             if len(defaultpl) > 0:
-                return self.DEFAULT_PLAYLIST_MASK.format(label=label, mediatype=', '.join(defaultpl))
+                label = self.DEFAULT_PLAYLIST_MASK.format(label=label, mediatype=', '.join(defaultpl))
         if extended and self.parentFolderId and not 'user_folders' in sys.argv[0]:
             label = self.USER_PLAYLIST_MASK.format(label=label, userpl=self.parentFolderName)
+        if extended and self.isPublic and not 'my_public_playlists' in sys.argv[0]:
+            label = self.FOLLOWER_MASK.format(label=label, follower=self.creatorName or _T(Msg.i30311))
         return label
 
     def getSortCriteria(self, sortType=ItemSortType.DATE):
@@ -437,24 +469,43 @@ class PlaylistItem(tidal.Playlist, HasListItem):
         if self.isUserPlaylist and settings.album_playlist_tag in self.description:
             path = '/playlist/%s/albums'
         url = plugin.url_for_path(path % self.id)
-        infoLabel = {
-            'artist': self.title,
-            'album': self.description,
-            'title': _T(Msg.i30243).format(tracks=self.numberOfTracks, videos=self.numberOfVideos),
-            'genre': _T(Msg.i30243).format(tracks=self.numberOfTracks, videos=self.numberOfVideos),
-            'tracknumber': self._itemPosition + 1 if self._itemPosition >= 0 else 0
-        }
-        try:
-            if self.lastUpdated:
-                infoLabel.update({'date': self.lastUpdated.date().strftime('%d.%m.%Y')})
-            elif self.creationDate:
-                infoLabel.update({'date': self.creationDate.date().strftime('%d.%m.%Y')})
-        except:
-            pass
-        if KODI_VERSION >= (17, 0):
-            infoLabel.update({'mediatype': 'music',
-                              'userrating': '%s' % int(round(self.popularity / 10.0))})
-        li.setInfo('music', infoLabel)
+        if KODI_VERSION >= (20, 0):
+            tag = li.getMusicInfoTag()
+            tag.setMediaType('music')
+            tag.setArtist(self.title)
+            tag.setAlbum(self.description)
+            tag.setDuration(self.duration)
+            tag.setTitle(_T(Msg.i30243).format(tracks=self.numberOfTracks, videos=self.numberOfVideos))
+            tag.setGenres([_T(Msg.i30243).format(tracks=self.numberOfTracks, videos=self.numberOfVideos)])
+            tag.setTrack(self._itemPosition + 1 if self._itemPosition >= 0 else 0)
+            if isinstance(self.lastUpdated, datetime.datetime):
+                tag.setReleaseDate(self.lastUpdated.date().strftime('%Y-%m-%d'))
+                li.setDateTime(self.lastUpdated.date().strftime('%Y-%m-%dT00:00:00'))
+            elif isinstance(self.creationDate, datetime.datetime):
+                tag.setReleaseDate(self.creationDate.date().strftime('%Y-%m-%d'))
+                li.setDateTime(self.creationDate.date().strftime('%Y-%m-%dT00:00:00'))
+            tag.setRating(self.popularity / 10.0)
+            tag.setUserRating(int(round(self.popularity / 10.0)))
+        else:
+            infoLabel = {
+                'artist': self.title,
+                'album': self.description,
+                'duration': self.duration,
+                'title': _T(Msg.i30243).format(tracks=self.numberOfTracks, videos=self.numberOfVideos),
+                'genre': _T(Msg.i30243).format(tracks=self.numberOfTracks, videos=self.numberOfVideos),
+                'tracknumber': self._itemPosition + 1 if self._itemPosition >= 0 else 0
+            }
+            try:
+                if self.lastUpdated:
+                    infoLabel.update({'date': self.lastUpdated.date().strftime('%d.%m.%Y')})
+                elif self.creationDate:
+                    infoLabel.update({'date': self.creationDate.date().strftime('%d.%m.%Y')})
+            except:
+                pass
+            if KODI_VERSION >= (17, 0):
+                infoLabel.update({'mediatype': 'music',
+                                  'userrating': '%s' % int(round(self.popularity / 10.0))})
+            li.setInfo('music', infoLabel)
         return (url, li, True)
 
     def getContextMenuItems(self):
@@ -468,11 +519,17 @@ class PlaylistItem(tidal.Playlist, HasListItem):
         if self._is_logged_in:
             if self.isUserPlaylist: # and ('user_playlists' in sys.argv[0] or 'user_folders' in sys.argv[0]):
                 cm.append((_T(Msg.i30266).format(what=_T('playlist'))+' ...', 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist_cm/%s' % self.id)))
+                if self.isPublic:
+                    cm.append((_T(Msg.i30315), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/set_private/%s' % self.id)))
+                else:
+                    cm.append((_T(Msg.i30314), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/set_public/%s' % self.id)))
             else:
                 if self._isFavorite:
                     cm.append((_T(Msg.i30220), 'RunPlugin(%s)' % plugin.url_for_path('/favorites/remove/playlists/%s' % self.id)))
                 else:
                     cm.append((_T(Msg.i30219), 'RunPlugin(%s)' % plugin.url_for_path('/favorites/add/playlists/%s' % self.id)))
+                if '%s' % self.creatorId != '%s' % settings.user_id:
+                    cm.append((_T(Msg.i30292).format(what=self.creatorName or _T('userprofile')), 'Container.Update(%s)' % plugin.url_for_path('/userprofile/%s' % self.creatorId)))
             cm.append((_T(Msg.i30239).format(what=_T('playlist'))+' ...', 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/add/playlist/%s' % self.id)))
             if self.parentFolderId:
                 cm.append((_T(Msg.i30240).format(what=_T('folder'))+' ...', 'RunPlugin(%s)' % plugin.url_for_path('/user_folder/remove/%s/%s' % (self.parentFolderId, self.id))))
@@ -573,32 +630,54 @@ class TrackItem(tidal.Track, HasListItem):
         longTitle = self.title
         if self.explicit and not 'Explicit' in self.title:
             longTitle += ' (Explicit)'
-        infoLabel = {
-            'title': longTitle,
-            'tracknumber': self._playlist_pos + 1 if self._playlist_id else self._itemPosition + 1 if self._itemPosition >= 0 else self.trackNumber,
-            'discnumber': self.volumeNumber,
-            'duration': self.duration,
-            'artist': self.artist.name,
-            'album': self.album.title,
-            'year': getattr(self, 'year', None),
-            'rating': '%s' % int(round(self.popularity / 10.0)),
-            'comment': self.getComment()
-        }
-        if lyrics:
-            infoLabel.update({'lyrics': lyrics.subtitles})
-            li.setProperty('culrc.source', Const.addon_id)
-        try:
-            if self.streamStartDate:
-                infoLabel.update({'date': self.streamStartDate.date().strftime('%d.%m.%Y')})
-            elif self.releaseDate:
-                infoLabel.update({'date': self.releaseDate.date().strftime('%d.%m.%Y')})
-        except:
-            pass
-        if KODI_VERSION >= (17, 0):
-            infoLabel.update({'mediatype': 'song',
-                              'userrating': '%s' % int(round(self.popularity / 10.0))
-                              })
-        li.setInfo('music', infoLabel)
+        if KODI_VERSION >= (20, 0):
+            tag = li.getMusicInfoTag()
+            tag.setMediaType('song')
+            tag.setTitle(longTitle)
+            tag.setTrack(self._playlist_pos + 1 if self._playlist_id else self._itemPosition + 1 if self._itemPosition >= 0 else self.trackNumber)
+            tag.setDisc(self.volumeNumber)
+            tag.setDuration(self.duration)
+            tag.setArtist(self.artist.name)
+            tag.setAlbumArtist(self.artist.name)
+            tag.setAlbum(self.album.title)
+            tag.setRating(self.popularity / 10.0)
+            tag.setUserRating(int(round(self.popularity / 10.0)))
+            tag.setComment(self.getComment())
+            if lyrics:
+                tag.setLyrics(lyrics.subtitles)
+                li.setProperty('culrc.source', Const.addon_id)
+            if isinstance(self.streamStartDate, datetime.datetime):
+                tag.setReleaseDate(self.streamStartDate.date().strftime('%Y-%m-%d'))
+                li.setDateTime(self.streamStartDate.date().strftime('%Y-%m-%dT00:00:00'))
+            elif self.year:
+                tag.setYear(self.year),
+        else:
+            infoLabel = {
+                'title': longTitle,
+                'tracknumber': self._playlist_pos + 1 if self._playlist_id else self._itemPosition + 1 if self._itemPosition >= 0 else self.trackNumber,
+                'discnumber': self.volumeNumber,
+                'duration': self.duration,
+                'artist': self.artist.name,
+                'album': self.album.title,
+                'year': getattr(self, 'year', None),
+                'rating': '%s' % int(round(self.popularity / 10.0)),
+                'comment': self.getComment()
+            }
+            if lyrics:
+                infoLabel.update({'lyrics': lyrics.subtitles})
+                li.setProperty('culrc.source', Const.addon_id)
+            try:
+                if self.streamStartDate:
+                    infoLabel.update({'date': self.streamStartDate.date().strftime('%d.%m.%Y')})
+                elif self.releaseDate:
+                    infoLabel.update({'date': self.releaseDate.date().strftime('%d.%m.%Y')})
+            except:
+                pass
+            if KODI_VERSION >= (17, 0):
+                infoLabel.update({'mediatype': 'song',
+                                  'userrating': '%s' % int(round(self.popularity / 10.0))
+                                  })
+            li.setInfo('music', infoLabel)
         return (url, li, isFolder)
 
     def getContextMenuItems(self):
@@ -711,40 +790,58 @@ class VideoItem(tidal.Video, HasListItem):
         else:
             url = plugin.url_for_path('/stream_locked')
             isFolder = True
-        infoLabel = {
-            'artist': [self.artist.name],
-            'title': self.title,
-            'tracknumber': self._playlist_pos + 1 if self._playlist_id else self._itemPosition + 1,
-            'year': getattr(self, 'year', None),
-            'plotoutline': self.getComment(),
-            'plot': self.getFtArtistsText()
-        }
-        musicLabel = {
-            'artist': self.artist.name,
-            'title': self.title,
-            'tracknumber': self._playlist_pos + 1 if self._playlist_id else self._itemPosition + 1,
-            'year': getattr(self, 'year', None),
-            'comment': self.getComment()
-        }
-        try:
-            if self.streamStartDate:
-                infoLabel.update({'date': self.streamStartDate.date().strftime('%d.%m.%Y')})
-                musicLabel.update({'date': self.streamStartDate.date().strftime('%d.%m.%Y')})
-            elif self.releaseDate:
-                infoLabel.update({'date': self.releaseDate.date().strftime('%d.%m.%Y')})
-                musicLabel.update({'date': self.releaseDate.date().strftime('%d.%m.%Y')})
-        except:
-            pass
-        if KODI_VERSION >= (17, 0):
-            infoLabel.update({'mediatype': 'musicvideo',
-                              'rating': '%s' % int(round(self.popularity / 10.0)),
-                              'userrating': '%s' % int(round(self.popularity / 10.0))
-                              })
-        li.setInfo('video', infoLabel)
-        # li.setInfo('music', musicLabel)
-        li.addStreamInfo('video', { 'codec': 'h264', 'aspect': 1.78, 'width': 1920,
-                         'height': 1080, 'duration': self.duration })
-        li.addStreamInfo('audio', { 'codec': 'AAC', 'language': 'en', 'channels': 2 })
+        if KODI_VERSION >= (20, 0):
+            tag = li.getVideoInfoTag()
+            tag.setMediaType('musicvideo')
+            tag.setArtists([self.artist.name])
+            tag.setTitle(self.title)
+            tag.setTrackNumber(self._playlist_pos + 1 if self._playlist_id else self._itemPosition + 1)
+            if self.year: tag.setYear(self.year)
+            tag.setPlotOutline(self.getComment())
+            tag.setPlot(self.getFtArtistsText())
+            if isinstance(self.streamStartDate, datetime.datetime):
+                li.setDateTime(self.streamStartDate.date().strftime('Y-%m-%dT00:00:00'))
+            elif isinstance(self.releaseDate, datetime.datetime):
+                li.setDateTime(self.releaseDate.date().strftime('%Y-%m-dT00:00:00'))
+            tag.setRating(self.popularity / 10.0)
+            tag.setUserRating(int(round(self.popularity / 10.0)))
+            vtag = li.getVideoInfoTag()
+            vtag.addVideoStream(xbmc.VideoStreamDetail(width=1920, height=1080, aspect=1.78, duration=self.duration, codec='h264'))
+            vtag.addAudioStream(xbmc.AudioStreamDetail(channels=2, codec='AAC', language='en'))
+        else:
+            infoLabel = {
+                'artist': [self.artist.name],
+                'title': self.title,
+                'tracknumber': self._playlist_pos + 1 if self._playlist_id else self._itemPosition + 1,
+                'year': getattr(self, 'year', None),
+                'plotoutline': self.getComment(),
+                'plot': self.getFtArtistsText()
+            }
+            musicLabel = {
+                'artist': self.artist.name,
+                'title': self.title,
+                'tracknumber': self._playlist_pos + 1 if self._playlist_id else self._itemPosition + 1,
+                'year': getattr(self, 'year', None),
+                'comment': self.getComment()
+            }
+            try:
+                if self.streamStartDate:
+                    infoLabel.update({'date': self.streamStartDate.date().strftime('%d.%m.%Y')})
+                    musicLabel.update({'date': self.streamStartDate.date().strftime('%d.%m.%Y')})
+                elif self.releaseDate:
+                    infoLabel.update({'date': self.releaseDate.date().strftime('%d.%m.%Y')})
+                    musicLabel.update({'date': self.releaseDate.date().strftime('%d.%m.%Y')})
+            except:
+                pass
+            if KODI_VERSION >= (17, 0):
+                infoLabel.update({'mediatype': 'musicvideo',
+                                  'rating': '%s' % int(round(self.popularity / 10.0)),
+                                  'userrating': '%s' % int(round(self.popularity / 10.0))
+                                  })
+            li.setInfo('video', infoLabel)
+            # li.setInfo('music', musicLabel)
+            li.addStreamInfo('video', { 'codec': 'h264', 'aspect': 1.78, 'width': 1920, 'height': 1080, 'duration': self.duration })
+            li.addStreamInfo('audio', { 'codec': 'AAC', 'language': 'en', 'channels': 2 })
         return (url, li, isFolder)
 
     def getContextMenuItems(self):
@@ -815,53 +912,91 @@ class PromotionItem(tidal.Promotion, HasListItem):
         isFolder = True
         if self.type == 'PLAYLIST':
             url = plugin.url_for_path('/playlist/%s/items' % self.id)
-            infoLabel = {
-                'artist': self.shortHeader,
-                'album': self.text,
-                'title': self.shortSubHeader
-            }
-            if KODI_VERSION >= (17, 0):
-                infoLabel.update({'userrating': '%s' % int(round(self.popularity / 10.0))})
-            li.setInfo('music', infoLabel)
+            if KODI_VERSION >= (20, 0):
+                tag = li.getMusicInfoTag()
+                tag.setMediaType('music')
+                tag.setArtist(self.shortHeader)
+                tag.setAlbum(self.text)
+                tag.setTitle(self.shortSubHeader)
+                tag.setRating(self.popularity / 10.0)
+                tag.setUserRating(int(round(self.popularity / 10.0)))
+            else:
+                infoLabel = {
+                    'artist': self.shortHeader,
+                    'album': self.text,
+                    'title': self.shortSubHeader
+                }
+                if KODI_VERSION >= (17, 0):
+                    infoLabel.update({'userrating': '%s' % int(round(self.popularity / 10.0))})
+                li.setInfo('music', infoLabel)
         elif self.type == 'ALBUM':
             url = plugin.url_for_path('/album/%s' % self.id)
-            infoLabel = {
-                'artist': self.shortHeader,
-                'album': self.text,
-                'title': self.shortSubHeader
-            }
-            if KODI_VERSION >= (17, 0):
-                infoLabel.update({'mediatype': 'album',
-                                  'userrating': '%s' % int(round(self.popularity / 10.0))
-                                  })
-            li.setInfo('music', infoLabel)
+            if KODI_VERSION >= (20, 0):
+                tag = li.getMusicInfoTag()
+                tag.setMediaType('music')
+                tag.setArtist(self.shortHeader)
+                tag.setAlbum(self.text)
+                tag.setTitle(self.shortSubHeader)
+                tag.setRating(self.popularity / 10.0)
+                tag.setUserRating(int(round(self.popularity / 10.0)))
+            else:
+                infoLabel = {
+                    'artist': self.shortHeader,
+                    'album': self.text,
+                    'title': self.shortSubHeader
+                }
+                if KODI_VERSION >= (17, 0):
+                    infoLabel.update({'mediatype': 'album',
+                                      'userrating': '%s' % int(round(self.popularity / 10.0))
+                                      })
+                li.setInfo('music', infoLabel)
         elif self.type == 'VIDEO':
             url = plugin.url_for_path('/play_video/%s' % self.id)
-            infoLabel = {
-                'artist': [self.shortHeader],
-                'album': self.text,
-                'title': self.shortSubHeader
-            }
-            if KODI_VERSION >= (17, 0):
-                infoLabel.update({'mediatype': 'musicvideo',
-                                  'userrating': '%s' % int(round(self.popularity / 10.0))
-                                  })
-            li.setInfo('video', infoLabel)
+            if KODI_VERSION >= (20, 0):
+                tag = li.getVideoInfoTag()
+                tag.setMediaType('musicvideo')
+                tag.setArtist([self.shortHeader])
+                tag.setAlbum(self.text)
+                tag.setTitle(self.shortSubHeader)
+                tag.setRating(self.popularity / 10.0)
+                tag.setUserRating(int(round(self.popularity / 10.0)))
+                vtag = li.getVideoInfoTag()
+                vtag.addVideoStream(xbmc.VideoStreamDetail(width=1920, height=1080, aspect=1.78, duration=self.duration, codec='h264'))
+                vtag.addAudioStream(xbmc.AudioStreamDetail(channels=2, codec='AAC', language='en'))
+            else:
+                infoLabel = {
+                    'artist': [self.shortHeader],
+                    'album': self.text,
+                    'title': self.shortSubHeader
+                }
+                if KODI_VERSION >= (17, 0):
+                    infoLabel.update({'mediatype': 'musicvideo',
+                                      'userrating': '%s' % int(round(self.popularity / 10.0))
+                                      })
+                li.setInfo('video', infoLabel)
+                li.addStreamInfo('video', { 'codec': 'h264', 'aspect': 1.78, 'width': 1920, 'height': 1080, 'duration': self.duration })
+                li.addStreamInfo('audio', { 'codec': 'AAC', 'language': 'en', 'channels': 2 })
             li.setProperty('isplayable', 'true')
             isFolder = False
-            li.addStreamInfo('video', { 'codec': 'h264', 'aspect': 1.78, 'width': 1920,
-                             'height': 1080, 'duration': self.duration })
-            li.addStreamInfo('audio', { 'codec': 'AAC', 'language': 'en', 'channels': 2 })
         elif self.type == 'ARTIST':
             url = plugin.url_for_path('/artist/%s' % self.id)
-            infoLabel = {
-                'artist': self.shortHeader,
-                'album': self.text,
-                'title': self.shortSubHeader
-            }
-            if KODI_VERSION >= (17, 0):
-                infoLabel.update({'userrating': '%s' % int(round(self.popularity / 10.0))})
-            li.setInfo('music', infoLabel)
+            if KODI_VERSION >= (20, 0):
+                tag = li.getMusicInfoTag()
+                tag.setMediaType('artist')
+                tag.setArtist(self.shortHeader)
+                tag.setAlbum(self.text)
+                tag.setTitle(self.shortSubHeader)
+                tag.setRating(self.popularity / 10.0)
+                tag.setUserRating(int(round(self.popularity / 10.0)))
+            else:
+                infoLabel = {
+                    'artist': self.shortHeader,
+                    'album': self.text,
+                    'title': self.shortSubHeader
+                }
+                if KODI_VERSION >= (17, 0):
+                    infoLabel.update({'userrating': '%s' % int(round(self.popularity / 10.0))})
+                li.setInfo('music', infoLabel)
         else:
             return (None, None, False)
         return (url, li, isFolder)
@@ -923,9 +1058,14 @@ class CategoryItem(tidal.Category, HasListItem):
             url = plugin.url_for_path('/category/%s/%s' % (self._group, self.path))
             self._label = _P(self.path, self.name)
             li = HasListItem.getListItem(self)
-            li.setInfo('music', {
-                'artist': self._label
-            })
+            if KODI_VERSION >= (20, 0):
+                tag = li.getMusicInfoTag()
+                tag.setMediaType('music')
+                tag.setArtist(self._label)
+            else:
+                li.setInfo('music', {
+                    'artist': self._label
+                })
             items.append((url, li, True))
         else:
             for content_type in content_types:
@@ -941,12 +1081,58 @@ class CategoryItem(tidal.Category, HasListItem):
                     # Use Path as folder because content type is shows as sub foldes
                     self._label = _P(self.path, self.name)
                 li = HasListItem.getListItem(self)
-                li.setInfo('music', {
-                    'artist': _P(self.path, self.name),
-                    'album': _P(content_type)
-                })
+                if KODI_VERSION >= (20, 0):
+                    tag = li.getMusicInfoTag()
+                    tag.setMediaType('music')
+                    tag.setArtist(_P(self.path, self.name))
+                    tag.setAlbum(_P(content_type))
+                else:
+                    li.setInfo('music', {
+                        'artist': _P(self.path, self.name),
+                        'album': _P(content_type)
+                    })
                 items.append((url, li, True))
         return items
+
+
+class UserProfileItem(tidal.UserProfile, HasListItem):
+
+    def __init__(self, item):
+        self.__dict__.update(vars(item))
+
+    def getLabel(self, extended=True):
+        self.setLabelFormat()
+        label = self.name
+        if extended:
+            if self.blocked:
+                label = self.STREAM_LOCKED_MASK.format(label=label, info=_T(Msg.i30242))
+            if self.imFollowing and not 'im_following' in sys.argv[0]:
+                label = self.FOLLOWER_MASK.format(label=label, follower=_T(Msg.i30313))
+        return label
+
+    def getListItem(self):
+        li = HasListItem.getListItem(self)
+        url = plugin.url_for_path('/userprofile/%s' % self.id)
+        if KODI_VERSION >= (20, 0):
+            tag = li.getMusicInfoTag()
+            tag.setMediaType('music')
+            tag.setArtist(self.name)
+            tag.setGenres([_T(Msg.i30313) if self.imFollowing else ''])
+        else:
+            li.setInfo('music', {
+                'mediatype': 'artist',
+                'artist': self.name,
+                'genre': _T(Msg.i30313) if self.imFollowing else ''
+            })
+        return (url, li, True)
+
+    def getContextMenuItems(self):
+        cm = []
+        if self.imFollowing:
+            cm.append((_T(Msg.i30319), 'RunPlugin(%s)' % plugin.url_for_path('/unfollow_user/%s' % self.id)))
+        else:
+            cm.append((_T(Msg.i30318), 'RunPlugin(%s)' % plugin.url_for_path('/follow_user/%s' % self.id)))
+        return cm
 
 
 class DirectoryItem(tidal.BrowsableMedia, HasListItem):
@@ -968,9 +1154,14 @@ class DirectoryItem(tidal.BrowsableMedia, HasListItem):
 
     def getListItem(self):
         li = HasListItem.getListItem(self)
-        li.setInfo('music', {
-            'artist': self.name
-        })
+        if KODI_VERSION >= (20, 0):
+            tag = li.getMusicInfoTag()
+            tag.setMediaType('music')
+            tag.setArtist(self.name)
+        else:
+            li.setInfo('music', {
+                'artist': self.name
+            })
         return (self._url, li, self._isFolder)
 
     @property
@@ -994,48 +1185,62 @@ class TrackUrlItem(tidal.TrackUrl, HasListItem):
     def getLabel(self, extended=False):
         return _T('track') + '-%s' % self.trackId
 
+    def use_ffmpegdirect(self, li, use_hls=False):
+        log.info("Using inputstream.ffmpegdirect for %s playback" % ('HLS' if use_hls else 'MPD'))
+        li.setContentLookup(False)
+        if KODI_VERSION >= (20, 0):
+            li.getVideoInfoTag().addAudioStream(xbmc.AudioStreamDetail(channels=2, codec='flac', language='en'))
+        else:
+            li.addStreamInfo('audio', { 'codec': 'flac', 'language': 'en', 'channels': 2 })
+        self.url = 'http://localhost:%s/manifest.%s?track_id=%s&quality=%s' % (settings.fanart_server_port, 'm3u8' if use_hls else 'mpd', self.trackId, self._requested_quality)
+        li.setMimeType('application/vnd.apple.mpegurl' if use_hls else 'application/dash+xml')
+        li.setProperty('inputstream' if KODI_VERSION >= (19, 0) else 'inputstreamaddon', 'inputstream.ffmpegdirect')
+        li.setProperty('inputstream.ffmpegdirect.open_mode', 'ffmpeg')
+        # li.setProperty('inputstream.ffmpegdirect.is_realtime_stream', 'true')
+        li.setProperty('inputstream.ffmpegdirect.manifest_type', 'hls' if use_hls else 'mpd')
+        xbmcgui.Window(10000).setProperty('tidal2.%s' % self.trackId, quote_plus(self.manifest))
+
+    def use_adaptive(self, li, use_hls=False):
+        log.info("Using inputstream.adaptive for %s playback" % ('HLS' if use_hls else 'MPD'))
+        li.setContentLookup(False)
+        if KODI_VERSION >= (20, 0):
+            tag = li.getVideoInfoTag()
+            tag.addAudioStream(xbmc.AudioStreamDetail(channels=2, codec='aac', language='en'))
+        else:
+            li.addStreamInfo('audio', { 'codec': 'aac', 'language': 'en', 'channels': 2 })
+        self.url = 'http://localhost:%s/manifest.%s?track_id=%s&quality=%s' % (settings.fanart_server_port, 'm3u8' if use_hls else 'mpd', self.trackId, self._requested_quality)
+        li.setMimeType('application/vnd.apple.mpegurl' if use_hls else 'application/dash+xml')
+        li.setProperty('inputstream' if KODI_VERSION >= (19, 0) else 'inputstreamaddon', 'inputstream.adaptive')
+        li.setProperty('inputstream.adaptive.manifest_type', 'HLS' if use_hls else 'mpd')
+        # li.setProperty('inputstream.adaptive.manifest_update_parameter', 'full')
+        xbmcgui.Window(10000).setProperty('tidal2.%s' % self.trackId, quote_plus(self.manifest))
+
     def getListItem(self, track=None):
         if isinstance(track, TrackItem):
             li = track.getListItem()[1]
         else:
             li = xbmcgui.ListItem()
-        li.setProperty('mimetype', self.get_mimeType())
         if self.isDASH:
             log.info("Got Dash stream with MimeType: %s" % self.get_mimeType())
             if (tidal.MimeType.isFLAC(self.get_mimeType()) and settings.dash_flac_mode == Const.is_ffmpegdirect) or \
                (not tidal.MimeType.isFLAC(self.get_mimeType()) and settings.dash_aac_mode == Const.is_ffmpegdirect):
-                li.setContentLookup(False)
-                li.setProperty('inputstream' if KODI_VERSION >= (19, 0) else 'inputstreamaddon', 'inputstream.ffmpegdirect')
-                li.setProperty('inputstream.ffmpegdirect.open_mode', 'ffmpeg')
-                li.addStreamInfo('audio', { 'codec': 'flac', 'language': 'en', 'channels': 2 })
-                # li.setProperty('inputstream.ffmpegdirect.is_realtime_stream', 'true')
-                if settings.ffmpegdirect_has_mpd:
-                    log.info("Using inputstream.ffmpegdirect for MPD playback")
-                    self.url = 'http://localhost:%s/manifest.mpd?data=%s' % (settings.fanart_server_port, quote_plus(self.manifest))
-                    li.setMimeType('application/dash+xml')
-                    li.setProperty('inputstream.ffmpegdirect.manifest_type', 'mpd')
-                else:
-                    log.info("Using inputstream.ffmpegdirect for HLS playback")
-                    self.url = 'http://localhost:%s/manifest.m3u8?data=%s' % (settings.fanart_server_port, quote_plus(self.manifest))
-                    li.setMimeType('application/vnd.apple.mpegurl')
-                    li.setProperty('inputstream.ffmpegdirect.manifest_type', 'hls')
+                self.use_ffmpegdirect(li, use_hls=False if settings.ffmpegdirect_has_mpd else True)
             elif not tidal.MimeType.isFLAC(self.get_mimeType()) and settings.dash_aac_mode == Const.is_adaptive:
-                log.info("Using inputstream.adaptive for MPD playback")
-                self.url = 'http://localhost:%s/manifest.mpd?data=%s' % (settings.fanart_server_port, quote_plus(self.manifest))
-                li.setContentLookup(False)
-                li.setMimeType('application/dash+xml')
-                li.addStreamInfo('audio', { 'codec': 'aac', 'language': 'en', 'channels': 2 })
-                li.setProperty('inputstream' if KODI_VERSION >= (19, 0) else 'inputstreamaddon', 'inputstream.adaptive')
-                li.setProperty('inputstream.adaptive.manifest_type', 'mpd')
-                # li.setProperty('inputstream.adaptive.manifest_update_parameter', 'full')
+                self.use_adaptive(li, use_hls=False)
             else:
                 log.info("Using HLS converter for Dash playback")
-                self.url = 'http://localhost:%s/manifest.m3u8?data=%s' % (settings.fanart_server_port, quote_plus(self.manifest))
+                self.url = 'http://localhost:%s/manifest.m3u8?track_id=%s&quality=%s' % (settings.fanart_server_port, self.trackId, self._requested_quality)
                 li.setMimeType('application/vnd.apple.mpegurl')
+                xbmcgui.Window(10000).setProperty('tidal2.%s' % self.trackId, quote_plus(self.manifest))
         elif settings.ffmpegdirect_is_default_player:
+            log.info("Using inputstream.ffmpegdirect as default player")
             li.setProperty('inputstream' if KODI_VERSION >= (19, 0) else 'inputstreamaddon', 'inputstream.ffmpegdirect')
             li.setProperty('inputstream.ffmpegdirect.open_mode', 'ffmpeg')
-            li.addStreamInfo('audio', { 'codec': 'flac' if tidal.MimeType.isFLAC(self.get_mimeType()) else 'aac', 'language': 'en', 'channels': 2 })
+            li.setProperty('mimetype', self.get_mimeType())
+            if KODI_VERSION >= (20, 0):
+                li.getVideoInfoTag().addAudioStream(xbmc.AudioStreamDetail(channels=2, codec='flac' if tidal.MimeType.isFLAC(self.get_mimeType()) else 'aac', language='en'))
+            else:
+                li.addStreamInfo('audio', { 'codec': 'flac' if tidal.MimeType.isFLAC(self.get_mimeType()) else 'aac', 'language': 'en', 'channels': 2 })
 
         li.setPath(self.url if self.url else settings.unplayable_m4a)
         log.info("Playing: %s with MimeType: %s" % (self.url, self.get_mimeType()))
