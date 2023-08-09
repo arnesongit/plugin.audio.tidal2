@@ -30,9 +30,9 @@ v2.1.1 (2022-09-08)
   because HTTP streaming is buggy on these platforms (very long loading times). inputstream.ffmpegdirect as default player
   can also be enabled/disabled in the TIDAL2 addon settings.
 - New quality mode "Audio only" for videos
-- Splitted country codes for browsing and streaming
+- Split country codes for browsing and streaming
 - New colored label extension for Sony 360 Real Audio
-- Skipping playback for Sony 360 Real Audio and Dolby AC-4, because Kodi can't play them. Otherwise Kodi will crash.
+- Skipping playback for Sony 360 Real Audio and Dolby AC-4, because Kodi can't play them. Otherwise, Kodi will crash.
 - Added externally callable search function: plugin://plugin.audio.tidal2/search/<field>?query=<text>
 
 v2.1.0 (2022-03-26)
@@ -41,29 +41,29 @@ v2.1.0 (2022-03-26)
 - Added support for lyrics:
   - The CU LRC Lyrics addon is used to display the TIDAL lyrics
   - The CU LRC Lyrics addon can be installed from the TIDAL2 settings dialog
-  - The TIDAL2 lyrics scaper has to be installed as a CU LRC Lyrics scaper module.
+  - The TIDAL2 lyrics scraper has to be installed as a CU LRC Lyrics scraper module.
     This can also be done from the TIDAL2 settings dialog.
 
 v2.0.4 (2021-10-20)
 - Fixed preview token
-- Show title/video/artist radio as mix items so it's possible to add them to favorite mixes.
+- Show title/video/artist radio as mix items, so it's possible to add them to favorite mixes.
 
 v2.0.3 (2021-09-04)
-- removed music info label from video items. So videos will start in fullscreen mode now (in Kodi 19)
+- removed music info label from video items. So videos will start in full-screen mode now (in Kodi 19)
 - Fixed api change for mixes and radio stations
 
 v2.0.2 (2021-05-24)
 - Changed login method to OAuth2
-- Intgrated a Login web page for a simple TIDAL device autohrization
+- Integrated a Login web page for a simple TIDAL device authorization
 - Removed all tokens from the sources because of license restrictions
 - Support for Dolby Atmos playback (requires the right client id for playback)
 - Support for HI_RES streaming quality (24 Bit) for Master audio tracks
 - Improved handling of page limits
-- Support for Favorit Mixes (and Radio stations because this are mixes)
+- Support for Favorite Mixes (and Radio stations because these are mixes)
 - Support for Playlist Folders
 - Switched to TIDAL API v2 for Playlist and Folder handling
 - Folder name is appended to the playlist name if the playlist is in one of your folders
-- Added submenues in artist page for albums, EPs/Singles and compilations
+- Added submenus in artist page for albums, EPs/Singles and compilations
 
 v2.0.1 (2021-04-08)
 - First working version for Kodi 19
@@ -77,13 +77,13 @@ v2.0.1-beta1 (2021-03-19)
 v2.0.0-beta22 (2021-03-17)
 - Removed unusable login tokens
 - Removed RTMP music playback and HTTP video playback
-- Modified the login process to use up to three login session simultanously
+- Modified the login process to use up to three login session simultaneously
   (for browsing, music playback and video playback)
 - A Bug in Kodi causes a crash if the player tries to resolve the next playback URL 
-  while playing the current track. And the parameter "succeeded=False" semms not to work properly.
+  while playing the current track. And the parameter "succeeded=False" seems not to work properly.
   Example:
      xbmcplugin.setResolvedUrl(plugin.handle, succeeded=False, li)
-  Some tracks in TIDAL are not marked correctly as "unplayable" and a HTTP error occurs
+  Some tracks in TIDAL are not marked correctly as "unplayable" and an HTTP error occurs
   if the Addon wants to retrieve the playback URL.
   Workaround: The Addon plays a short "unplayable.m4a" file from the addon resources folder
   which contains 1.5 seconds of silence.
@@ -118,8 +118,8 @@ v2.0.0-beta18 (2018-12-31)
   and Addon Setting "Show Album Year in Labels" is enabled.
 - First Changes für Kodi 18.x compatibility:
   - BusyDialog is not allowed anymore, using DialogProgressBG instead
-  - xbmc.abortRequested is depricated, now using xbmc.Monitor().waitForAbort()
-  - Adding 'music' infos to Video items
+  - xbmc.abortRequested is deprecated, now using xbmc.Monitor().waitForAbort()
+  - Adding 'music' info to Video items
   - Removed '%s' from any line in strings.xml
   - Plugin folder items now end with '/', otherwise ActivateWindow() in favorites won't work
 
@@ -127,7 +127,7 @@ v2.0.0-beta17 (2018-06-09)
 - Artists can now be locked for "Search for New Music"
 
 v2.0.0-beta16 (2017-09-18)
-- Fixed Unicode problem if Windows user name contains special characters
+- Fixed Unicode problem if Windows username contains special characters
 - Added Context Menu Function "Clear Playlist" to remove all items from a User Playlist
 
 v2.0.0-beta15 (2017-07-01)
@@ -149,15 +149,15 @@ v2.0.0-beta13 (2017-04-04)
 - Mark Favorite Artists in Favorite Albums and Favorite Tracks lists
 - Fixed problem with Playlists without description
 - Cleanup Debug-Logging code
-- Fixed loop problem if a Playlist or Album contains less items as specified
+- Fixed loop problem if a Playlist or Album contains fewer items then specified
 
 v2.0.0-beta12 (2017-02-27)
 - Backward Compatibility down to XBMC Gotham 13.2
-- Use item infos "userrating" and "mediatype" only on Krypton version
+- Use item info "userrating" and "mediatype" only on Krypton version
 - Moved lib folder into resources for new Krypton Addon file structure
 
 v2.0.0-beta11 (2017-02-17)
-- Fixes in ALbum Playlist handling:
+- Fixes in Album Playlist handling:
   - Add first available track into Album Playlist and not with album_id + 1
   - Sorting Playlist by Artist, Year, Title when Album Playlist is copied into a new Playlist
 - Prevent update of the Favorites cache file if Favorites are unchanged
@@ -176,7 +176,7 @@ v2.0.0-beta10 (2017-01-30)
   b) "Default Album Playlist" can be set for Plugin function "user_playlist_toggle"
   c) Shows User Album Playlist Name in Album Label
   d) New Context Menu Entries for Album Items to Add/Remove Albums to/from Album Playlists
-  e) Every Playlist can be opend as "Album Playlist" with a new Context Menu Entry
+  e) Every Playlist can be opened as "Album Playlist" with a new Context Menu Entry
 
 v2.0.0-beta9 (2017-01-21)
 - Page mode for Master Albums folder
@@ -226,9 +226,9 @@ v2.0.0-beta4
 v1.3.0 (unreleased)
 - Using new Login-Token for all content
 - Added Video playback
-- Seperate settings for Subscription Type, Music Quality and Video Quality
+- Separate settings for Subscription Type, Music Quality and Video Quality
 - Added Support to edit Favorites and User Playlists
-- Added Recommended Tracks/Videos to context menue
+- Added Recommended Tracks/Videos to context menu
 - Added Artist Bio on artist page
 - Added Setting "Max. number of list items per page"
 - Added German translation
