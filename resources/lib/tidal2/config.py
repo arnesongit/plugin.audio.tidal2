@@ -114,8 +114,11 @@ class TidalConfig(Config):
         if not self.expire_time:
             self.expire_time = self.refresh_time + datetime.timedelta(seconds=604800)
 
+        self.isHiResClientID = True if 'Hi Res' in self.client_name else False
+        self.isAtmosClientID = True if 'Atmos' in self.client_name else False
+
         # Options
-        self.quality = [Quality.hi_res, Quality.lossless, Quality.high, Quality.low][min(3, int('0' + self.getSetting('quality')))]
+        self.quality = [Quality.hi_res_lossless if self.isHiResClientID else Quality.hi_res, Quality.lossless, Quality.high, Quality.low][min(3, int('0' + self.getSetting('quality')))]
         self.maxVideoHeight = [9999, 1080, 720, 540, 480, 360, 240, 0][min(7, int('0%s' % self.getSetting('video_quality')))]
         self.pageSize = max(10, min(9999, int('0%s' % self.getSetting('page_size'))))
         self.debug = True if self.getSetting('debug_log') == 'true' else False
@@ -148,6 +151,7 @@ class TidalConfig(Config):
             self.dolby_atmos_mask = '{label} ' + self.get_color_mask('dolby_atmos_color', 'Atmos', defaultColor=14)  # LightBlue
             self.sony_360ra_mask = '{label} ' + self.get_color_mask('sony_360ra_color', '360RA', defaultColor=15)   # Cyan
             self.follower_mask = '{label} ' + self.get_color_mask('follower_color', '({follower})', defaultColor=6)  # Orange
+            self.hires_mask = '{label} ' + self.get_color_mask('hires_color', 'HiRes', defaultColor=7)  # Gold
         else:
             self.folder_mask = '{label}'
             if self.favorites_in_labels:
@@ -164,6 +168,7 @@ class TidalConfig(Config):
             self.dolby_atmos_mask = '{label} (Atmos)'
             self.sony_360ra_mask = '{label} (360RA)'
             self.follower_mask = '{label} ({follower})'
+            self.hires_mask = '{label} (HiRes)'
 
         # Extended Options
         self.dash_aac_mode = [Const.is_hls, Const.is_adaptive, Const.is_ffmpegdirect][min(2,int('0%s' % self.getSetting('dash_aac_mode')))]
@@ -236,7 +241,7 @@ class TidalConfig(Config):
         colorNum = defaultColor
         colorMask = '%s' % labelName
         try: 
-            colorNum = int('0%s' % self.getSetting(setting))
+            colorNum = int('%s' % self.getSetting(setting))
         except:
             pass
         try:

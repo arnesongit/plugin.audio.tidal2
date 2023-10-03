@@ -3,7 +3,7 @@
     <string id="30001">Session Data</string>
     <string id="30002">Extended</string>
     <string id="30004">Music Quality</string>
-    <string id="30005">Lossless (FLAC)</string>
+    <string id="30005">Lossless (FLAC, 16 Bit)</string>
     <string id="30006">High (320 kBit/s)</string>
     <string id="30007">Low (96 kBit/s)</string>
     <string id="30008">User ID</string>
@@ -19,10 +19,10 @@
     <string id="30018">Lossless Streaming Option</string>
     <string id="30019">Session-ID</string>
     <string id="30020">Device</string>
-    <string id="30021">MQA (Master Audio)</string>
+    <string id="30021">Max (MQA Master Audio and Hi Res)</string>
     <string id="30022">Access Token expires at</string>
     <string id="30023">Show Album Year in Labels</string>
-    <string id="30024">Add MQA/Atmos/360RA to Labels</string>
+    <string id="30024">Add MQA/HiRes/Atmos/360RA to Labels</string>
     <string id="30025">Options</string>
     <string id="30026">Client-ID</string>
     <string id="30027">Addon-Settings</string>
@@ -158,8 +158,8 @@
     <string id="30284">Failed to load APK file</string>
     <string id="30285">APK file is not a TIDAL app</string>
     <string id="30286">No device type found in APK</string>
-    <string id="30287">°Attention: Device type was selected from the TIDAL APK!<br>Client-ID are Client-Secret are fixed!</string>
-    <string id="30288">°Attention: No device type was selected from a TIDAL APK!<br>Please use working Client-ID and Client-Secret values directly!</string>
+    <string id="30287">°Attention: Device type was selected from the TIDAL APK!&lt;br&gt;Client-ID and Client-Secret are fixed!</string>
+    <string id="30288">°Attention: No device type was selected from a TIDAL APK!&lt;br&gt;Please use working Client-ID and Client-Secret values directly!</string>
     <string id="30289">Select device type from TIDAL APK file</string>
     <string id="30290">No device type selected.\nShould the existing device type be cleared?\nThen the Client-ID and Client-Secret must be set manually!</string>
     <string id="30291">E-Mail Address</string>
@@ -169,7 +169,7 @@
     <string id="30295">Feed</string>
     <string id="30296">Codec {codec} not supported</string>
     <string id="30297">Step 1: Use following link to log in at TIDAL</string>
-    <string id="30298">Please login here</string>
+    <string id="30298">Please log in here</string>
     <string id="30299">After logging in, an 'oops' page will appear. The URL of this page contains a one-time authorization code to retrieve the access tokens. This authorization code is valid for one minute!</string>
     <string id="30300">Step 2: Copy the URL into the following input field</string>
     <string id="30301">Step 3: Use the one-time authorization code to finish the login process</string>
@@ -223,6 +223,7 @@
     <string id="30525">Sony Real Audio 360</string>
     <string id="30526">Follower Profiles</string>
     <string id="30527">MPD Cache size</string>
+    <string id="30528">HiRes</string>
 
 	<!-- Color values -->
     <string id="30900">Without color</string>

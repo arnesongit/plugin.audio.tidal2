@@ -1,3 +1,20 @@
+v2.1.3 (2023-10-03)
+- Added PKCE as second login method additionally to the device code link method:
+  - Now every device type from TIDAL apks can be used to login
+  - The correct login method is determined automatically
+- Added support for HiRes FLAC playback:
+  - TIDAL supports HiRes FLAC playback since V2.87 of the original TIDAL Android app
+  - There are 4 new device types available: 'Hi Res', 'Dolby Atmos Hi Res', 'Clear Hi Res' and 'Clear Dolby Atmos Hi Res'
+  - Only this device types will play streams in HiRes FLAC up to 192 kHz, 24 Bit.
+  - All other device types will play MQA master audio and not HiRes.
+  - There is a new "HiRes" label extension for track and album items.
+  - Added 'HiRes' to the Explore page to browse for HiRes content
+- Added experimental support for TIDAL live broadcasts:
+  - Live broadcasts can be found under 'Home'->'Live'
+- Other small changes:
+  - Added search method for user profiles. Please note that not all device types support this.
+  - Inserted missing context menu items "Queue item" and "Play next" to tracks in Kodi 20
+
 v2.1.2 (2023-03-08)
 - Modifications for Nexus API changes:
   - Use InfoTagMusic and InfoTagVideo classes instead of the deprecated setInfo method

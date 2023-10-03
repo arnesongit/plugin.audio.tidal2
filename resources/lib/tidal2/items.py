@@ -58,6 +58,7 @@ class HasListItem(object):
         self.DOLBY_ATMOS_MASK = settings.dolby_atmos_mask
         self.SONY_360RA_MASK = settings.sony_360ra_mask
         self.FOLLOWER_MASK = settings.follower_mask
+        self.HIRES_MASK = settings.hires_mask
 
     def getLabel(self, extended=True):
         return self.name
@@ -76,6 +77,10 @@ class HasListItem(object):
         if self._is_logged_in and hasattr(self, '_isFavorite') and '/favorites/' in sys.argv[0]:
             self._isFavorite = True
         cm = self.getContextMenuItems()
+        if isinstance(self, (tidal.Track, tidal.Video)) and KODI_VERSION >= (20, 0):
+            cm.append((xbmc.getLocalizedString(13347), 'Action(Queue)'))
+            cm.append((xbmc.getLocalizedString(10008), 'Action(PlayNext)'))
+            # cm.append(('Clear Playlist', 'Playlist.Clear'))
         if len(cm) > 0:
             li.addContextMenuItems(cm)
         return li
@@ -107,6 +112,21 @@ class AlbumItem(tidal.Album, HasListItem):
         self._playlist_type = ''    # Playlist Type
         self._playlist_track_id = 0 # Track-ID of item which is shown as Album Item
 
+    def getPlaybackTag(self, quality=None):
+        if self.isSony360RA:
+            return tidal.MediaMetadataTags.sony_360
+        if self.isDolbyAtmos and settings.isAtmosClientID:
+            return tidal.MediaMetadataTags.dolby_atmos
+        if self.isHiRes and settings.isHiResClientID and quality in [None, tidal.Quality.hi_res_lossless, tidal.Quality.hi_res]:
+            return tidal.MediaMetadataTags.hires_lossless
+        if self.isMqa and quality in [None, tidal.Quality.hi_res_lossless, tidal.Quality.hi_res]:
+            return tidal.MediaMetadataTags.mqa
+        if self.isDolbyAtmos:
+            return tidal.MediaMetadataTags.dolby_atmos
+        if quality in [None, tidal.Quality.hi_res_lossless, tidal.Quality.hi_res]:
+            return tidal.MediaMetadataTags.lossless
+        return None
+
     def getLabel(self, extended=True):
         self.setLabelFormat()
         label = self.getLongTitle()
@@ -136,12 +156,16 @@ class AlbumItem(tidal.Album, HasListItem):
                 longTitle += ' (%s)' % _T(Msg.i30268).format(self.releaseDate)
             else:
                 longTitle += ' (%s)' % self.year
-        if self.isMasterAlbum and settings.mqa_in_labels:
-            longTitle = self.MASTER_AUDIO_MASK.format(label=longTitle)
-        if self.isDolbyAtmos and settings.mqa_in_labels:
-            longTitle = self.DOLBY_ATMOS_MASK.format(label=longTitle)
-        if self.isSony360RA and settings.mqa_in_labels:
-            longTitle = self.SONY_360RA_MASK.format(label=longTitle)
+        if settings.mqa_in_labels:
+            tag = self.getPlaybackTag()
+            if tag == tidal.MediaMetadataTags.mqa:
+                longTitle = self.MASTER_AUDIO_MASK.format(label=longTitle)
+            elif tag == tidal.MediaMetadataTags.hires_lossless:
+                longTitle = self.HIRES_MASK.format(label=longTitle)
+            elif tag == tidal.MediaMetadataTags.dolby_atmos:
+                longTitle = self.DOLBY_ATMOS_MASK.format(label=longTitle)
+            elif tag == tidal.MediaMetadataTags.sony_360:
+                longTitle = self.SONY_360RA_MASK.format(label=longTitle)
         return longTitle
 
     def getSortText(self, mode=None):
@@ -159,6 +183,15 @@ class AlbumItem(tidal.Album, HasListItem):
             pass
         return criteria
 
+    def getComment(self):
+        comments = ['album_id=%s' % self.id]
+        try:
+            if settings.debug_json and self.mediaMetadata['tags']:
+                comments.append('Modes :'+', '.join(self.mediaMetadata['tags']))
+        except:
+            pass
+        return ', '.join(comments)
+
     def getListItem(self):
         li = HasListItem.getListItem(self)
         url = plugin.url_for_path('/album/%s' % self.id)
@@ -169,6 +202,7 @@ class AlbumItem(tidal.Album, HasListItem):
             tag.setAlbum(self.title)
             tag.setArtist(self.artist.name)
             tag.setAlbumArtist(self.artist.name)
+            tag.setComment(self.getComment())
             tag.setDuration(self.duration if self.duration > 0 else 0)
             tag.setTrack(self._itemPosition + 1 if self._itemPosition >= 0 else 0)
             if isinstance(self.releaseDate, datetime.datetime):
@@ -552,6 +586,21 @@ class TrackItem(tidal.Track, HasListItem):
         self.album = AlbumItem(self.album)
         self._userplaylists = {} # Filled by parser
 
+    def getPlaybackTag(self, quality=None):
+        if self.isSony360RA:
+            return tidal.MediaMetadataTags.sony_360
+        if self.isDolbyAtmos and settings.isAtmosClientID:
+            return tidal.MediaMetadataTags.dolby_atmos
+        if self.isHiRes and settings.isHiResClientID and quality in [None, tidal.Quality.hi_res_lossless, tidal.Quality.hi_res]:
+            return tidal.MediaMetadataTags.hires_lossless
+        if self.isMqa and quality in [None, tidal.Quality.hi_res_lossless, tidal.Quality.hi_res]:
+            return tidal.MediaMetadataTags.mqa
+        if self.isDolbyAtmos:
+            return tidal.MediaMetadataTags.dolby_atmos
+        if quality in [None, tidal.Quality.hi_res_lossless, tidal.Quality.hi_res]:
+            return tidal.MediaMetadataTags.lossless
+        return None
+
     def getLabel(self, extended=True):
         self.setLabelFormat()
         label1 = self.artist.getLabel(extended=extended if self.available else False)
@@ -577,12 +626,16 @@ class TrackItem(tidal.Track, HasListItem):
             longTitle += ' (%s)' % self.version
         if self.explicit and not 'Explicit' in self.title:
             longTitle += ' (Explicit)'
-        if self.isMqa and settings.mqa_in_labels:
-            longTitle = self.MASTER_AUDIO_MASK.format(label=longTitle)
-        if self.isDolbyAtmos and settings.mqa_in_labels:
-            longTitle = self.DOLBY_ATMOS_MASK.format(label=longTitle)
-        if self.isSony360RA and settings.mqa_in_labels:
-            longTitle = self.SONY_360RA_MASK.format(label=longTitle)
+        if settings.mqa_in_labels:
+            tag = self.getPlaybackTag()
+            if tag == tidal.MediaMetadataTags.mqa:
+                longTitle = self.MASTER_AUDIO_MASK.format(label=longTitle)
+            elif tag == tidal.MediaMetadataTags.hires_lossless:
+                longTitle = self.HIRES_MASK.format(label=longTitle)
+            elif tag == tidal.MediaMetadataTags.dolby_atmos:
+                longTitle = self.DOLBY_ATMOS_MASK.format(label=longTitle)
+            elif tag == tidal.MediaMetadataTags.sony_360:
+                longTitle = self.SONY_360RA_MASK.format(label=longTitle)
         return longTitle
 
     def getSortText(self, mode=None):
@@ -613,10 +666,16 @@ class TrackItem(tidal.Track, HasListItem):
     def getComment(self):
         txt = self.getFtArtistsText()
         comments = ['track_id=%s' % self.id]
+        try:
+            if settings.debug_json:
+                if self.replayGain != 0:
+                    comments.append("gain:%0.3f, peak:%0.3f" % (self.replayGain, self.peak))
+                if self.mediaMetadata['tags']:
+                    comments.append('Modes: '+', '.join(self.mediaMetadata['tags']))
+        except:
+            pass
         if txt:
             comments.append(txt)
-        #if self.replayGain != 0:
-        #    comments.append("gain:%0.3f, peak:%0.3f" % (self.replayGain, self.peak))
         return ', '.join(comments)
 
     def getListItem(self, lyrics=None):
@@ -717,6 +776,75 @@ class TrackItem(tidal.Track, HasListItem):
         return url
 
 
+class BroadcastItem(tidal.Broadcast, HasListItem):
+
+    def __init__(self, item):
+        self.__dict__.update(vars(item))
+        self.track = item.track
+        self.profile = item.profile
+        self.artist = item.artist
+        self.artists = item.artists
+
+    def getLabel(self, extended=True):
+        self.setLabelFormat()
+        label = self.title
+        if extended and isinstance(self.profile, UserProfileItem):
+            label = self.FOLLOWER_MASK.format(label=label, follower=self.profile.name or _T(Msg.i30311))
+        return label
+
+    def getComment(self):
+        comments = ['track_id=%s' % self.track.id]
+        return ', '.join(comments)
+
+    def getListItem(self, lyrics=None):
+        li = HasListItem.getListItem(self)
+        url = plugin.url_for_path('/play_broadcast/%s/%s' % (self.id, self.track.id))
+        longTitle = self.title
+        if KODI_VERSION >= (20, 0):
+            tag = li.getMusicInfoTag()
+            tag.setMediaType('song')
+            tag.setTitle(longTitle)
+            tag.setArtist(self.artist.name)
+            tag.setAlbumArtist(self.artist.name)
+            tag.setAlbum(self.album.title)
+            tag.setComment(self.getComment())
+        else:
+            infoLabel = {
+                'title': longTitle,
+                'artist': self.artist.name,
+                'album': self.album.title,
+                'year': getattr(self, 'year', None),
+                'comment': self.getComment()
+            }
+            if KODI_VERSION >= (17, 0):
+                infoLabel.update({'mediatype': 'song'})
+            li.setInfo('music', infoLabel)
+        return (url, li, False)
+
+    def getContextMenuItems(self):
+        cm = []
+        if isinstance(self.profile, UserProfileItem):
+            cm.append((_T(Msg.i30292).format(what=self.profile.name or _T('userprofile')), 'Container.Update(%s)' % plugin.url_for_path('/userprofile/%s' % self.profile.id)))
+        if len(self.track.artists) > 1:
+            cm.append((_T(Msg.i30221), 'RunPlugin(%s)' % plugin.url_for_path('/artists/%s' % '-'.join(['%s' % artist.id for artist in self.track.artists]))))
+        else:
+            cm.append((_T(Msg.i30221), 'Container.Update(%s)' % plugin.url_for_path('/artist/%s' % self.artist.id)))
+        cm.append((_T(Msg.i30245), 'Container.Update(%s)' % plugin.url_for_path('/album/%s' % self.album.id)))
+        return cm
+
+    @property
+    def image(self):
+        if self.track and isinstance(self.track, TrackItem):
+            return self.track.image
+        return super(BroadcastItem, self).image
+
+    @property
+    def fanart(self):
+        if self.artist and isinstance(self.artist, ArtistItem):
+            return self.artist.fanart
+        return super(BroadcastItem, self).fanart
+
+
 class VideoItem(tidal.Video, HasListItem):
 
     def __init__(self, item):
@@ -800,7 +928,7 @@ class VideoItem(tidal.Video, HasListItem):
             tag.setPlotOutline(self.getComment())
             tag.setPlot(self.getFtArtistsText())
             if isinstance(self.streamStartDate, datetime.datetime):
-                li.setDateTime(self.streamStartDate.date().strftime('Y-%m-%dT00:00:00'))
+                li.setDateTime(self.streamStartDate.date().strftime('%Y-%m-%dT00:00:00'))
             elif isinstance(self.releaseDate, datetime.datetime):
                 li.setDateTime(self.releaseDate.date().strftime('%Y-%m-dT00:00:00'))
             tag.setRating(self.popularity / 10.0)
@@ -955,7 +1083,7 @@ class PromotionItem(tidal.Promotion, HasListItem):
             if KODI_VERSION >= (20, 0):
                 tag = li.getVideoInfoTag()
                 tag.setMediaType('musicvideo')
-                tag.setArtist([self.shortHeader])
+                tag.setArtists([self.shortHeader])
                 tag.setAlbum(self.text)
                 tag.setTitle(self.shortSubHeader)
                 tag.setRating(self.popularity / 10.0)
@@ -1204,8 +1332,7 @@ class TrackUrlItem(tidal.TrackUrl, HasListItem):
         log.info("Using inputstream.adaptive for %s playback" % ('HLS' if use_hls else 'MPD'))
         li.setContentLookup(False)
         if KODI_VERSION >= (20, 0):
-            tag = li.getVideoInfoTag()
-            tag.addAudioStream(xbmc.AudioStreamDetail(channels=2, codec='aac', language='en'))
+            li.getVideoInfoTag().addAudioStream(xbmc.AudioStreamDetail(channels=2, codec='aac', language='en'))
         else:
             li.addStreamInfo('audio', { 'codec': 'aac', 'language': 'en', 'channels': 2 })
         self.url = 'http://localhost:%s/manifest.%s?track_id=%s&quality=%s' % (settings.fanart_server_port, 'm3u8' if use_hls else 'mpd', self.trackId, self._requested_quality)
@@ -1246,6 +1373,50 @@ class TrackUrlItem(tidal.TrackUrl, HasListItem):
         log.info("Playing: %s with MimeType: %s" % (self.url, self.get_mimeType()))
         return li
 
+
+class BroadcastUrlItem(tidal.BroadcastUrl, HasListItem):
+
+    def __init__(self, item):
+        self.__dict__.update(vars(item))
+
+    def getListItem(self, track):
+        #li = track.getListItem()[1]
+        #li.setPath(self.url if self.url else settings.unplayable_m4a)
+        li = xbmcgui.ListItem(path=self.url)
+
+        li.setProperty('inputstream' if KODI_VERSION >= (19, 0) else 'inputstreamaddon', 'inputstream.ffmpegdirect')
+        li.setProperty('inputstream.ffmpegdirect.open_mode', 'ffmpeg')            # curl or ffmpeg
+        li.setProperty('inputstream.ffmpegdirect.is_realtime_stream', 'true')
+        li.setProperty('inputstream.ffmpegdirect.playback_as_live', 'true')
+        # li.setProperty('inputstream.ffmpegdirect.stream_mode', 'timeshift')
+        if KODI_VERSION >= (20, 0):
+            li.getVideoInfoTag().addAudioStream(xbmc.AudioStreamDetail(channels=2, codec='aac', language='en'))
+        else:
+            li.addStreamInfo('audio', { 'codec': 'aac', 'language': 'en', 'channels': 2 })
+
+        li.setProperty('mimetype', tidal.MimeType.video_m3u8)
+
+        log.info("Broadcasting: %s with MimeType: %s" % (self.url, self.mimeType))
+        return li
+
+    def selectStream(self):
+        log.debug('Parsing M3U8 Playlist: %s' % self.url)
+        m3u8obj = m3u8_load(self.url)
+        if not m3u8obj.is_variant:
+            log.debug('M3U8 Playlist is not a variant stream')
+            return False
+        for playlist in m3u8obj.playlists:
+            try:
+                bandwidth = playlist.stream_info.average_bandwidth
+                if re.match(r'https?://', playlist.uri):
+                    self.url = playlist.uri
+                else:
+                    self.url = m3u8obj.base_uri + playlist.uri
+                log.debug('Selected %s: %s' % (bandwidth, playlist.uri.split('?')[0].split('/')[-1]))
+                self.bandwidth = bandwidth
+            except:
+                pass
+        return True
 
 class VideoUrlItem(tidal.VideoUrl, HasListItem):
 

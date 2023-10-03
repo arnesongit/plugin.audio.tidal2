@@ -102,7 +102,9 @@ def settings_choose_apk():
             settings.client_secret = client.secret
             settings.save_client()
             session.logout()
-        xbmc.executebuiltin('Container.Refresh()')
+            home()
+        else:
+            xbmc.executebuiltin('Container.Refresh()')
     else:
         # Ask if device type should be cleared
         if xbmcgui.Dialog().yesno(_T(Msg.i30289), _T(Msg.i30290)):
@@ -111,7 +113,9 @@ def settings_choose_apk():
             settings.client_secret = ''
             settings.save_client()
             session.logout()
-        xbmc.executebuiltin('Container.Refresh()')
+            home()
+        else:
+            xbmc.executebuiltin('Container.Refresh()')
 
 
 @plugin.route('/page/<page_url>')
@@ -127,7 +131,7 @@ def page(page_url):
                 items.append(DirectoryItem(m['title'], plugin.url_for(page_data, quote_plus(m['pagedList']['dataApiPath']), m['type'])))
             elif m.get('showMore', None):
                 items.append(DirectoryItem(m['title'], plugin.url_for(page, quote_plus(m['showMore']['apiPath']))))
-            elif not m['type'] in ['TEXT_BLOCK', 'EXTURL']:
+            elif not m['type'] in ['TEXT_BLOCK', 'EXTURL', 'LIVE_SESSION_LIST']:
                 if m['title']:
                     items.append(DirectoryItem(m['title'], plugin.url_for(module, page_url, quote_plus(repr(m['title'])), quote_plus(m['type']))))
                 elif 'items' in m:
@@ -135,8 +139,12 @@ def page(page_url):
                 else:
                     items.append(DirectoryItem(m['type'], plugin.url_for(module_type, page_url, quote_plus(m['type']))))
 
+    if page_url == quote_plus('pages/home'):
+        add_directory('Live', plugin.url_for(live))
+
     if page_url == quote_plus('pages/explore'):
         add_directory('Dolby Atmos', plugin.url_for(page, quote_plus('pages/dolby_atmos')))
+        add_directory('HiRes', plugin.url_for(page, quote_plus('pages/hires')))
         add_directory('Masters (MQA)', plugin.url_for(page, quote_plus('pages/masters')))
         add_directory('360', plugin.url_for(page, quote_plus('pages/360')))
         add_directory(_T(Msg.i30321), plugin.url_for(page, quote_plus('pages/staff_picks')))
@@ -197,6 +205,12 @@ def get_module_items(m):
     else:
         log.info('Unknown item module type %s' % m['type'])
     return items
+
+
+@plugin.route('/live')
+def live():
+    items = session.get_broascast_items()
+    add_items(items, content=CONTENT_FOR_TYPE.get('tracks'), withNextPage=False, withSortModes=False)
 
 
 @plugin.route('/feed')
@@ -450,6 +464,11 @@ def mix_view(mix_id):
                 except:
                     pass
     session.add_list_items(items, content=CONTENT_FOR_TYPE.get(rettype, 'files'), end=True, withNextPage=True, withSortModes=True)
+
+
+@plugin.route('/playlist/<playlist_id>')
+def playlist(playlist_id):
+    playlist_view(playlist_id)
 
 
 @plugin.route('/playlist/<playlist_id>/items')
@@ -971,12 +990,15 @@ def cache_reset_confirmed():
 @plugin.route('/trigger_cache_reload')
 def trigger_cache_reload():
     # Starts the cache reload as new plugin call
+    log.info('Triggering Cache Reload')
     xbmc.executebuiltin('RunPlugin(%s)' % plugin.url_for(cache_reload))
 
 
 @plugin.route('/cache_reload')
 def cache_reload():
+    log.info('Reload Caches')
     if not session.is_logged_in:
+        log.warning("User isn't logged in")
         return
     session.user.load_cache()
     session.user.update_caches(withProgress=True)
@@ -1103,7 +1125,8 @@ def search():
     add_directory(_T(Msg.i30107), plugin.url_for(search_type, field='album'))
     add_directory(_T(Msg.i30108), plugin.url_for(search_type, field='playlist'))
     add_directory(_T(Msg.i30109), plugin.url_for(search_type, field='track'))
-    add_directory(_T(Msg.i30110), plugin.url_for(search_type, field='video'), end=True)
+    add_directory(_T(Msg.i30110), plugin.url_for(search_type, field='video'))
+    add_directory(_T(Msg.i30126), plugin.url_for(search_type, field='userprofile'), end=True)
 
 
 @plugin.route('/search/<field>')
@@ -1205,12 +1228,12 @@ def login_device_code():
 def login_with_code():
     try:
         try:
-            code = session.login_with_code(plugin.args)
-            if code and session.is_logged_in:
+            ok = session.login_with_code(plugin.args)
+            if ok and session.is_logged_in:
                 Timer(3, trigger_cache_reload).start()
         except:
-            code = None
-        if not code and settings.client_id == '':
+            ok = False
+        if not ok and settings.client_id == '':
             url = 'http://{ip}:{port}/login'.format(ip=xbmc.getInfoLabel('Network.IPAddress'), port=settings.fanart_server_port)
             xbmcgui.Dialog().ok(_T(Msg.i30281), _T(Msg.i30257).format(url=url))
             settings_dialog()
@@ -1276,6 +1299,19 @@ def play_track(track_id, album_id):
     xbmcplugin.setResolvedUrl(plugin.handle, True, li)
 
 
+@plugin.route('/play_broadcast/<broadcast_id>/<track_id>')
+def play_broadcast(broadcast_id, track_id):
+    try:
+        media = session.get_broadcast_url(broadcast_id)
+        track = None # session.get_track(track_id, withAlbum=False)
+        li = media.getListItem(track)
+    except Exception as e:
+        xbmcgui.Dialog().notification('%s Fatal Error' % plugin.name, '%s' % e, xbmcgui.NOTIFICATION_ERROR)
+        traceback.print_exc()
+        li = TrackUrlItem.unplayableItem().getListItem()
+    xbmcplugin.setResolvedUrl(plugin.handle, True, li)
+
+
 @plugin.route('/play_video/<video_id>')
 def play_video(video_id):
     try:
@@ -1298,21 +1334,21 @@ def stream_locked():
 def install_lyrics_scraper():
     li = LyricsInstaller()
     li.install(checkInstalled=False)
-    log.info("Test %s" % "successful" if li.success else "failed")
+    log.info("LyricsInstaller %s" % "successful" if li.success else "failed")
     li.show_protocol()
 
 @plugin.route('/check_lyrics_scraper')
 def check_lyrics_scraper():
     li = LyricsInstaller()
     li.install(checkInstalled=True)
-    log.info("Test %s" % "successful" if li.success else "failed")
+    log.info("LyricsInstaller %s" % "successful" if li.success else "failed")
     li.show_protocol()
 
 @plugin.route('/uninstall_lyrics_scraper')
 def uninstall_lyrics_scraper():
     li = LyricsInstaller()
     li.uninstall()
-    log.info("Test %s" % "successful" if li.success else "failed")
+    log.info("LyricsInstaller %s" % "successful" if li.success else "failed")
     li.show_protocol()
 
 @plugin.route('/install_lyrics_addon')

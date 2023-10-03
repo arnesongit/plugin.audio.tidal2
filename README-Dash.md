@@ -1,13 +1,22 @@
-# How to play MPEG-Dash with FLAC content on Linux platforms
+## How to play MPEG-Dash with FLAC content on Linux platforms
 
-If you want to play Hi-Res audio with TIDAL2 on a Linux platform, you have to compile the inputstream.ffmpegdirect addon by yourself.<br>
+If you want to play Hi-Res audio with TIDAL2 on a Linux platform, you have to compile the inputstream.ffmpegdirect addon by yourself.
+
+By default the inputstream.ffmpegdirect doesn't play MPEG-Dash streams on Linux platforms. The TIDAL2 addon uses
+an internal MPEG-Dash-to-HLS converter to play FLAC content in Dash streams.
+This is only a workaround to fix the problem with the missing Dash demultiplexer.
+Otherwise those streams will not play at all.
+
+If you compiled the inputstream.ffmpegdirect addon for Linux, it will be able to demultiplex MPEG-Dash streams.<br>
+To use it, you have to enable the setting "inputstream.ffmpegdirect plays MPD" in the addon settings of TIDAL2.
+
 Here is is short description how I compiled the addon for my LibreELEC systems which I use for PC and Raspberry Pi 4B.
 
 I used the build instructions from this pages to compile it:<p>
 https://github.com/xbmc/xbmc/blob/master/docs/README.Linux.md<br>
 https://github.com/xbmc/inputstream.ffmpegdirect
 
-## Compile inputstream.ffmpegdirect for 64-Bit PC Linux
+### Compile inputstream.ffmpegdirect for 64-Bit PC Linux
 
 - Distribution: [Ubuntu 20.04.3 LTS](https://ubuntu.com/download/desktop)
 - Fresh installation on my Proxmox server. You can use any PC or Virtual machine (VMware, VirtualBox, etc).
@@ -56,7 +65,7 @@ https://github.com/xbmc/inputstream.ffmpegdirect
   ```
 - This Zip file on the Desktop can now be used to install the inputstream-ffmpegdirect addon on a Linux PC 64-Bit in Kodi Nexus.
 
-## Compile inputstream.ffmpegdirect for 32-Bit Linux on a Raspberry Pi 4B
+### Compile inputstream.ffmpegdirect for 32-Bit Linux on a Raspberry Pi 4B
 
 - Distribution: [Raspberry Pi OS with desktop and recommended software 32 Bit](https://www.raspberrypi.com/software/operating-systems/#raspberry-pi-os-32-bit)<br>
   Be sure to download the 32-Bit edition!

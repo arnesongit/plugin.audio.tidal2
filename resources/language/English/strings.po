@@ -29,7 +29,7 @@ msgid "Music Quality"
 msgstr ""
 
 msgctxt "#30005"
-msgid "Lossless (FLAC)"
+msgid "Lossless (FLAC, 16 Bit)"
 msgstr ""
 
 msgctxt "#30006"
@@ -93,7 +93,7 @@ msgid "Device"
 msgstr ""
 
 msgctxt "#30021"
-msgid "MQA (Master Audio)"
+msgid "Max (MQA Master Audio and Hi Res)"
 msgstr ""
 
 msgctxt "#30022"
@@ -105,7 +105,7 @@ msgid "Show Album Year in Labels"
 msgstr ""
 
 msgctxt "#30024"
-msgid "Add MQA/Atmos/360RA to Labels"
+msgid "Add MQA/HiRes/Atmos/360RA to Labels"
 msgstr ""
 
 msgctxt "#30025"
@@ -625,7 +625,7 @@ msgid "No device type found in APK"
 msgstr ""
 
 msgctxt "#30287"
-msgid "°Attention: Device type was selected from the TIDAL APK!<br>Client-ID are Client-Secret are fixed!"
+msgid "°Attention: Device type was selected from the TIDAL APK!<br>Client-ID and Client-Secret are fixed!"
 msgstr ""
 
 msgctxt "#30288"
@@ -874,6 +874,10 @@ msgstr ""
 
 msgctxt "#30527"
 msgid "MPD Cache size"
+msgstr ""
+
+msgctxt "#30528"
+msgid "HiRes"
 msgstr ""
 
 msgctxt "#30900"

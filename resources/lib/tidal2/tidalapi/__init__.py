@@ -61,6 +61,84 @@ REFRESH_SCOPE = 'r_usr+w_usr'
 ALL_SAERCH_FIELDS = ['ARTISTS', 'ALBUMS', 'PLAYLISTS', 'TRACKS', 'VIDEOS', 'USERPROFILES']
 
 
+class AuthenticationError(requests.RequestException):
+
+    def isCaptureProtected(self):
+        try:
+            return True if self.response.text.find('captcha-delivery.com') > 0 else False
+        except:
+            pass
+        return False
+
+    def __str__(self, *args, **kwargs):
+        errtab = [requests.RequestException.__str__(self, *args, **kwargs)]
+        try:
+            msg = self.response.json()
+            if 'userMessage' in msg:
+                errtab.append(msg['userMessage'])
+            if 'error_description' in msg:
+                errtab.append(msg['error_description'])
+        except:
+            pass
+        return '\n'.join(errtab)
+
+
+class PKCE_Authenticator(object):
+
+    def __init__(self, config, **kwargs):
+        self.client_unique_key = kwargs.get('client_unique_key', None) or format(random.getrandbits(64), '02x')
+        self.code_verifier = kwargs.get('code_verifier', None) or base64.urlsafe_b64encode(os.urandom(32))[:-1].decode("utf-8")
+        self.code_challenge = base64.urlsafe_b64encode(hashlib.sha256(self.code_verifier.encode('utf-8')).digest())[:-1].decode("utf-8")
+        self.user_agent = config.user_agent
+
+        self.params = { 'response_type': 'code',
+                        'redirect_uri': 'https://tidal.com/android/login/auth',
+                        'client_id': kwargs.get('client_id', None) or pyaes.AESModeOfOperationCTR(config.token_secret).decrypt(base64.b64decode(config.client_id)).decode('utf-8') if config.client_name else config.client_id,
+                        'lang': config.locale,
+                        'appMode': 'android',
+                        'client_unique_key': self.client_unique_key,
+                        'code_challenge': self.code_challenge,
+                        'code_challenge_method': 'S256',
+                        'restrict_signup': 'true'
+                      }
+        self.code = kwargs.get('code', None)
+
+    def check_response(self, r):
+        log.info('%s %s' % (r.request.method, r.request.url))
+        if not r.ok:
+            log.error(repr(r))
+            try:
+                log.error('response: %s' % json.dumps(r.json(), indent=4))
+            except:
+                pass
+        return r
+
+    def get_login_url(self):
+        """ Returns the Login-URL to login via web browser """
+        return urljoin(URL_LOGIN, 'authorize') + '?' + urlencode(self.params)
+
+    def get_auth_token(self):
+        """ Using one-time authorization code to get the access and refresh tokens (last step of the login sequence) """
+        if self.code and 'https://' in self.code:
+            self.code = parse_qs(urlsplit(self.code).query)["code"][0]
+        data = { 'code': self.code,
+                 'client_id': self.params['client_id'],
+                 'grant_type': 'authorization_code',
+                 'redirect_uri': self.params['redirect_uri'],
+                 'scope':  DEFAULT_SCOPE,
+                 'code_verifier': self.code_verifier,
+                 'client_unique_key': self.client_unique_key
+                }
+        r = requests.post(urljoin(OAUTH_BASE_URL, 'token'), data=data, headers={ 'User-Agent': self.user_agent })
+        r = self.check_response(r)
+        try:
+            self.token = {}
+            self.token = r.json()
+        except:
+            log.error('Wrong one-time authorization code')
+            raise AuthenticationError('Wrong one-time authorization code', response=r)
+        return self.token
+
 
 class Session(object):
 
@@ -141,6 +219,27 @@ class Session(object):
             token = AuthToken(status=500, error='Unknown error', error_description='No Json data in respose')
         return token
 
+    def login_pkce_part2(self, pkce):
+        token = self._parse_auth_token(pkce.get_auth_token())
+        if token.success:
+            self._config.user_id = token.user_id
+            self._config.user_country_code = token.country_code
+            self._config.token_type = token.token_type
+            self._config.access_token = token.access_token
+            old_token_secret = self._config.token_secret
+            if token.refresh_token:
+                self._config.refresh_token = token.refresh_token
+            if self._config.client_name:
+                # Re-Encrypt Client-ID and Secret
+                client_id = pyaes.AESModeOfOperationCTR(old_token_secret).decrypt(base64.b64decode(self._config.client_id))
+                client_secret = pyaes.AESModeOfOperationCTR(old_token_secret).decrypt(base64.b64decode(self._config.client_secret))
+                self._config.client_id = base64.b64encode(pyaes.AESModeOfOperationCTR(self._config.token_secret).encrypt(client_id)).decode('utf-8')
+                self._config.client_secret = base64.b64encode(pyaes.AESModeOfOperationCTR(self._config.token_secret).encrypt(client_secret)).decode('utf-8')
+            self._config.expires_in = token.expires_in
+            self._config.login_time = token.login_time
+            self._config.refresh_time = token.login_time
+            self._config.expire_time = token.expire_time
+        return token
 
     @property
     def is_logged_in(self):
@@ -485,6 +584,14 @@ class Session(object):
             pass
         return items
 
+    def get_broascast_items(self):
+        try:
+            items = []
+            items = self._map_request(path='djsession/now-playing', url=URL_API_V2, params={'limit': 25, 'locale': self._config.locale, 'deviceType': 'PHONE'}, ret='broadcast')
+        except:
+            pass
+        return items
+
     def get_userprofile(self, user_id):
         return self._map_request('profiles/%s' % user_id, url=URL_API_V2, ret='userprofiles')
 
@@ -618,6 +725,11 @@ class Session(object):
                        'streamingsessionid':  self.get_streaming_session_id(forceNew=True) }
         return self._map_request(url,  params=params, ret='track_url')
 
+    def get_broadcast_url(self, broadcast_id, quality=None):
+        url = 'broadcasts/%s/playbackinfo' % broadcast_id
+        params = { 'audioquality': quality if quality else self._config.quality }
+        return self._map_request(url,  params=params, ret='broadcast_url')
+
     def get_video_url(self, video_id, audioOnly=False, preview=False):
         params = {}
         ret_type = 'video_url'
@@ -681,6 +793,10 @@ class Session(object):
             parse = self._parse_search
         elif ret.startswith('mix'):
             parse = self._parse_mix
+        elif ret.startswith('broadcast_url'):
+            parse = self._parse_broadcast_url
+        elif ret.startswith('broadcast'):
+            parse = self._parse_broadcast
         elif ret.startswith('lyrics'):
             parse = self._parse_lyrics
         elif ret.startswith('userprofile'):
@@ -839,6 +955,18 @@ class Session(object):
         item = Mix(**json_obj)
         if self.is_logged_in and self.user.favorites:
             item._isFavorite = self.user.favorites.isFavoriteMix(item.id)
+        return item
+
+    def _parse_broadcast_url(self, json_obj):
+        return BroadcastUrl(**json_obj)
+
+    def _parse_broadcast(self, json_obj):
+        item = Broadcast(**json_obj)
+        item.track = self._parse_track(json_obj['track'])
+        item.profile = self._parse_userprofile(json_obj['profile'])
+        item.album = item.track.album
+        item.artist = item.track.artist
+        item.artists = item.track.artists
         return item
 
     def _parse_lyrics(self, json_obj):

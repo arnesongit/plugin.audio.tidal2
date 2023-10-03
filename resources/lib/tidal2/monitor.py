@@ -45,7 +45,7 @@ from .common import plugin, __addon_id__
 from .textids import Msg, _T
 from .debug import log
 from .config import TidalConfig
-from .tidalapi import Session
+from .tidalapi import Session, PKCE_Authenticator
 from .tidalapi.models import DashInfo
 
 #------------------------------------------------------------------------------
@@ -105,6 +105,13 @@ class LocalHttpRequestHandler(BaseHTTPRequestHandler):
                 client_unique_key = params.get('client_unique_key', [''])[0]
                 code_verifier = params.get('code_verifier', [''])[0]
                 self.send_login_page2(client_id, client_secret, client_unique_key, code_verifier)
+
+            elif url.path == '/login_success':
+                pkce_data = {'client_unique_key': params.get('client_unique_key', [''])[0],
+                             'code_verifier': params.get('code_verifier', [''])[0],
+                             'code': params.get('code', [''])[0]}
+                self.pkce_success_page(pkce_data, client_id=params.get('client_id', [''])[0], client_secret=params.get('client_secret', [''])[0])
+                return
 
             else:
                 self.send_error(501, 'Illegal Request: %s' % self.path)
@@ -327,6 +334,28 @@ class LocalHttpRequestHandler(BaseHTTPRequestHandler):
             self.send_error(404, 'Failed to start OAuth login')
             traceback.print_exc()
 
+    def pkce_success_page(self, pkce_data, client_id, client_secret):
+        try:
+            try:
+                settings = TidalConfig(tidal_addon=xbmcaddon.Addon(__addon_id__))
+                if client_id:
+                    # Use a manual given client_id
+                    settings.client_name = ''
+                    settings.init(client_name='', client_id=client_id, client_secret=client_secret)
+                    settings.save_client()
+                    settings.save_session()
+                xbmc.executebuiltin('RunPlugin(%s)' % plugin.url_with_qs('/login_with_code', **pkce_data))
+            except:
+                traceback.print_exc()
+            html = self.server.pages.pkce_success_page(settings).encode('utf-8')
+            del settings
+            self.send_response(200)
+            self._send_headers(content_type='text/html;charset=utf-8')
+            self.wfile.write(html)
+        except:
+            self.send_error(404, 'Failed to login with one-time authentication code')
+            traceback.print_exc()
+
 
 class LocalHTTPServer(HTTPServer):
 
@@ -485,6 +514,36 @@ class Pages(object):
             '    <br><br>{remark}\n'
             '    </label>\n'
             '    <input type="submit" value="{submit}"><br>\n'
+            '    <input type="hidden" name="client_unique_key" value="{client_unique_key}"/><br>\n'
+            '    <input type="hidden" name="code_verifier" value="{code_verifier}"/>\n'
+            '  </form>\n'
+            '  </div>\n'
+            '</body>\n</html>',
+
+        'pkce_login':
+            '<!doctype html>\n<html>\n'
+            '<head>\n\t<meta charset="utf-8">\n'
+            '  <title>{title}</title>\n'
+            '  <style>\n{css}\t</style>\n'
+            '</head>\n<body>\n'
+            '  <div class="center">\n'
+            '  <h5>{header}</h5>\n'
+            '  <form action="/login_success" class="config_form" autocomplete="off">\n'
+            '    <span>{line1}</span><br>\n'
+            '    <div class="textcenter">\n'
+            '      <span><big><a href="{url}" target="_blank" rel="noopener noreferrer">{linktext}</a></big></span><br>\n'
+            '    </div><br><br>\n'
+            '    <span>{line2}</span><br>&nbsp;<br>\n'
+            '    <span>{line3}</span><br>&nbsp;<br>\n'
+            '    <label for="code">\n'
+            '    <span>{code_label}</span><input type="text" name="code" value="" size="400" required/>\n'
+            '    </label>\n'
+            '    &nbsp;<br>\n'
+            '    <span>{line4}</span><br>\n'
+            '    &nbsp;<br>\n'
+            '    <input type="submit" value="{submit}"><br>\n'
+            '    <input type="{d}" name="client_unique_key" value="{client_unique_key}"/><br>\n'
+            '    <input type="{d}" name="code_verifier" value="{code_verifier}"/>\n'
             '  </form>\n'
             '  </div>\n'
             '</body>\n</html>',
@@ -525,6 +584,7 @@ class Pages(object):
         return html
 
     def login_page(self, settings, msg):
+        pkce = PKCE_Authenticator(settings, client_id='' if settings.client_name else settings.client_id)
         html = self.html['login_page']
         html = html.format(css=self.css(), title=settings.getAddonInfo('name'), header=_T(Msg.i30280),
                            client_name_head=_T(Msg.i30028),
@@ -535,6 +595,8 @@ class Pages(object):
                            client_secret_head='' if settings.client_name else _T(Msg.i30009),
                            client_secret_value='' if settings.client_name else settings.client_secret,
                            remark= _T(Msg.i30287) if settings.client_name else _T(Msg.i30288),
+                           client_unique_key = pkce.client_unique_key,
+                           code_verifier=pkce.code_verifier,
                            d='hidden' if settings.client_name else 'text',
                            submit=_T(Msg.i30208),  msg_head=_T(Msg.i30281), msg_text=msg)
         return html
@@ -553,6 +615,28 @@ class Pages(object):
         return self.ok_page(settings, line1=_T(Msg.i30209), line4=redirect.format(url=url))
 
     def login_fallback_page(self, settings, client_unique_key, code_verifier):
-        return self.ok_page(settings, line4=_T(Msg.i30253))
+        pkce = PKCE_Authenticator(settings, client_unique_key=client_unique_key, code_verifier=code_verifier)
+        html = self.html['pkce_login']
+        html = html.format(css=self.css(width=800, height=320, label_width=80), title=settings.getAddonInfo('name'), header=_T(Msg.i30280),
+                           line1=_T(Msg.i30297),
+                           url = pkce.get_login_url(), linktext=_T(Msg.i30298),
+                           line2=_T(Msg.i30299),
+                           line3=_T(Msg.i30300),
+                           line4=_T(Msg.i30301),
+                           code_label='URL:', d='hidden',
+                           client_unique_key=pkce.client_unique_key, code_verifier=pkce.code_verifier,
+                           submit=_T(Msg.i30302) )
+        return html
+
+    def pkce_success_page(self, settings):
+        html = self.html['ok_page']
+        redirect = '<a href="{url}">{linktxt}</a>'
+        html = html.format(css=self.css(), title=settings.getAddonInfo('name'), header=_T(Msg.i30280),
+                           line1=_T(Msg.i30303),
+                           line2=_T(Msg.i30304),
+                           line3='&nbsp;',
+                           line4=redirect.format(url='/login', linktxt=_T(Msg.i30305)),
+                           footer='&nbsp;')
+        return html
 
 # End of File

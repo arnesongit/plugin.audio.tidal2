@@ -28,9 +28,10 @@ from .common import KODI_VERSION, plugin
 from .textids import Msg, _T
 from .debug import log
 from .config import settings
-from .tidalapi import Session, User, Favorites, models as tidal
-from .items import AlbumItem, ArtistItem, PlaylistItem, TrackItem, VideoItem, MixItem, ItemSortType, \
-                   FolderItem, CategoryItem, PromotionItem, DirectoryItem, TrackUrlItem, VideoUrlItem, UserProfileItem
+from .tidalapi import Session, PKCE_Authenticator, AuthenticationError, User, Favorites, models as tidal
+from .items import AlbumItem, ArtistItem, PlaylistItem, TrackItem, VideoItem, MixItem, \
+                   FolderItem, CategoryItem, PromotionItem, DirectoryItem, TrackUrlItem, VideoUrlItem, \
+                   UserProfileItem, BroadcastItem, BroadcastUrlItem
 
 
 class TidalSession(Session):
@@ -117,8 +118,45 @@ class TidalSession(Session):
             xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30293), icon=xbmcgui.NOTIFICATION_INFO)
         return auth
 
+    def login_pkce_part2(self, pkce):
+        try:
+            ok = False
+            auth = Session.login_pkce_part2(self, pkce)
+            if auth.success:
+                settings.save_client()
+                settings.save_session()
+                self.user = TidalUser(self)
+                if self.is_logged_in:
+                    self.check_subscription()
+                    xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30293), icon=xbmcgui.NOTIFICATION_INFO)
+                    ok = True
+            if not ok:
+                if auth.sub_status == 11003:
+                    xbmcgui.Dialog().ok(plugin.name, '\n'.join([_T(Msg.i30294), auth.error_description or auth.error]))
+                else:
+                    xbmcgui.Dialog().ok(plugin.name, '\n'.join([_T(Msg.i30253), auth.error_description or auth.error]))
+        except AuthenticationError as e:
+            log.logException(e, 'Login failed !')
+            xbmcgui.Dialog().ok(plugin.name, 'Authentication failed!\n' + str(e))
+        except Exception as e:
+            log.logException(e, 'Login failed !')
+            xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30253), icon=xbmcgui.NOTIFICATION_ERROR)
+        log.info('PKCE login succeeded !' if ok else 'Login process aborted.')
+        return ok
+
     def login_with_code(self, args):
-        raise Exception('Not implemented yet !')
+        try:
+            ok = False
+            if 'code' in args:
+                pkce = PKCE_Authenticator(self._config,
+                                          client_unique_key = args['client_unique_key'][0],
+                                          code_verifier = args['code_verifier'][0],
+                                          code = args['code'][0])
+                ok = self.login_pkce_part2(pkce)
+        except Exception as e:
+            log.logException(e, 'PKCE Authentication failed !')
+            xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30253), icon=xbmcgui.NOTIFICATION_ERROR)
+        return ok
 
     def logout(self):
         Session.logout(self, signoff=False)
@@ -185,6 +223,7 @@ class TidalSession(Session):
             album._playlist_track_id = item.id
             album.audioQuality = item.audioQuality
             album.audioModes = item.audioModes
+            album.mediaMetadata = item.mediaMetadata
             albums.append(album)
         return albums
 
@@ -272,6 +311,14 @@ class TidalSession(Session):
         mix = MixItem(Session._parse_mix(self, json_obj))
         mix._is_logged_in = self.is_logged_in
         return mix
+
+    def _parse_broadcast(self, json_obj):
+        item = BroadcastItem(Session._parse_broadcast(self, json_obj))
+        return item
+
+    def _parse_broadcast_url(self, json_obj):
+        item = BroadcastUrlItem(Session._parse_broadcast_url(self, json_obj))
+        return item
 
     def _parse_folder(self, json_obj):
         item = FolderItem(Session._parse_folder(self, json_obj))
@@ -365,7 +412,7 @@ class TidalSession(Session):
                 log.warning('Dolby AC4 not supported ! Playing silence track to avoid kodi to crash ...')
                 xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30296).format(codec=tidal.Codec.AC4), icon=xbmcgui.NOTIFICATION_WARNING)
                 return TrackUrlItem.unplayableItem()
-            if quality in [tidal.Quality.lossless, tidal.Quality.hi_res] and media.codec not in tidal.Codec.HQCodecs:
+            if quality in [tidal.Quality.lossless, tidal.Quality.hi_res, tidal.Quality.hi_res_lossless] and media.codec not in tidal.Codec.HQCodecs:
                 xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30504), icon=xbmcgui.NOTIFICATION_WARNING)
             log.info('Got stream with soundQuality:%s, codec:%s' % (media.soundQuality, media.codec))
             return media
@@ -381,6 +428,27 @@ class TidalSession(Session):
                 pass
             xbmcgui.Dialog().notification('%s Error %s' % (plugin.name, r.status_code), msg, xbmcgui.NOTIFICATION_WARNING)
             log.warning("Playing silence for unplayable track %s to avoid kodi crash" % track_id)
+        return TrackUrlItem.unplayableItem()
+
+    def get_broadcast_url(self, broadcast_id, quality=None):
+        try:
+            soundQuality = quality if quality else self._config.quality
+            media = Session.get_broadcast_url(self, broadcast_id, quality=soundQuality)
+            if isinstance(media, BroadcastUrlItem):
+                media.selectStream()
+            return media
+        except HTTPError as e:
+            r = e.response
+            if r.status_code in [401, 403]:
+                msg = _T(Msg.i30210)
+            else:
+                msg = r.reason
+            try:
+                msg = r.json().get('userMessage')
+            except:
+                pass
+            xbmcgui.Dialog().notification('%s Error %s' % (plugin.name, r.status_code), msg, xbmcgui.NOTIFICATION_WARNING)
+            log.warning("Playing silence for unplayable live stream %s to avoid kodi crash" % broadcast_id)
         return TrackUrlItem.unplayableItem()
 
     def get_video_url(self, video_id, maxHeight=-1):
@@ -665,6 +733,7 @@ class TidalUser(User):
         self.profiles_cache = {}
 
     def update_caches(self, withProgress=False):
+        log.info('Updating caches %s' % ('with progress dialog' if withProgress else 'in background'))
         progress = xbmcgui.DialogProgressBG() if withProgress else None
         if progress:
             progress.create(heading=plugin.name)

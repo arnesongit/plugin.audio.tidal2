@@ -2,9 +2,9 @@
 
 This is a modified version of the TIDAL Addon for Kodi.
 
-See [changelog.txt](https://github.com/arnesongit/plugin.audio.tidal2/blob/master/changelog.txt) for information.
+See [changelog.txt](changelog.txt) for information.
 
-## Manual Installation
+### Manual Installation
 
 1. Download the zip file from the repository folder [for Kodi 19 and 20](https://github.com/arnesongit/repository.tidal2/tree/main/plugin.audio.tidal2)
    or [for Kodi 17 and 18](https://github.com/arnesongit/repository.tidal2/tree/until-leia/plugin.audio.tidal2).
@@ -12,7 +12,7 @@ See [changelog.txt](https://github.com/arnesongit/plugin.audio.tidal2/blob/maste
 3. The Addon is shown as "TIDAL2".
 4. Have fun.
 
-## Installation with TIDAL2 Repository
+### Installation with TIDAL2 Repository
 
 With this method you will get updates automatically.
 
@@ -22,7 +22,7 @@ With this method you will get updates automatically.
 3. Install the "TIDAL2" addon from this repository.
 4. Have fun.
 
-## Update from Kodi 18 to Kodi 19/20
+### Update from Kodi 18 to Kodi 19/20
 
 If you use my TIDAL2 repository, please uninstall this repository before upgrading to Kodi 19 or 20.
 
@@ -30,7 +30,7 @@ After the Kodi update to 19 or 20 you can install the new TIDAL2 addon from zip 
 or you can install my [new TIDAL2 Repository for Kodi >= 19](https://github.com/arnesongit/repository.tidal2/blob/main/repository.tidal2/repository.tidal2-0.2.1.zip?raw=true)
 and upgrade the TIDAL2 addon from this repository.
 
-# How to log in to play music
+## How to log in to play music
 
 The TIDAL2 addon uses the TIDAL web API to browse through your music library and play music and videos.
 To use this API the addon has to use specific client credential to identify, which kind of device is using the API.
@@ -39,7 +39,7 @@ This credentials (client ID and client secret) has to be used to log in to TIDAL
 Because the TIDAL2 addon doesn't contain any IDs and secrets, the user has to provide them to the addon.
 The easiest way to find a client ID is to select one from the TIDAL Android app (the original TIDAL APK installation file for Android).
 
-## Prepare the addon for login
+### Prepare the addon for login
 
 1. Download the latest version of the original TIDAL APK file from the internet. To find it, search for "TIDAL apk mirror" in the web.
    If you find more than one variant of the APK, use the normal APK version and not the BUNDLE version!
@@ -50,7 +50,7 @@ The easiest way to find a client ID is to select one from the TIDAL Android app 
    It can take a few seconds on slower platforms until the selection dialog appears, please wait.
 6. Select the device type you want to use.
 
-## Use the login page of the TIDAL2 addon
+### Use the login page of the TIDAL2 addon
 
 1. Open the addon settings again and go to the "Extended" settings folder.
    Remember the value for "IP-Port for internal HTTP Server". The default value is 5555.
@@ -84,7 +84,7 @@ The next actions depend on your selected device type, because they can use diffe
 After successful login the TIDAL2 addon will refresh its home page and begins to load all your favorites and playlist entries into a cache.
 This will be shown in a progress window. Please wait until the cache is completely build.
 
-## Choosing the right device type (client ID)
+### Choosing the right device type (client ID)
 
 There are many device types available, but only a few are truly useful.<br>
 This are the device types I prefer:
@@ -96,7 +96,7 @@ This are the device types I prefer:
 | Default                | PKCE             | MPEG-Dash           | https          | MQA                | --                    | No                          |
 | Hi Res                 | PKCE             | MPEG-Dash           | https          | FLAC               | --                    | Yes                         |
 
-## How to play Hi-Res audio up to 192kHz sample rate
+### How to play Hi-Res audio up to 192kHz sample rate
 
 If you want to play Hi-Res audio, which TIDAL supports since the APK version 2.87, you have to select the "Hi Res" device type from the TIDAL APK.
 Of course, your playback hardware must be able to play these audio formats. Otherwise it doesn't make any sense.
@@ -107,7 +107,7 @@ I've tested this USB-DACs which work well for Hi-Res playback:
 - Lotoo PAW S2
 - FiiO BTR7
 
-# How to play MPEG-Dash with FLAC content on Linux platforms
+## How to play MPEG-Dash with FLAC content on Linux platforms
 
 I found out that the imputstream.ffmpegdirect addon for Linux platforms isn't able to play MPEG-Dash streams.<br>
 The Dash demultiplexer seems not to be compiled into this addon.

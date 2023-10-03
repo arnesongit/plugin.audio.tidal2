@@ -29,8 +29,8 @@ msgid "Music Quality"
 msgstr "Musik-Qualität"
 
 msgctxt "#30005"
-msgid "Lossless (FLAC)"
-msgstr "Lossless (FLAC)"
+msgid "Lossless (FLAC, 16 Bit)"
+msgstr "Lossless (FLAC, 16 Bit)"
 
 msgctxt "#30006"
 msgid "High (320 kBit/s)"
@@ -77,7 +77,7 @@ msgid "Mark Favorites in Labels"
 msgstr "Favoriten in Label markieren"
 
 msgctxt "#30017"
-msgid "Append User Paylist Names to Labels"
+msgid "Append User Playlist Names to Labels"
 msgstr "User-Paylist-Namen zum Label hinzufügen"
 
 msgctxt "#30018"
@@ -93,8 +93,8 @@ msgid "Device"
 msgstr "Gerät"
 
 msgctxt "#30021"
-msgid "MQA (Master Audio)"
-msgstr "MQA (Master Audio)"
+msgid "Max (MQA Master Audio and Hi Res)"
+msgstr "Max (MQA Master Audio und Hi Res)"
 
 msgctxt "#30022"
 msgid "Access Token expires at"
@@ -105,8 +105,8 @@ msgid "Show Album Year in Labels"
 msgstr "Album-Jahr im Label anzeigen"
 
 msgctxt "#30024"
-msgid "Add MQA/Atmos/360RA to Labels"
-msgstr "MQA/Atmos/360RA zum Label hinzufügen"
+msgid "Add MQA/HiRes/Atmos/360RA to Labels"
+msgstr "MQA/HiRes/Atmos/360RA zum Label hinzufügen"
 
 msgctxt "#30025"
 msgid "Options"
@@ -369,11 +369,11 @@ msgid "Track Radio"
 msgstr "Titel-Radio"
 
 msgctxt "#30223"
-msgid "Recomended Tracks"
+msgid "Recommended Tracks"
 msgstr "Titel-Empfehlungen"
 
 msgctxt "#30224"
-msgid "Recomended Videos"
+msgid "Recommended Videos"
 msgstr "Video-Empfehlungen"
 
 msgctxt "#30225"
@@ -421,7 +421,7 @@ msgid "Delete {what}"
 msgstr "{what} löschen"
 
 msgctxt "#30236"
-msgid "Playlist '{name}' contains {count} items. Are you sure to delete this playlist ?"
+msgid "Playlist '{name}' contains {count} items. Are you sure that you want to delete this playlist?"
 msgstr "Die Playliste '{name}' enthält {count} Elemente. Soll diese Playliste wirklich gelöscht werden ?"
 
 msgctxt "#30237"
@@ -441,7 +441,7 @@ msgid "Remove from {what}"
 msgstr "Aus {what} entfernen"
 
 msgctxt "#30241"
-msgid "Are you sure to remove item number {entry} from this playlist ?"
+msgid "Are you sure that you want to remove item number {entry} from this playlist?"
 msgstr "Soll Eintrag Nr. {entry} aus der Playliste entfernt werden ?"
 
 msgctxt "#30242"
@@ -461,7 +461,7 @@ msgid "Show Album"
 msgstr "Album anzeigen"
 
 msgctxt "#30246"
-msgid "Are you sure to remove the item from this playlist ?"
+msgid "Are you sure to remove the item from this playlist?"
 msgstr "Soll dieser Eintrag aus der Playliste entfernt werden ?"
 
 msgctxt "#30247"
@@ -489,7 +489,7 @@ msgid "Open Playlist (Audio only)"
 msgstr "Playliste öffnen (nur Audio)"
 
 msgctxt "#30253"
-msgid "Login failed !"
+msgid "Login failed!"
 msgstr "Login fehlgeschlagen !"
 
 msgctxt "#30254"
@@ -501,11 +501,11 @@ msgid "Open as Album Playlist"
 msgstr "Als Album-Playliste öffnen"
 
 msgctxt "#30256"
-msgid "Do you really want to logout ?\nThen a relogin is necessary !"
+msgid "Do you really want to log out?\nThen a new login is necessary!"
 msgstr "Wirklich abmelden ?\nEine Neuanmeldung ist dann notwendig !"
 
 msgctxt "#30257"
-msgid "Please set Client-ID and Client-Secret in the addon settings !\nOr login with URL: {url}"
+msgid "Please set Client-ID and Client-Secret in the addon settings!\nOr log in with URL: {url}"
 msgstr "Bitte Client-ID und Client-Secret in den Addon-Einstellungen setzen !\nOder über URL anmelden: {url}"
 
 msgctxt "#30258"
@@ -513,7 +513,7 @@ msgid "Clear {what}"
 msgstr "{what} leeren"
 
 msgctxt "#30259"
-msgid "Playlist '{name}' contains {count} items. Are you sure to remove all items from this playlist ?"
+msgid "Playlist '{name}' contains {count} items. Are you sure that you want to remove all items from this playlist?"
 msgstr "Die Playliste '{name}' enthält {count} Elemente. Sollen alle Elemente aus der Playliste entfernt werden ?"
 
 msgctxt "#30260"
@@ -581,11 +581,11 @@ msgid "Favorite Mixes"
 msgstr "Favorisierte Mixe"
 
 msgctxt "#30276"
-msgid "The folder '{folder}' contains {count} playlists.\nUser playlists will be deleted !"
+msgid "The folder '{folder}' contains {count} playlists.\nUser playlists will be deleted!"
 msgstr "Der Ordner '{folder}' enthält noch {count} Playlisten.\nUser-Playlisten werden mit gelöscht !"
 
 msgctxt "#30277"
-msgid "Do you really want to delete the folder '{folder}' ?"
+msgid "Do you really want to delete the folder '{folder}'?"
 msgstr "Soll der Ordner '{folder}' wirklich gelöscht werden ?"
 
 msgctxt "#30278"
@@ -601,11 +601,11 @@ msgid "TIDAL2 - OAuth2 Login"
 msgstr "TIDAL2 - OAuth2 Anmeldung"
 
 msgctxt "#30281"
-msgid "Login-Status"
+msgid "Login Status"
 msgstr "Login-Status"
 
 msgctxt "#30282"
-msgid "Not logged in. Please login via web browser !"
+msgid "Not logged in. Please log in via web browser!"
 msgstr "Nicht angemeldet. Bitte über Web-Browser anmelden !"
 
 msgctxt "#30283"
@@ -625,11 +625,11 @@ msgid "No device type found in APK"
 msgstr "Keine Gerätetypen in APK-Datei gefunden"
 
 msgctxt "#30287"
-msgid "°Attention: Device type was selected from the TIDAL APK !<br>Client-ID are Client-Secret are fixed !"
+msgid "°Attention: Device type was selected from the TIDAL APK!<br>Client-ID and Client-Secret are fixed!"
 msgstr "°Achtung: Gerätetyp wurde aus der TIDAL-APK übernommen !<br>Client-ID und Client-Secret sind fest vorgegeben !"
 
 msgctxt "#30288"
-msgid "°Attention: No device type was selected from a TIDAL APK !<br>Please use working Client-ID and Client-Secret values directly !"
+msgid "°Attention: No device type was selected from a TIDAL APK!<br>Please use working Client-ID and Client-Secret values directly!"
 msgstr "°Achtung: Gerätetyp wurde nicht aus der TIDAL-APK übernommen !<br>Bitte funktionierende Client-ID und Client-Secret Werte direkt vorgeben !"
 
 msgctxt "#30289"
@@ -637,7 +637,7 @@ msgid "Select device type from TIDAL APK file"
 msgstr "Gerätetyp aus TIDAL APK Datei lesen"
 
 msgctxt "#30290"
-msgid "No device type selected.\nShould the existing device type be cleared ?\nThen the Client-ID and Client-Secret must be set manually !"
+msgid "No device type selected.\nShould the existing device type be cleared?\nThen the Client-ID and Client-Secret must be set manually!"
 msgstr "Kein Gerätetyp ausgewählt.\nSoll der vorhandene Gerätetyp entfernt werden ?\nClient-ID und Client-Secret müssen dann manuell gesetzt werden !"
 
 msgctxt "#30291"
@@ -649,7 +649,7 @@ msgid "Show {what}"
 msgstr "{what} anzeigen"
 
 msgctxt "#30293"
-msgid "Login Successful !"
+msgid "Login Successful!"
 msgstr "Login erfolgreich !"
 
 msgctxt "#30294"
@@ -665,15 +665,15 @@ msgid "Codec {codec} not supported"
 msgstr "Codec {codec} nicht abspielbar"
 
 msgctxt "#30297"
-msgid "Step 1: Use following link to login at TIDAL"
+msgid "Step 1: Use following link to log in at TIDAL"
 msgstr "1. Schritt: Bei TIDAL über folgenden Link einloggen"
 
 msgctxt "#30298"
-msgid "Please login here"
+msgid "Please log in here"
 msgstr "Bitte hier einloggen"
 
 msgctxt "#30299"
-msgid "After logging in, an 'oops' page will appear. The URL of this page contains a one-time authorization code to retrieve the access tokens. This authorization code is valid for one minute !"
+msgid "After logging in, an 'oops' page will appear. The URL of this page contains a one-time authorization code to retrieve the access tokens. This authorization code is valid for one minute!"
 msgstr "Nach der Anmeldung erscheint eine 'Hoppla'-Seite. Die URL dieser Seite enthält einen Anmelde-Code, der nur einmal gültig ist und nach einer Minute abläuft !"
 
 msgctxt "#30300"
@@ -777,11 +777,11 @@ msgid "Enable Debug-Logging"
 msgstr "Debug-Logging aktivieren"
 
 msgctxt "#30503"
-msgid "Set playback informations for Web-GUI"
+msgid "Set playback information for Web-GUI"
 msgstr "Playback-Informationen für Web-GUI setzen"
 
 msgctxt "#30504"
-msgid "Not a FLAC Stream !"
+msgid "Not a FLAC Stream!"
 msgstr "Kein FLAC-Stream !"
 
 msgctxt "#30505"
@@ -797,7 +797,7 @@ msgid "Delete Album Cache"
 msgstr "Album-Cache löschen"
 
 msgctxt "#30508"
-msgid "Are you sure to delete the Album Cache Database ?"
+msgid "Are you sure you want to delete the Album Cache Database?"
 msgstr "Soll der Album-Cache wirklich gelöscht werden ?"
 
 msgctxt "#30509"
@@ -875,6 +875,10 @@ msgstr "Follower-Profile"
 msgctxt "#30527"
 msgid "MPD Cache size"
 msgstr "MPD-Cache Größe"
+
+msgctxt "#30528"
+msgid "HiRes"
+msgstr "HiRes"
 
 msgctxt "#30900"
 msgid "Without color"

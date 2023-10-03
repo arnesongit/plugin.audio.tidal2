@@ -57,6 +57,7 @@ RE_ISO8601_PERIOD = re.compile(r'^(?P<sign>[+-])?P(?!\b)(?P<years>[0-9]+([,.][0-
 
 
 class Quality(object):
+    hi_res_lossless = 'HI_RES_LOSSLESS'
     hi_res = 'HI_RES'
     lossless = 'LOSSLESS'
     high = 'HIGH'
@@ -79,6 +80,12 @@ class AudioMode(object):
     sony_360 = 'SONY_360RA'
     dolby_atmos = 'DOLBY_ATMOS'
 
+class MediaMetadataTags(object):
+    mqa = 'MQA'
+    hires_lossless = 'HIRES_LOSSLESS'
+    lossless = 'LOSSLESS'
+    sony_360 = 'SONY_360RA'
+    dolby_atmos = 'DOLBY_ATMOS'
 
 class Codec(object):
     MP3 = 'MP3'
@@ -109,6 +116,7 @@ class MimeType(object):
     audio_xflac = 'audio/x-flac'
     audio_eac3 = 'audio/eac3'
     audio_ac4 = 'audio/mp4'
+    audio_m3u8 = 'audio/mpegurl'
     video_mp4 = 'video/mp4'
     video_m3u8 = 'video/mpegurl'
     audio_map = {Codec.MP3: audio_mp3, Codec.AAC: audio_m4a, Codec.M4A: audio_m4a,
@@ -260,6 +268,7 @@ class Album(BrowsableMedia):
     version = None
     popularity = 0
     audioModes = [AudioMode.stereo]
+    mediaMetadata = { 'tags': [] }
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -293,8 +302,23 @@ class Album(BrowsableMedia):
         return None
 
     @property
-    def isMasterAlbum(self):
+    def isMqa(self):
+        try:
+            if self.mediaMetadata['tags']:
+                return True if MediaMetadataTags.mqa in self.mediaMetadata['tags'] and not self.isSony360RA and not self.isDolbyAtmos else False
+        except:
+            pass
+        # Fallback to old method
         return True if self.audioQuality == Quality.hi_res else False
+
+    @property
+    def isHiRes(self):
+        try:
+            if self.mediaMetadata['tags'] and MediaMetadataTags.hires_lossless in self.mediaMetadata['tags']:
+                return True
+        except:
+            pass
+        return False
 
     @property
     def isDolbyAtmos(self):
@@ -567,6 +591,7 @@ class Track(PlayableMedia):
     peak = 1.0
     editable = False
     audioModes = [AudioMode.stereo]
+    mediaMetadata = { 'tags': [] }
     mix_ids = {}
 
     # Internal Properties
@@ -604,7 +629,22 @@ class Track(PlayableMedia):
 
     @property
     def isMqa(self):
+        try:
+            if self.mediaMetadata['tags']:
+                return True if MediaMetadataTags.mqa in self.mediaMetadata['tags'] and not self.isDolbyAtmos and not self.isSony360RA else False
+        except:
+            pass
+        # Fallback to old method
         return True if self.audioQuality == Quality.hi_res else False
+
+    @property
+    def isHiRes(self):
+        try:
+            if self.mediaMetadata['tags'] and MediaMetadataTags.hires_lossless in self.mediaMetadata['tags']:
+                return True
+        except:
+            pass
+        return False
 
     @property
     def isDolbyAtmos(self):
@@ -619,6 +659,18 @@ class Track(PlayableMedia):
             return True if AudioMode.sony_360 in self.audioModes else False
         except:
             return False
+
+
+class Broadcast(PlayableMedia):
+    djSessionId = ''
+    sharingUrl = ''
+    profile = None  # Set by parser
+    track = None    # Set by parser
+
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+        super(Broadcast, self).__init__()
+        self.id = self.djSessionId
 
 
 class Video(PlayableMedia):
@@ -958,6 +1010,8 @@ class TrackUrl(StreamUrl):
     securityToken = None
     securityType = None
     trackId = None
+    bitDepth = 16
+    sampleRate = 44100
     mimeType = MimeType.audio_mpeg
     urls = []
     # Fields for playbackinfopostpaywall results
@@ -1021,6 +1075,24 @@ class TrackUrl(StreamUrl):
     @property
     def isDASH(self):
         return True if ManifestMimeType.dash_xml in self.manifestMimeType else False
+
+
+class BroadcastUrl(StreamUrl):
+    id = None
+    audioQuality = Quality.high
+    manifest = None
+    manifestType = None
+    manifestJson = {}
+    mimeType = MimeType.video_mp4
+    urls = []
+
+    def __init__(self, **kwargs):
+        StreamUrl.__init__(self, **kwargs)
+        if ManifestMimeType.tidal_emu in self.manifestType and self.manifest:
+            self.manifestJson = json.loads(base64.b64decode(self.manifest).decode('utf-8'))
+            self.mimeType = self.manifestJson.get('mimeType', MimeType.video_m3u8)
+            self.urls = self.manifestJson['urls']
+            self.url = self.urls[0]
 
 
 class VideoUrl(StreamUrl):
@@ -1119,6 +1191,7 @@ class DashInfo(object):
         self.mediaUrl = re.match(r'.* media=\"(?P<m>http.+?)\".*', mpd_xml ).groupdict()['m'].replace('$Number$', '{number}')
         self.startNumber = int(re.match(r'.* startNumber=\"(?P<m>\d+?)\".*', mpd_xml ).groupdict()['m'])
         self.timescale = int(re.match(r'.* timescale=\"(?P<m>\d+?)\".*', mpd_xml ).groupdict()['m'])
+        self.audioSamplingRate = int(re.match(r'.* audioSamplingRate=\"(?P<m>\d+?)\".*', mpd_xml ).groupdict()['m'])
         sizes = re.match(r'.* d=\"(?P<d1>\d+?)\".* r=\"(?P<r>\d+?)\".* d=\"(?P<d2>\d+?)\".*', mpd_xml).groupdict()
         self.chunksize = int(sizes['d1'])
         self.chunkcount = int(sizes['r']) + 1

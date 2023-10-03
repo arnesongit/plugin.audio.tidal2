@@ -36,8 +36,9 @@
     <setting label="30520" id="favorite_color"      type="select" visible="eq(-4,true)" lvalues="30900|30901|30902|30903|30904|30905|30906|30907|30908|30909|30910|30911|30912|30913|30914|30915|30916|30917|30918|30919" default="8"/>
     <setting label="30522" id="user_playlist_color" type="select" visible="eq(-5,true)" lvalues="30900|30901|30902|30903|30904|30905|30906|30907|30908|30909|30910|30911|30912|30913|30914|30915|30916|30917|30918|30919" default="11"/>
     <setting label="30523" id="master_audio_color"  type="select" visible="eq(-6,true)" lvalues="30900|30901|30902|30903|30904|30905|30906|30907|30908|30909|30910|30911|30912|30913|30914|30915|30916|30917|30918|30919" default="13"/>
-    <setting label="30524" id="dolby_atmos_color"   type="select" visible="eq(-7,true)" lvalues="30900|30901|30902|30903|30904|30905|30906|30907|30908|30909|30910|30911|30912|30913|30914|30915|30916|30917|30918|30919" default="14"/>
-    <setting label="30525" id="sony_360ra_color"    type="select" visible="eq(-8,true)" lvalues="30900|30901|30902|30903|30904|30905|30906|30907|30908|30909|30910|30911|30912|30913|30914|30915|30916|30917|30918|30919" default="15"/>
+    <setting label="30528" id="hires_color"         type="select" visible="eq(-7,true)" lvalues="30900|30901|30902|30903|30904|30905|30906|30907|30908|30909|30910|30911|30912|30913|30914|30915|30916|30917|30918|30919" default="7"/>
+    <setting label="30524" id="dolby_atmos_color"   type="select" visible="eq(-8,true)" lvalues="30900|30901|30902|30903|30904|30905|30906|30907|30908|30909|30910|30911|30912|30913|30914|30915|30916|30917|30918|30919" default="14"/>
+    <setting label="30525" id="sony_360ra_color"    type="select" visible="eq(-9,true)" lvalues="30900|30901|30902|30903|30904|30905|30906|30907|30908|30909|30910|30911|30912|30913|30914|30915|30916|30917|30918|30919" default="15"/>
   </category>
   <category label="30002">
     <setting label="30513" id="dash_aac_mode" type="select" lvalues="30516|30517|30518" default="0"/>

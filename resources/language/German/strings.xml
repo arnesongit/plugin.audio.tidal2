@@ -3,7 +3,7 @@
     <string id="30001">Session-Daten</string>
     <string id="30002">Erweitert</string>
     <string id="30004">Musik-Qualität</string>
-    <string id="30005">Lossless (FLAC)</string>
+    <string id="30005">Lossless (FLAC, 16 Bit)</string>
     <string id="30006">High (320 kBit/s)</string>
     <string id="30007">Low (96 kBit/s)</string>
     <string id="30008">Benutzer-ID</string>
@@ -19,10 +19,10 @@
     <string id="30018">Lossless-Streaming-Option</string>
     <string id="30019">Session-ID</string>
     <string id="30020">Gerät</string>
-    <string id="30021">MQA (Master Audio)</string>
+    <string id="30021">Max (MQA Master Audio und Hi Res)</string>
     <string id="30022">Access-Token läuft ab am</string>
     <string id="30023">Album-Jahr im Label anzeigen</string>
-    <string id="30024">MQA/Atmos/360RA zum Label hinzufügen</string>
+    <string id="30024">MQA/HiRes/Atmos/360RA zum Label hinzufügen</string>
     <string id="30025">Optionen</string>
     <string id="30026">Client-ID</string>
     <string id="30027">Addon-Einstellungen</string>
@@ -223,6 +223,7 @@
     <string id="30525">Sony Real Audio 360</string>
     <string id="30526">Follower-Profile</string>
     <string id="30527">MPD-Cache Größe</string>
+    <string id="30528">HiRes</string>
 
 	<!-- Color values -->
     <string id="30900">Ohne Farbe</string>

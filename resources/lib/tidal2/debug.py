@@ -63,7 +63,7 @@ class DebugHelper(object):
             traceback.print_exc()
 
     def debug(self, txt):
-        self.log(txt, level=xbmc.LOGINFO if self.debugLogEnabled else xbmc.LOGDEBUG)
+        self.log(txt, level=LOGNOTICE if self.debugLogEnabled else xbmc.LOGDEBUG)
 
     def info(self, txt):
         if self.infoLogEnabled:
