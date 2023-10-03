@@ -110,12 +110,13 @@ I've tested this USB-DACs which work well for Hi-Res playback:
 # How to play MPEG-Dash with FLAC content on Linux platforms
 
 I found out that the imputstream.ffmpegdirect addon for Linux platforms isn't able to play MPEG-Dash streams.<br>
-The Dash demultiplexer seems not to be compiled into this addon.<br>
-This seems to affect all Linux platforms like Ubuntu for PC, Raspi OS for Raspberry Pi 4 or LibreELEC for PC or Raspberry.
+The Dash demultiplexer seems not to be compiled into this addon.
 <p>
+This seems to affect all Linux platforms like Ubuntu for PC, Raspi OS for Raspberry Pi 4 or LibreELEC for PC or Raspberry.<br>
 Windows, MacOS and Android platforms are not affected and MPEG-Dash streams will work on this platforms with FLAC content.
 <p>
-If you want to play Hi-Res audio with TIDAL2 on a Linux platform, you have to compile the inputstream.ffmpegdirect addon by yourself.
-<p>
-[Here is is short description](https://github.com/arnesongit/plugin.audio.tidal2/blob/master/README-Dash.md) how I compiled it.
+If you want to play Hi-Res audio with TIDAL2 on a Linux platform, you have to compile the inputstream.ffmpegdirect addon by yourself.<p>
+
+Here is a [short description](README-Dash.md) how I compiled it.
+
 
