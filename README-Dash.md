@@ -61,7 +61,7 @@ https://github.com/xbmc/inputstream.ffmpegdirect
 - Create the Zip file of the addon which can be used with the "Install from Zip" method in Kodi:
   ```
   cd ..
-  zip ~/Desktop/inputstream.ffmpegdirect-linux-20.5.0.zip inputstream.ffmpegdirect/*
+  zip -r ~/Desktop/inputstream.ffmpegdirect-linux-20.5.0.zip inputstream.ffmpegdirect/*
   ```
 - This Zip file on the Desktop can now be used to install the inputstream-ffmpegdirect addon on a Linux PC 64-Bit in Kodi Nexus.
 
