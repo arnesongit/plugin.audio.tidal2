@@ -206,7 +206,7 @@ class Msg(object):
     i30307 = 30307 # Loading playlists ...
     i30308 = 30308 # Loading playlist ({item}/{max}): {name}
     i30309 = 30309 # Saving playlist cache ...
-    i30310 = 30310 # Followers
+    i30310 = 30310 # Picks
     i30311 = 30311 # Public
     i30312 = 30312 # General Search
     i30313 = 30313 # I'm following
@@ -219,6 +219,10 @@ class Msg(object):
     i30320 = 30320 # Block {what}
     i30321 = 30321 # Staff Picks
     i30322 = 30322 # Clean Content
+    i30323 = 30323 # My Profile
+    i30324 = 30324 # Followers of {user}
+    i30325 = 30325 # Add {what}
+    i30326 = 30326 # Search {what}
 
     # Extended Settings
     i30501 = 30501 # Use Colors in Labels

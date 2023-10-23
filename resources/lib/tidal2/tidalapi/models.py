@@ -269,6 +269,7 @@ class Album(BrowsableMedia):
     popularity = 0
     audioModes = [AudioMode.stereo]
     mediaMetadata = { 'tags': [] }
+    trn = None
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -278,6 +279,8 @@ class Album(BrowsableMedia):
         self.num_tracks = self.numberOfTracks # For Backward Compatibility
         self.release_date = self.releaseDate  # For Backward Compatibility
         self.name = self.title                # For Backward Compatibility
+        if not self.trn:
+            self.trn = 'trn:album:%s' % self.id
 
     @property
     def year(self):
@@ -341,6 +344,7 @@ class Artist(BrowsableMedia):
     popularity = 0
     imFollowing = False
     mix_ids = {}
+    trn = None
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -349,6 +353,8 @@ class Artist(BrowsableMedia):
             self.mix_ids = kwargs['mixes']
         except:
             self.mix_ids = {}
+        if not self.trn:
+            self.trn = 'trn:artist:%s' % self.id
 
     @property
     def image(self):
@@ -369,6 +375,7 @@ class Mix(BrowsableMedia):
     mixType = ''
     dateAdded = None
     updated = None
+    trn = None
     _image = None
     _fanart = None
 
@@ -389,6 +396,8 @@ class Mix(BrowsableMedia):
                 self._fanart = kwargs['images']['LARGE']['url']
         except:
             self._image = IMG_URL.format(picture=DEFAULT_PLAYLIST_IMG.replace('-', '/'), size='1080x720')
+        if not self.trn:
+            self.trn = 'trn:mix:%s' % self.id
 
     @property
     def image(self):
@@ -557,6 +566,7 @@ class PlayableMedia(BrowsableMedia):
     allowStreaming = True
     streamReady = True
     streamStartDate = None
+    mediaMetadata = { 'tags': [] }
 
     # Internal Properties
     _playlist_id = None        # ID of the Playlist
@@ -591,8 +601,8 @@ class Track(PlayableMedia):
     peak = 1.0
     editable = False
     audioModes = [AudioMode.stereo]
-    mediaMetadata = { 'tags': [] }
     mix_ids = {}
+    trn = None
 
     # Internal Properties
     _ftArtists = []  # All artists except main (Filled by parser)
@@ -608,6 +618,8 @@ class Track(PlayableMedia):
             self.mix_ids = kwargs['mixes']
         except:
             self.mix_ids = {}
+        if not self.trn:
+            self.trn = 'trn:track:%s' % self.id
 
     @property
     def year(self):
@@ -681,6 +693,7 @@ class Video(PlayableMedia):
     popularity = 0
     quality = 'MP4_1080P'
     audioModes = [AudioMode.stereo] # For videos in albums
+    trn = None
 
     # Internal Properties
     _ftArtists = []  # All artists except main (Filled by parser)
@@ -689,6 +702,8 @@ class Video(PlayableMedia):
         self.__dict__.update(kwargs)
         super(Video, self).__init__()
         self.releaseDate = self.parse_date(self.releaseDate)
+        if not self.trn:
+            self.trn = 'trn:video:%s' % self.id
 
     @property
     def year(self):
@@ -830,6 +845,9 @@ class UserProfile(BrowsableMedia):
     followType = 'USER'
     blocked = False
     picture = None
+    numberOfFollowers = 0
+    numberOfFollows = 0
+    prompts = []
 
     # Internal Properties
     _own_id = 0 # Set by parser
@@ -842,6 +860,8 @@ class UserProfile(BrowsableMedia):
             self.userId = self.id
         if not self.trn:
             self.trn = 'trn:user:%s' % self.id
+        if not self.name:
+            self.name = '%s' % self.id
 
     @property
     def image(self):
@@ -855,8 +875,20 @@ class UserProfile(BrowsableMedia):
     def is_me(self):
         return True if '%s' % self.id == '%s' % self._own_id else False
 
-    def get_name(self):
-        return self.name if self.name else '%s' % self.id
+
+class UserPrompt(BrowsableMedia):
+    title = ''
+    description = ''
+    updatedTime = None
+    supportedContentType = 'TRACK'
+    data = None  # This can be a Track, Video, Album,  Artist, Playlist, Mix
+    _my_prompt = False  # True for own prompt which can be modified (set by parser)
+
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+        self.name = self.title
+        if self.updatedTime:
+            self.updatedTime = self.parse_date(self.updatedTime)
 
 
 class Role(object):

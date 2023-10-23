@@ -47,6 +47,8 @@ class ItemSortType(object):
 class HasListItem(object):
 
     _is_logged_in = False
+    _only_info_context_menu = False
+    _initial_cm_items = []
 
     def setLabelFormat(self):
         self.FOLDER_MASK = settings.folder_mask
@@ -76,16 +78,19 @@ class HasListItem(object):
         # In Favorites View everything as a Favorite
         if self._is_logged_in and hasattr(self, '_isFavorite') and '/favorites/' in sys.argv[0]:
             self._isFavorite = True
-        cm = self.getContextMenuItems()
-        if isinstance(self, (tidal.Track, tidal.Video)) and KODI_VERSION >= (20, 0):
+        cm = self._initial_cm_items + self.getContextMenuItems(onlyInfoItems=self._only_info_context_menu)
+        if isinstance(self, (tidal.Track, tidal.Video, tidal.Album)) and KODI_VERSION >= (20, 0):
             cm.append((xbmc.getLocalizedString(13347), 'Action(Queue)'))
             cm.append((xbmc.getLocalizedString(10008), 'Action(PlayNext)'))
             # cm.append(('Clear Playlist', 'Playlist.Clear'))
+        if isinstance(self, tidal.PlayableMedia):
+            #  TIDALs playback URLs have limited life-times
+            li.setProperty('ForceResolvePlugin', 'true')
         if len(cm) > 0:
             li.addContextMenuItems(cm)
         return li
 
-    def getContextMenuItems(self):
+    def getContextMenuItems(self, onlyInfoItems=False):
         return []
 
     def getSortText(self, mode=None):
@@ -239,9 +244,9 @@ class AlbumItem(tidal.Album, HasListItem):
             li.setInfo('music', infoLabels)
         return (url, li, True)
 
-    def getContextMenuItems(self):
+    def getContextMenuItems(self, onlyInfoItems=False):
         cm = []
-        if self._is_logged_in:
+        if self._is_logged_in and not onlyInfoItems:
             if self._isFavorite:
                 cm.append((_T(Msg.i30220), 'RunPlugin(%s)' % plugin.url_for_path('/favorites/remove/albums/%s' % self.id)))
             else:
@@ -254,10 +259,10 @@ class AlbumItem(tidal.Album, HasListItem):
             for plid in plids:
                 if plid != self._playlist_id:
                     cm.append(((_T(Msg.i30247).format(name=self._userplaylists[plid].get('title'))+' ...', 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_album/%s/%s' % (plid, self.id)))))
-            if len(self.artists) > 1:
-                cm.append((_T(Msg.i30221), 'RunPlugin(%s)' % plugin.url_for_path('/artists/%s' % '-'.join(['%s' % artist.id for artist in self.artists]))))
-            else:
-                cm.append((_T(Msg.i30221), 'Container.Update(%s)' % plugin.url_for_path('/artist/%s' % self.artist.id)))
+        if len(self.artists) > 1:
+            cm.append((_T(Msg.i30221), 'RunPlugin(%s)' % plugin.url_for_path('/artists/%s' % '-'.join(['%s' % artist.id for artist in self.artists]))))
+        else:
+            cm.append((_T(Msg.i30221), 'Container.Update(%s)' % plugin.url_for_path('/artist/%s' % self.artist.id)))
         return cm
 
 
@@ -297,9 +302,9 @@ class ArtistItem(tidal.Artist, HasListItem):
             li.setInfo('music', infoLabel)
         return (url, li, True)
 
-    def getContextMenuItems(self):
+    def getContextMenuItems(self, onlyInfoItems=False):
         cm = []
-        if self._is_logged_in:
+        if self._is_logged_in and not onlyInfoItems:
             if self._isFavorite:
                 cm.append((_T(Msg.i30220), 'RunPlugin(%s)' % plugin.url_for_path('/favorites/remove/artists/%s' % self.id)))
             else:
@@ -369,16 +374,17 @@ class FolderItem(tidal.Folder, HasListItem):
             li.setInfo('music', infoLabel)
         return (url, li, True)
 
-    def getContextMenuItems(self):
+    def getContextMenuItems(self, onlyInfoItems=False):
         cm = []
-        cm.append((_T(Msg.i30251).format(what=_T('folder'))+' ...', 'RunPlugin(%s)' % plugin.url_for_path('/user_folder/rename/%s' % self.id)))
-        if self.totalNumberOfItems == 0:
-            cm.append((_T(Msg.i30235).format(what=_T('folder'))+' ...', 'RunPlugin(%s)' % plugin.url_for_path('/user_folder/delete/%s' % self.id)))
-        cm.append((_T(Msg.i30237).format(what=_T('folder'))+' ...', 'RunPlugin(%s)' % plugin.url_for_path('/user_folder/create')))
-        if str(self.id) == settings.default_folder_id:
-            cm.append((_T(Msg.i30250).format(what=_P('playlist')), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist_reset_default/folder')))
-        else:
-            cm.append((_T(Msg.i30249).format(what=_P('playlist')), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist_set_default/folder/%s' % self.id)))
+        if not onlyInfoItems:
+            cm.append((_T(Msg.i30251).format(what=_T('folder'))+' ...', 'RunPlugin(%s)' % plugin.url_for_path('/user_folder/rename/%s' % self.id)))
+            if self.totalNumberOfItems == 0:
+                cm.append((_T(Msg.i30235).format(what=_T('folder'))+' ...', 'RunPlugin(%s)' % plugin.url_for_path('/user_folder/delete/%s' % self.id)))
+            cm.append((_T(Msg.i30237).format(what=_T('folder'))+' ...', 'RunPlugin(%s)' % plugin.url_for_path('/user_folder/create')))
+            if str(self.id) == settings.default_folder_id:
+                cm.append((_T(Msg.i30250).format(what=_P('playlist')), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist_reset_default/folder')))
+            else:
+                cm.append((_T(Msg.i30249).format(what=_P('playlist')), 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist_set_default/folder/%s' % self.id)))
         return cm
 
 
@@ -439,9 +445,9 @@ class MixItem(tidal.Mix, HasListItem):
             li.setInfo('music', infoLabel)
         return (url, li, True)
 
-    def getContextMenuItems(self):
+    def getContextMenuItems(self, onlyInfoItems=False):
         cm = []
-        if self._is_logged_in:
+        if self._is_logged_in and not onlyInfoItems:
             if self._isFavorite:
                 cm.append((_T(Msg.i30220), 'RunPlugin(%s)' % plugin.url_for_path('/favorites/remove/mixes/%s' % self.id)))
             else:
@@ -542,7 +548,7 @@ class PlaylistItem(tidal.Playlist, HasListItem):
             li.setInfo('music', infoLabel)
         return (url, li, True)
 
-    def getContextMenuItems(self):
+    def getContextMenuItems(self, onlyInfoItems=False):
         cm = []
         if self.numberOfVideos > 0:
             cm.append((_T(Msg.i30252), 'Container.Update(%s)' % plugin.url_for_path('/playlist/%s/tracks' % self.id)))
@@ -550,7 +556,7 @@ class PlaylistItem(tidal.Playlist, HasListItem):
             cm.append((_T(Msg.i30254), 'Container.Update(%s)' % plugin.url_for_path('/playlist/%s/items' % self.id)))
         else:
             cm.append((_T(Msg.i30255), 'Container.Update(%s)' % plugin.url_for_path('/playlist/%s/albums' % self.id)))
-        if self._is_logged_in:
+        if self._is_logged_in and not onlyInfoItems:
             if self.isUserPlaylist: # and ('user_playlists' in sys.argv[0] or 'user_folders' in sys.argv[0]):
                 cm.append((_T(Msg.i30266).format(what=_T('playlist'))+' ...', 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist_cm/%s' % self.id)))
                 if self.isPublic:
@@ -739,9 +745,9 @@ class TrackItem(tidal.Track, HasListItem):
             li.setInfo('music', infoLabel)
         return (url, li, isFolder)
 
-    def getContextMenuItems(self):
+    def getContextMenuItems(self, onlyInfoItems=False):
         cm = []
-        if self._is_logged_in:
+        if self._is_logged_in and not onlyInfoItems:
             if self._isFavorite:
                 cm.append((_T(Msg.i30220), 'RunPlugin(%s)' % plugin.url_for_path('/favorites/remove/tracks/%s' % self.id)))
             else:
@@ -821,7 +827,7 @@ class BroadcastItem(tidal.Broadcast, HasListItem):
             li.setInfo('music', infoLabel)
         return (url, li, False)
 
-    def getContextMenuItems(self):
+    def getContextMenuItems(self, onlyInfoItems=False):
         cm = []
         if isinstance(self.profile, UserProfileItem):
             cm.append((_T(Msg.i30292).format(what=self.profile.name or _T('userprofile')), 'Container.Update(%s)' % plugin.url_for_path('/userprofile/%s' % self.profile.id)))
@@ -972,9 +978,9 @@ class VideoItem(tidal.Video, HasListItem):
             li.addStreamInfo('audio', { 'codec': 'AAC', 'language': 'en', 'channels': 2 })
         return (url, li, isFolder)
 
-    def getContextMenuItems(self):
+    def getContextMenuItems(self, onlyInfoItems=False):
         cm = []
-        if self._is_logged_in:
+        if self._is_logged_in and not onlyInfoItems:
             if self._isFavorite:
                 cm.append((_T(Msg.i30220), 'RunPlugin(%s)' % plugin.url_for_path('/favorites/remove/videos/%s' % self.id)))
             else:
@@ -1129,10 +1135,10 @@ class PromotionItem(tidal.Promotion, HasListItem):
             return (None, None, False)
         return (url, li, isFolder)
 
-    def getContextMenuItems(self):
+    def getContextMenuItems(self, onlyInfoItems=False):
         cm = []
         if self.type == 'PLAYLIST':
-            if self._is_logged_in:
+            if self._is_logged_in and not onlyInfoItems:
                 if self._isFavorite:
                     cm.append((_T(Msg.i30220), 'RunPlugin(%s)' % plugin.url_for_path('/favorites/remove/playlists/%s' % self.id)))
                 else:
@@ -1145,22 +1151,22 @@ class PromotionItem(tidal.Promotion, HasListItem):
                     cm.append((_T(Msg.i30239).format(what=_T('folder'))+' ...', 'RunPlugin(%s)' % plugin.url_for_path('/user_folder/add/%s' % self.id)))
             cm.append((_T(Msg.i30255), 'Container.Update(%s)' % plugin.url_for_path('/playlist/%s/albums' % self.id)))
         elif self.type == 'ALBUM':
-            if self._is_logged_in:
+            if self._is_logged_in and not onlyInfoItems:
                 if self._isFavorite:
                     cm.append((_T(Msg.i30220), 'RunPlugin(%s)' % plugin.url_for_path('/favorites/remove/albums/%s' % self.id)))
                 else:
                     cm.append((_T(Msg.i30219), 'RunPlugin(%s)' % plugin.url_for_path('/favorites/add/albums/%s' % self.id)))
         elif self.type == 'VIDEO':
-            if self._is_logged_in:
+            if self._is_logged_in and not onlyInfoItems:
                 if self._isFavorite:
                     cm.append((_T(Msg.i30220), 'RunPlugin(%s)' % plugin.url_for_path('/favorites/remove/videos/%s' % self.id)))
                 else:
                     cm.append((_T(Msg.i30219), 'RunPlugin(%s)' % plugin.url_for_path('/favorites/add/videos/%s' % self.id)))
                 cm.append((_T(Msg.i30239).format(what=_T('playlist'))+' ...', 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/add/video/%s' % self.id)))
-            plids = list(self._userplaylists.keys())
-            for plid in plids:
-                cm.append(((_T(Msg.i30247).format(name=self._userplaylists[plid].get('title'))+' ...', 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_id/%s/%s' % (plid, self.id)))))
-            cm.append((_T(Msg.i30224), 'Container.Update(%s)' % plugin.url_for_path('/recommended/videos/%s' % self.id)))
+                plids = list(self._userplaylists.keys())
+                for plid in plids:
+                    cm.append(((_T(Msg.i30247).format(name=self._userplaylists[plid].get('title'))+' ...', 'RunPlugin(%s)' % plugin.url_for_path('/user_playlist/remove_id/%s/%s' % (plid, self.id)))))
+                cm.append((_T(Msg.i30224), 'Container.Update(%s)' % plugin.url_for_path('/recommended/videos/%s' % self.id)))
         return cm
 
 
@@ -1226,7 +1232,10 @@ class CategoryItem(tidal.Category, HasListItem):
 class UserProfileItem(tidal.UserProfile, HasListItem):
 
     def __init__(self, item):
+        #prompts = item.prompts
+        #item.prompts = []
         self.__dict__.update(vars(item))
+        #self.prompts = prompts
 
     def getLabel(self, extended=True):
         self.setLabelFormat()
@@ -1254,12 +1263,60 @@ class UserProfileItem(tidal.UserProfile, HasListItem):
             })
         return (url, li, True)
 
-    def getContextMenuItems(self):
+    def getContextMenuItems(self, onlyInfoItems=False):
         cm = []
-        if self.imFollowing:
-            cm.append((_T(Msg.i30319), 'RunPlugin(%s)' % plugin.url_for_path('/unfollow_user/%s' % self.id)))
+        if not onlyInfoItems:
+            if self.imFollowing:
+                cm.append((_T(Msg.i30319), 'RunPlugin(%s)' % plugin.url_for_path('/unfollow_user/%s' % self.id)))
+            else:
+                cm.append((_T(Msg.i30318), 'RunPlugin(%s)' % plugin.url_for_path('/follow_user/%s' % self.id)))
+        return cm
+
+
+class UserPromptItem(tidal.UserPrompt, HasListItem):
+
+    def __init__(self, item):
+        self.__dict__.update(vars(item))
+
+    def getLabel(self, extended=True):
+        self.setLabelFormat()
+        label = self.name
+        if self.data:
+            if self.supportedContentType in ['TRACK', 'ALBUM']:
+                self.data.artist.name = self.name
+                self.data.artist._isFavorite = False
+                label = self.data.getLabel(extended=extended)
+            elif self.supportedContentType == 'ARTIST':
+                label = '%s - %s' % (self.name, self.data.getLabel(extended=extended))
+        elif self._my_prompt and not settings.isFreeSubscription():
+            label = label + ' - %s ...' % _T(Msg.i30325).format(what=_T(self.supportedContentType.lower()))
+        return label
+
+    def getListItem(self):
+        if isinstance(self.data, HasListItem):
+            self.data._only_info_context_menu = True
+            self.data._initial_cm_items = self.getContextMenuItems()
+            (url, li, isFolder) = self.data.getListItem()
+            li.setLabel(self.getLabel())
+            return (url, li, isFolder)
+        li = HasListItem.getListItem(self)
+        url = plugin.url_for_path('/userprompt/add/%s/%s' % (self.id, self.supportedContentType)) if self._my_prompt and not settings.isFreeSubscription() else None
+        if KODI_VERSION >= (20, 0):
+            tag = li.getMusicInfoTag()
+            tag.setMediaType('music')
+            tag.setArtist(self.name)
         else:
-            cm.append((_T(Msg.i30318), 'RunPlugin(%s)' % plugin.url_for_path('/follow_user/%s' % self.id)))
+            li.setInfo('music', {
+                'artist': self.name
+            })
+        return (url, li, True if self.data else False)
+
+    def getContextMenuItems(self, onlyInfoItems=False):
+        cm = []
+        if not onlyInfoItems and self._my_prompt and not settings.isFreeSubscription():
+            if self.data:
+                cm.append((_T(Msg.i30278).format(name=_T(self.supportedContentType.lower()), what=_T(Msg.i30310)), 'RunPlugin(%s)' % plugin.url_for_path('/userprompt/remove/%s' % self.id)))
+            cm.append(('%s ...' % _T(Msg.i30325).format(what=_T(self.supportedContentType.lower())), 'RunPlugin(%s)' % plugin.url_for_path('/userprompt/add/%s/%s' % (self.id, self.supportedContentType))))
         return cm
 
 

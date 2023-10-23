@@ -589,8 +589,8 @@ msgid "Do you really want to delete the folder '{folder}'?"
 msgstr "Soll der Ordner '{folder}' wirklich gelöscht werden ?"
 
 msgctxt "#30278"
-msgid "Remove '{name}' from {what}"
-msgstr "'{name}' aus {what} entfernen"
+msgid "Remove {name} from {what}"
+msgstr "{name} aus {what} entfernen"
 
 msgctxt "#30279"
 msgid "{what} is DRM protected"
@@ -717,8 +717,8 @@ msgid "Saving playlist cache ..."
 msgstr "Playlist-Cache speichern ..."
 
 msgctxt "#30310"
-msgid "Followers"
-msgstr "Follower"
+msgid "Picks"
+msgstr "Top-Auswahl"
 
 msgctxt "#30311"
 msgid "Public"
@@ -767,6 +767,22 @@ msgstr "Wir empfehlen"
 msgctxt "#30322"
 msgid "Clean Content"
 msgstr "Familienfreundliche Inhalte"
+
+msgctxt "#30323"
+msgid "My User Profile"
+msgstr "Mein Benutzerprofil"
+
+msgctxt "#30324"
+msgid "Followers of {user}"
+msgstr "Followers von {user}"
+
+msgctxt "#30325"
+msgid "Add {what}"
+msgstr "{what} hinzufügen"
+
+msgctxt "#30326"
+msgid "Search {what}"
+msgstr "{what} suchen"
 
 msgctxt "#30501"
 msgid "Use Colors in Labels"

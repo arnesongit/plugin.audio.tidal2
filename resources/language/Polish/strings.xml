@@ -149,7 +149,7 @@
     <string id="30275">Ulubione Mixe</string>
     <string id="30276">Folder '{folder}' zawiera {count} listy odtwarzania .\nListy odtwarzania użytkownika zostaną usunięte !</string>
     <string id="30277">Czy na pewno chcesz usunąć folder {'{folder} ?</string>
-    <string id="30278">Usuń '{name}' z {what}</string>
+    <string id="30278">Usuń {name} z {what}</string>
     <string id="30279">{what} jest chronione DRM</string>
     <string id="30280">TIDAL2 - OAuth2 Logowanie do urządzenia</string>
     <string id="30281">Status logowania</string>
@@ -181,7 +181,7 @@
     <string id="30307">Ładowanie list odtwarzania ...</string>
     <string id="30308">Ładowanie listy odtwarzania ({item}/{max}): {name}</string>
     <string id="30309">Zapisywanie pamięci podręcznej listy odtwarzania ...</string>
-    <string id="30310">Obserwujący</string>
+    <string id="30310">Słucham</string>
     <string id="30311">Publiczny</string>
     <string id="30312">General Search</string>
     <string id="30313">Podążam</string>
@@ -194,6 +194,10 @@
     <string id="30320">Zablokuj {what}</string>
     <string id="30321">Polecamy</string>
     <string id="30322">Treść przyjazna rodzinie</string>
+    <string id="30323">Mój profil użytkownika</string>
+    <string id="30324">Zwolennicy {user}</string>
+    <string id="30325">Dodaj {what}</string>
+    <string id="30326">Wyszukaj {what}</string>
 
     <!-- Extended Settings -->
     <string id="30501">Używaj Kolorów w Etykietach</string>

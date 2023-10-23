@@ -149,7 +149,7 @@
     <string id="30275">Favorisierte Mixe</string>
     <string id="30276">Der Ordner '{folder}' enthält noch {count} Playlisten.\nUser-Playlisten werden mit gelöscht !</string>
     <string id="30277">Soll der Ordner '{folder}' wirklich gelöscht werden ?</string>
-    <string id="30278">'{name}' aus {what} entfernen</string>
+    <string id="30278">{name} aus {what} entfernen</string>
     <string id="30279">{what} ist DRM geschützt</string>
     <string id="30280">TIDAL2 - OAuth2 Anmeldung</string>
     <string id="30281">Login-Status</string>
@@ -181,7 +181,7 @@
     <string id="30307">Lade Playlisten ...</string>
     <string id="30308">Lade Playliste ({item}/{max}): {name}</string>
     <string id="30309">Playlist-Cache speichern ...</string>
-    <string id="30310">Follower</string>
+    <string id="30310">Top-Auswahl</string>
     <string id="30311">Öffentlich</string>
     <string id="30312">Allgemeine Suche</string>
     <string id="30313">Folge ich</string>
@@ -194,6 +194,10 @@
     <string id="30320">Blockiere {what}</string>
     <string id="30321">Wir empfehlen</string>
     <string id="30322">Familienfreundliche Inhalte</string>
+    <string id="30323">Mein Benutzerprofil</string>
+    <string id="30324">Followers von {user}</string>
+    <string id="30325">{what} hinzufügen</string>
+    <string id="30326">{what} suchen</string>
 
     <!-- Extended Settings -->
     <string id="30501">Farben in Label verwenden</string>

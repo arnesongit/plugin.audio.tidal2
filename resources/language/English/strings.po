@@ -589,7 +589,7 @@ msgid "Do you really want to delete the folder '{folder}'?"
 msgstr ""
 
 msgctxt "#30278"
-msgid "Remove '{name}' from {what}"
+msgid "Remove {name} from {what}"
 msgstr ""
 
 msgctxt "#30279"
@@ -717,7 +717,7 @@ msgid "Saving playlist cache ..."
 msgstr ""
 
 msgctxt "#30310"
-msgid "Followers"
+msgid "Picks"
 msgstr ""
 
 msgctxt "#30311"
@@ -766,6 +766,22 @@ msgstr ""
 
 msgctxt "#30322"
 msgid "Clean Content"
+msgstr ""
+
+msgctxt "#30323"
+msgid "My User Profile"
+msgstr ""
+
+msgctxt "#30324"
+msgid "Followers of {user}"
+msgstr ""
+
+msgctxt "#30325"
+msgid "Add {what}"
+msgstr ""
+
+msgctxt "#30326"
+msgid "Search {what}"
 msgstr ""
 
 msgctxt "#30501"

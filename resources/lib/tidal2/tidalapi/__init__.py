@@ -596,13 +596,13 @@ class Session(object):
         return self._map_request('profiles/%s' % user_id, url=URL_API_V2, ret='userprofiles')
 
     def get_followers(self, user_id, offset=0, limit=500):
-        return self._map_request_v2('profiles/%s/followers' % user_id, params={'offset': offset, 'limit': limit}, ret='userprofiles')
+        return self._map_request_v2('profiles/%s/followers' % user_id, params={'deviceType': 'BROWSER'}, ret='userprofiles')
 
     def get_following_users(self, user_id, offset=0, limit=500):
-        return self._map_request_v2('profiles/%s/following' % user_id, params={'offset': offset, 'limit': limit, 'includeOnly': 'USER'}, ret='userprofiles')
+        return self._map_request_v2('profiles/%s/following' % user_id, params={'includeOnly': 'USER', 'deviceType': 'BROWSER'}, ret='userprofiles')
 
     def get_following_artists(self, user_id, offset=0, limit=500):
-        return self._map_request_v2('profiles/%s/following' % user_id, params={'offset': offset, 'limit': limit, 'includeOnly': 'ARTIST'}, ret='artists')
+        return self._map_request_v2('profiles/%s/following' % user_id, params={'includeOnly': 'ARTIST', 'deviceType': 'BROWSER'}, ret='artists')
 
     def get_public_playlists(self, user_id, offset=0, limit=50):
         return self._map_request_v2('user-playlists/%s/public' % user_id, params={'offset': offset, 'limit': limit}, ret='playlists')
@@ -801,6 +801,8 @@ class Session(object):
             parse = self._parse_lyrics
         elif ret.startswith('userprofile'):
             parse = self._parse_userprofile
+        elif ret.startswith('userprompt'):
+            parse = self._parse_userprompt
         elif ret.startswith('user'):
             parse = self._parse_user
         elif ret.startswith('refresh_token'):
@@ -981,6 +983,33 @@ class Session(object):
     def _parse_userprofile(self, json_obj):
         item = UserProfile(**json_obj)
         item._own_id = self._config.user_id
+        # Convert prompts values to UserPrompt objects
+        prompts = item.prompts
+        item.prompts = []
+        for prompt in prompts:
+            parsedPrompt = self._parse_userprompt(prompt)
+            parsedPrompt._my_prompt = item.is_me
+            item.prompts.append(parsedPrompt)
+        return item
+
+    def _parse_userprompt(self, json_obj):
+        item = UserPrompt(**json_obj)
+        if item.data:
+            if item.supportedContentType == 'TRACK':
+                item.data = self._parse_track(item.data)
+            elif item.supportedContentType == 'VIDEO':
+                item.data = self._parse_video(item.data)
+            elif item.supportedContentType == 'ARTIST':
+                item.data = self._parse_artist(item.data)
+            elif item.supportedContentType == 'ALBUM':
+                item.data = self._parse_album(item.data)
+            elif item.supportedContentType == 'PLAYLIST':
+                item.data = self._parse_playlist(item.data)
+            elif item.supportedContentType == 'MIX':
+                item.data = self._parse_mix(item.data)
+            else:
+                log.error('Unsuported user prompt type "%s"' % item.supportedContentType)
+                item.data = None # Delete unknown content
         return item
 
 #------------------------------------------------------------------------------
@@ -1337,6 +1366,15 @@ class User(object):
         else:
             user_id = '%s' % userProfile
         r = self._session.request(method='DELETE', url=URL_API_V2, path='profiles/block/%s' % user_id, params={'deviceType': 'BROWSER'})
+        return r.ok
+
+    def add_prompt(self, prompt_id, item_trn):
+        r = self._session.request(method='PUT', url=URL_API_V2, path='prompts/%s/add-prompt' % prompt_id, 
+                                  params={'trn': item_trn, 'userId': self._session._config.user_id, 'deviceType': 'BROWSER'})
+        return r.ok
+
+    def remove_prompt(self, prompt_id):
+        r = self._session.request(method='PUT', url=URL_API_V2, path='prompts/%s/remove-prompt' % prompt_id, params={'deviceType': 'BROWSER'})
         return r.ok
 
     def folders(self, offset=0, limit=50):

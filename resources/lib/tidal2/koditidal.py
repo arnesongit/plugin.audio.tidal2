@@ -31,7 +31,7 @@ from .config import settings
 from .tidalapi import Session, PKCE_Authenticator, AuthenticationError, User, Favorites, models as tidal
 from .items import AlbumItem, ArtistItem, PlaylistItem, TrackItem, VideoItem, MixItem, \
                    FolderItem, CategoryItem, PromotionItem, DirectoryItem, TrackUrlItem, VideoUrlItem, \
-                   UserProfileItem, BroadcastItem, BroadcastUrlItem
+                   UserProfileItem, UserPromptItem, BroadcastItem, BroadcastUrlItem
 
 
 class TidalSession(Session):
@@ -395,6 +395,9 @@ class TidalSession(Session):
         if self.is_logged_in:
             self.user.check_cached_userprofile(item)
         return item
+
+    def _parse_userprompt(self, json_obj):
+        return UserPromptItem(Session._parse_userprompt(self, json_obj))
 
     def get_track_url(self, track_id, quality=None):
         try:
@@ -1126,7 +1129,7 @@ class TidalUser(User):
         folder = self.folder(folder_id)
         ok = False
         if playlist and folder:
-            ok = xbmcgui.Dialog().yesno(_T(Msg.i30240).format(what=_T('folder')), _T(Msg.i30278).format(name=playlist.name, what=_T('folder'))+' ?')
+            ok = xbmcgui.Dialog().yesno(_T(Msg.i30240).format(what=_T('folder')), _T(Msg.i30278).format(name="'%s'" % playlist.name, what=_T('folder'))+' ?')
             if ok:
                 self._session.show_busydialog(_T(Msg.i30264).format(what=_T('folder')), folder.name)
                 try:

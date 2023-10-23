@@ -30,7 +30,7 @@ from .debug import log
 from .tidalapi.models import DeviceCode, Category
 from .config import settings
 from .koditidal import TidalSession
-from .items import DirectoryItem, TrackUrlItem, VideoUrlItem
+from .items import DirectoryItem, TrackUrlItem, VideoUrlItem, HasListItem
 from .devices import DeviceSelectorDialog
 from .lyricsInstaller import LyricsInstaller
 try:
@@ -319,8 +319,7 @@ def my_music():
     add_directory(_T(Msg.i30217), plugin.url_for(favorites, content_type='tracks'))
     add_directory(_T(Msg.i30218), plugin.url_for(favorites, content_type='videos'))
     add_directory(_T(Msg.i30275), plugin.url_for(favorites, content_type='mixes'))
-    add_directory(_T(Msg.i30313), im_following)
-    add_directory(_T(Msg.i30310), my_followers)
+    add_directory(_T(Msg.i30323), plugin.url_for(userprofile, user_id='%s' % settings.user_id))
     add_directory(_T(Msg.i30271), plugin.url_for(session_info), isFolder=False)
     add_directory(_T(Msg.i30272), plugin.url_for(refresh_token), isFolder=False, end=True)
 
@@ -1063,8 +1062,50 @@ def favorite_toggle():
 def userprofile(user_id):
     user = session.get_userprofile(user_id)
     add_directory(_T(Msg.i30317).format(user=user.name), plugin.url_for(following_users, user_id))
+    add_directory(_T(Msg.i30324).format(user=user.name), plugin.url_for(followers, user_id))
     add_directory(_P('artists'), plugin.url_for(following_artists, user_id))
+    for prompt in user.prompts:
+        add_items([prompt], content=CONTENT_FOR_TYPE.get(prompt.supportedContentType.lower()), end=False)
     add_items(session.get_public_playlists(user_id), content=CONTENT_FOR_TYPE.get('playlists'), end=True, withSortModes=True)
+
+
+@plugin.route('/userprompt/add/<prompt_id>/<item_type>')
+def userprompt_add(prompt_id, item_type):
+    if session.is_logged_in:
+        item_type = item_type.lower()
+        log.info('Adding %s for prompt #%s ...' % (item_type, prompt_id))
+        keyboard = xbmc.Keyboard('', _T(Msg.i30326).format(what=_P(item_type)))
+        keyboard.doModal()
+        if keyboard.isConfirmed():
+            search_text = keyboard.getText()
+            if search_text:
+                searchresults = session.search(item_type, search_text)
+                items = searchresults.artists + searchresults.albums + searchresults.playlists + searchresults.tracks + searchresults.videos
+                list_items = [item.getListItem()[1] for item in items]
+                selected = xbmcgui.Dialog().select(_P(item_type), list_items, useDetails=True)
+                if selected >= 0:
+                    trn = items[selected].trn
+                    if session.user.add_prompt(prompt_id, trn):
+                        log.info('Added %s to prompt #%s successfully.' % (trn, prompt_id))
+                    else:
+                        log.error('Failed to add %s to prompt #%s!' % (trn, prompt_id))
+                        xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30269), icon=xbmcgui.NOTIFICATION_WARNING)
+                    xbmc.sleep(1000)
+    xbmc.executebuiltin('Container.Refresh()')
+
+
+@plugin.route('/userprompt/remove/<prompt_id>')
+def userprompt_remove(prompt_id):
+    if session.is_logged_in:
+        log.info('Removing item for prompt #%s ...' % prompt_id)
+        if session.user.remove_prompt(prompt_id):
+            log.info('Item removed from prompt #%s successfully.' % prompt_id)
+        else:
+            log.error('Failed to remove item from prompt #%s!' % prompt_id)
+            xbmcgui.Dialog().notification(plugin.name, _T(Msg.i30269), icon=xbmcgui.NOTIFICATION_WARNING)
+        xbmc.sleep(1000)
+    xbmc.executebuiltin('Container.Refresh()')
+
 
 @plugin.route('/follow_user/<user_id>')
 def follow_user(user_id):
@@ -1149,7 +1190,7 @@ def search_type(field):
     search_text = settings.getSetting('last_search_text')
     if last_field != field or not search_text:
         settings.setSetting('last_search_field', field)
-        keyboard = xbmc.Keyboard('', _T(Msg.i30206))
+        keyboard = xbmc.Keyboard('', _T(Msg.i30206) if field.lower() == 'top-hits' else _T(Msg.i30326).format(what=_P(field)))
         keyboard.doModal()
         if keyboard.isConfirmed():
             search_text = keyboard.getText()

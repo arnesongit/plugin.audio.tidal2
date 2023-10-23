@@ -149,7 +149,7 @@
     <string id="30275">Favorite Mixes</string>
     <string id="30276">The folder '{folder}' contains {count} playlists.\nUser playlists will be deleted!</string>
     <string id="30277">Do you really want to delete the folder '{folder}'?</string>
-    <string id="30278">Remove '{name}' from {what}</string>
+    <string id="30278">Remove {name} from {what}</string>
     <string id="30279">{what} is DRM protected</string>
     <string id="30280">TIDAL2 - OAuth2 Login</string>
     <string id="30281">Login Status</string>
@@ -181,7 +181,7 @@
     <string id="30307">Loading playlists ...</string>
     <string id="30308">Loading playlist ({item}/{max}): {name}</string>
     <string id="30309">Saving playlist cache ...</string>
-    <string id="30310">Followers</string>
+    <string id="30310">Picks</string>
     <string id="30311">Public</string>
     <string id="30312">General Search</string>
     <string id="30313">I'm following</string>
@@ -194,6 +194,10 @@
     <string id="30320">Block {what}</string>
     <string id="30321">Staff Picks</string>
     <string id="30322">Clean Content</string>
+    <string id="30323">My User Profile</string>
+    <string id="30324">Followers of {user}</string>
+    <string id="30325">Add {what}</string>
+    <string id="30326">Search {what}</string>
 
     <!-- Extended Settings -->
     <string id="30501">Use Colors in Labels</string>
