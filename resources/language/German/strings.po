@@ -93,8 +93,8 @@ msgid "Device"
 msgstr "Gerät"
 
 msgctxt "#30021"
-msgid "Max (MQA Master Audio and Hi Res)"
-msgstr "Max (MQA Master Audio und Hi Res)"
+msgid "Max (Hi Res)"
+msgstr "Max (Hi Res)"
 
 msgctxt "#30022"
 msgid "Access Token expires at"
@@ -105,8 +105,8 @@ msgid "Show Album Year in Labels"
 msgstr "Album-Jahr im Label anzeigen"
 
 msgctxt "#30024"
-msgid "Add MQA/HiRes/Atmos/360RA to Labels"
-msgstr "MQA/HiRes/Atmos/360RA zum Label hinzufügen"
+msgid "Add HiRes/Atmos to Labels"
+msgstr "HiRes/Atmos zum Label hinzufügen"
 
 msgctxt "#30025"
 msgid "Options"

@@ -161,6 +161,8 @@ class TidalSession(Session):
     def logout(self):
         Session.logout(self, signoff=False)
         settings.save_session()
+        self._config.setSetting('hires_supported', 'false')
+        self._config.setSetting('atmos_supported', 'false')
         self._config.load()
 
     def token_refresh(self):
@@ -314,6 +316,7 @@ class TidalSession(Session):
 
     def _parse_broadcast(self, json_obj):
         item = BroadcastItem(Session._parse_broadcast(self, json_obj))
+        item.name = self._cleanup_text(item.name)
         return item
 
     def _parse_broadcast_url(self, json_obj):
@@ -392,6 +395,7 @@ class TidalSession(Session):
 
     def _parse_userprofile(self, json_obj):
         item = UserProfileItem(Session._parse_userprofile(self, json_obj))
+        item.name = self._cleanup_text(item.name)
         if self.is_logged_in:
             self.user.check_cached_userprofile(item)
         return item
@@ -492,9 +496,12 @@ class TidalSession(Session):
                     if url and li:
                         list_items.append(('%s' % url if isFolder else url, li, isFolder))
             elif isinstance(item, tidal.BrowsableMedia):
-                url, li, isFolder = item.getListItem()
-                if url and li:
-                    list_items.append(('%s' % url if isFolder else url, li, isFolder))
+                try:
+                    url, li, isFolder = item.getListItem()
+                    if url and li:
+                        list_items.append(('%s' % url if isFolder else url, li, isFolder))
+                except Exception as e:
+                    log.logException(e, txt='Label: %s' % item.getLabel())
         if withNextPage and len(items) > 0:
             # Add folder for next page
             try:
@@ -734,6 +741,18 @@ class TidalUser(User):
         self.profiles_loaded = False
         self.profiles_updated = False
         self.profiles_cache = {}
+
+    def session(self):
+        user_session = User.session(self)
+        if not settings.isHiResClientID and user_session.hiResSupported():
+            settings.isHiResClientID = True
+            settings.setSetting('hires_supported', 'true')
+            log.info('Detected HiRes capability from the session info')
+        if not settings.isAtmosClientID and user_session.atmosSupported():
+            settings.isAtmosClientID = True
+            settings.setSetting('atmos_supported', 'true')
+            log.info('Detected Atmos capability from the session info')
+        return user_session
 
     def update_caches(self, withProgress=False):
         log.info('Updating caches %s' % ('with progress dialog' if withProgress else 'in background'))
@@ -977,7 +996,12 @@ class TidalUser(User):
 
     def add_playlist_entries(self, playlist, item_ids=[]):
         self.load_cache()
-        item = User.add_playlist_entries(self, playlist=playlist, item_ids=item_ids)
+        remaining = item_ids
+        item = playlist
+        while item and len(remaining) > 0:
+            items_to_add = remaining[:500]
+            remaining = remaining[500:]
+            item = User.add_playlist_entries(self, playlist=playlist, item_ids=items_to_add)
         if item:
             self.check_updated_playlist(item, reloadPlaylist=True)
             self.save_cache()

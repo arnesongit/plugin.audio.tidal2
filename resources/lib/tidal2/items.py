@@ -1395,7 +1395,8 @@ class TrackUrlItem(tidal.TrackUrl, HasListItem):
         self.url = 'http://localhost:%s/manifest.%s?track_id=%s&quality=%s' % (settings.fanart_server_port, 'm3u8' if use_hls else 'mpd', self.trackId, self._requested_quality)
         li.setMimeType('application/vnd.apple.mpegurl' if use_hls else 'application/dash+xml')
         li.setProperty('inputstream' if KODI_VERSION >= (19, 0) else 'inputstreamaddon', 'inputstream.adaptive')
-        li.setProperty('inputstream.adaptive.manifest_type', 'HLS' if use_hls else 'mpd')
+        if KODI_VERSION < (21, 0):
+            li.setProperty('inputstream.adaptive.manifest_type', 'HLS' if use_hls else 'mpd')
         # li.setProperty('inputstream.adaptive.manifest_update_parameter', 'full')
         xbmcgui.Window(10000).setProperty('tidal2.%s' % self.trackId, quote_plus(self.manifest))
 

@@ -803,6 +803,8 @@ class Session(object):
             parse = self._parse_userprofile
         elif ret.startswith('userprompt'):
             parse = self._parse_userprompt
+        elif ret.startswith('user_session'):
+            parse = self._parse_user_session
         elif ret.startswith('user'):
             parse = self._parse_user
         elif ret.startswith('refresh_token'):
@@ -820,6 +822,9 @@ class Session(object):
 
     def _parse_user(self, json_obj):
         return UserInfo(**json_obj)
+
+    def _parse_user_session(self, json_obj):
+        return UserSession(**json_obj)
 
     def _parse_subscription(self, json_obj):
         return Subscription(**json_obj)
@@ -1215,6 +1220,9 @@ class User(object):
     def info(self):
         return self._session._map_request(path=self._base_url, ret='user')
 
+    def session(self):
+        return self._session._map_request(path='sessions', ret='user_session')
+
     def subscription(self):
         return self._session._map_request(path=self._base_url + '/subscription', ret='subscription')
 
@@ -1296,9 +1304,17 @@ class User(object):
         entries = []
         i = 0
         while i < playlist.numberOfItems:
-            entries.append('%s' % i)
             i = i + 1
-        return self.remove_playlist_entry(playlist, entry_no=','.join(entries))
+            entries.append('%s' % (playlist.numberOfItems - i))
+        remaining = entries
+        item = playlist
+        while item and len(remaining) > 0:
+            items_to_remove = remaining[:500]
+            remaining = remaining[500:]
+            item = self.remove_playlist_entry(item, entry_no=','.join(items_to_remove))
+            if item:
+                item._etag = None
+        return item
 
     def set_playlist_public(self, playlist):
         if isinstance(playlist, Playlist):

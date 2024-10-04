@@ -39,9 +39,9 @@ except:
     # Python 2.7
     from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
-from kodi_six import xbmc, xbmcaddon, xbmcgui
+from kodi_six import xbmc, xbmcaddon, xbmcgui, xbmcvfs
 
-from .common import plugin, __addon_id__
+from .common import Const, plugin, __addon_id__
 from .textids import Msg, _T
 from .debug import log
 from .config import TidalConfig
@@ -175,7 +175,20 @@ class LocalHttpRequestHandler(BaseHTTPRequestHandler):
             traceback.print_exc()
         finally:
             if not ok:
-                self.send_error(404, 'Failed to get fanart for Artist %s' % artist_ids[0])
+                # Using addon fanart if TIDAL fanart is missing
+                try:
+                    fd = xbmcvfs.File(Const.addon_fanart, 'r')
+                    self.server.last_fanart_ids = ','.join(artist_ids)
+                    self.server.last_fanart_data = fd.readBytes()
+                    fd.close()
+                    ok = True
+                    self.send_response(200)
+                    self._send_headers(content_type='image/jpg', content_length=len(self.server.last_fanart_data), cacheable=True)
+                    self.wfile.write(self.server.last_fanart_data)
+                except:
+                    pass
+                if not ok:
+                    self.send_error(404, 'Failed to get fanart for Artist %s' % artist_ids[0])
             session = None
 
     def send_lyrics(self, track_id):

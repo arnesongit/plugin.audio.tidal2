@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.audio.tidal2" name="TIDAL2" version="2.1.4" provider-name="arneson">
+<addon id="plugin.audio.tidal2" name="TIDAL2" version="2.1.5" provider-name="arneson">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests"/>
@@ -31,14 +31,14 @@ Es wird ein Abbonement benötigt. Siehe tidal.com für Details.</description>
     <license>GNU GENERAL PUBLIC LICENSE. Version 3, 29 June 2007</license>
     <forum>http://forum.xbmc.org/showthread.php?tid=200555</forum>
     <source>https://github.com/arnesongit/plugin.audio.tidal2</source>
-    <news>v2.1.4 (2023-10-23)
-- Added "My Profile" to the "My Music" page to show the own user profile
-- Moved followers and following users to the User Profile page
-- Added the new TIDAL feature "My Picks" to the User Profile page:
-  - There are four kind of picks: "My favorite track", "My major mood booster", "My go-to artist right now" and "My top album recently"
-  - You can play the tracks and open the album and artist page from there
-  - You can add and remove this items using the context menu
-  - If you go to the user profile page of a different user, you will see his/her Picks
+    <news>v2.1.5 (2024-10-03)
+- Removed the parameter 'manifest_type' for playback with the inputstream.adaptive addon for Kodi >= 21, 
+  because the parameter is obsolete now.
+- Fix in add_playlist_entries and remove_all_playlist_entries to handle more than 500 entries.
+- Show TIDAL2 addon fanart when an artist has no fanart picture to avoid 404 errors in the kodi.log file.
+- Removed MQA and Sony 360 from the UI
+- Try to detect HiRes and Atmos playback capability from the user session information if the device type doesn't
+  contains "Hi Res" or "Atmos" in its name.
     </news>
     <assets>
       <icon>resources/icon.png</icon>

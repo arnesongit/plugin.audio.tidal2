@@ -145,8 +145,8 @@ def page(page_url):
     if page_url == quote_plus('pages/explore'):
         add_directory('Dolby Atmos', plugin.url_for(page, quote_plus('pages/dolby_atmos')))
         add_directory('HiRes', plugin.url_for(page, quote_plus('pages/hires')))
-        add_directory('Masters (MQA)', plugin.url_for(page, quote_plus('pages/masters')))
-        add_directory('360', plugin.url_for(page, quote_plus('pages/360')))
+        # add_directory('Masters (MQA)', plugin.url_for(page, quote_plus('pages/masters')))
+        # add_directory('360', plugin.url_for(page, quote_plus('pages/360')))
         add_directory(_T(Msg.i30321), plugin.url_for(page, quote_plus('pages/staff_picks')))
         add_directory(_T(Msg.i30322), plugin.url_for(page, quote_plus('pages/clean_content')))
     session.add_list_items(items, end=True)
@@ -241,8 +241,8 @@ def category(group):
     xbmcplugin.setContent(plugin.handle, CONTENT_FOR_TYPE.get('files'))
     if group == 'featured':
         # MQA albums and playlists first
-        add_directory('Master %s (MQA)' % _T(Msg.i30107), plugin.url_for(master_albums, offset=0))
-        add_directory('Master %s (MQA)' % _T(Msg.i30108), plugin.url_for(master_playlists, offset=0))
+        add_directory('HiRes %s' % _T(Msg.i30107), plugin.url_for(master_albums, offset=0))
+        add_directory('HiRes %s' % _T(Msg.i30108), plugin.url_for(master_playlists, offset=0))
     add_items(items, content=None, end=True)
 
 
@@ -1000,6 +1000,7 @@ def cache_reload():
         log.warning("User isn't logged in")
         return
     session.user.load_cache()
+    session.user.session() # Read session to determine HiRes and Atmos playback capability
     session.user.update_caches(withProgress=True)
 
 
@@ -1302,15 +1303,15 @@ def session_info():
     if settings.subscription_type != abo.subscription['type']:
         settings.setSetting('subscription_type', abo.subscription['type'])
     userinfo = session.user.info()
-    info = session._map_request(path='sessions', method='GET', ret='json')
+    info = session.user.session()
     dialog = xbmcgui.Dialog()
     dialog.textviewer(_T(Msg.i30271),
                       '%s: %s\n' % (_T(Msg.i30291), userinfo.email) +
                       '%s: %s\n' % (_T(Msg.i30125), userinfo.profileName) +
                       '%s: %s\n' % (_T(Msg.i30011), settings.country_code) +
-                      '%s: %s\n' % (_T(Msg.i30008), info['userId']) +
-                      '%s: %s\n' % (_T(Msg.i30019), info['sessionId']) +
-                      '%s: %s\n' % (_T(Msg.i30020), info['client']['name']) +
+                      '%s: %s\n' % (_T(Msg.i30008), info.userId) +
+                      '%s: %s\n' % (_T(Msg.i30019), info.sessionId) +
+                      '%s: %s\n' % (_T(Msg.i30020), info.name) +
                       '%s: %s\n' % (_T(Msg.i30010), abo.subscription['type']) +
                       '%s: %s\n' % (_T(Msg.i30034), userinfo.countryCode) +
                       '%s: %s' % (_T(Msg.i30022), settings.expire_time))

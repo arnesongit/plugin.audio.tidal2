@@ -1027,6 +1027,35 @@ class Subscription(Model):
         return self.validUntil >= datetime.datetime.now()
 
 
+class UserSession(Model):
+    sessionId = ''
+    userId = 0
+    countryCode = ''
+    channelId = 0
+    partnerId = 0
+    clientId = 0
+    authorizedForOffline = False
+
+    def __init__(self, **kwargs):
+        super(UserSession, self).__init__()
+        self.sessionId = kwargs.get('sessionId', '0')
+        self.id = self.sessionId
+        self.userId = kwargs.get('userId', 0)
+        self.countryCode = kwargs.get('countryCode', 'US')
+        self.channelId = kwargs.get('channelId', 0)
+        self.partnerId = kwargs.get('partnerId', 0)
+        client = kwargs.get('client', { })
+        if isinstance(client, dict):
+            self.clientId = client.get('id', 0)
+            self.name = client.get('name', 'Unknown')
+            self.authorizedForOffline = True if client.get('partnerId', 'false') == 'true' else False
+
+    def hiResSupported(self):
+        return True if 'hires' in self.name.lower() else False
+
+    def atmosSupported(self):
+        return True if 'atmos' in self.name.lower() else False
+
 class StreamUrl(object):
     url = None
 

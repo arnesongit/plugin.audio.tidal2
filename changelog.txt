@@ -1,3 +1,12 @@
+v2.1.5 (2024-10-03)
+- Removed the parameter 'manifest_type' for playback with the inputstream.adaptive addon for Kodi >= 21, 
+  because the parameter is obsolete now.
+- Fix in add_playlist_entries and remove_all_playlist_entries to handle more than 500 entries.
+- Show TIDAL2 addon fanart when an artist has no fanart picture to avoid 404 errors in the kodi.log file.
+- Removed MQA and Sony 360 from the UI
+- Try to detect HiRes and Atmos playback capability from the user session information if the device type doesn't
+  contains "Hi Res" or "Atmos" in its name.
+
 v2.1.4 (2023-10-23)
 - Added "My Profile" to the "My Music" page to show the own user profile
 - Moved followers and following users to the User Profile page

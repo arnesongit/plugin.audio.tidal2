@@ -93,7 +93,7 @@ msgid "Device"
 msgstr ""
 
 msgctxt "#30021"
-msgid "Max (MQA Master Audio and Hi Res)"
+msgid "Max (Hi Res)"
 msgstr ""
 
 msgctxt "#30022"
@@ -105,7 +105,7 @@ msgid "Show Album Year in Labels"
 msgstr ""
 
 msgctxt "#30024"
-msgid "Add MQA/HiRes/Atmos/360RA to Labels"
+msgid "Add HiRes/Atmos to Labels"
 msgstr ""
 
 msgctxt "#30025"

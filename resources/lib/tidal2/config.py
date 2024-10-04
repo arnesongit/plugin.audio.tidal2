@@ -114,8 +114,15 @@ class TidalConfig(Config):
         if not self.expire_time:
             self.expire_time = self.refresh_time + datetime.timedelta(seconds=604800)
 
-        self.isHiResClientID = True if 'Hi Res' in self.client_name else False
-        self.isAtmosClientID = True if 'Atmos' in self.client_name else False
+        # Store flags for HiRes and Atmos capability
+        self.isHiResClientID = True if self.getSetting('hires_supported') == 'true' else False
+        if not self.isHiResClientID:
+            # Old method: get it from the client name
+            self.isHiResClientID = True if 'Hi Res' in self.client_name else False
+        self.isAtmosClientID = True if self.getSetting('atmos_supported') == 'true' else False
+        if not self.isAtmosClientID:
+            # Old method: get it from the client name
+            self.isAtmosClientID = True if 'Atmos' in self.client_name else False
 
         # Options
         self.quality = [Quality.hi_res_lossless if self.isHiResClientID else Quality.hi_res, Quality.lossless, Quality.high, Quality.low][min(3, int('0' + self.getSetting('quality')))]

@@ -19,10 +19,10 @@
     <string id="30018">Rodzaj Strumieniowania Muzyki</string>
     <string id="30019">Identyfikator sesji</string>
     <string id="30020">Urządzenie</string>
-    <string id="30021">Max (MQA Master Audio / Hi Res)</string>
+    <string id="30021">Max (Hi Res)</string>
     <string id="30022">Token dostępu wygasa o</string>
     <string id="30023">Pokaż Rok Albumu na Etykiecie</string>
-    <string id="30024">Dodaj MQA/HiRes/Atmos/360RA do Etykiety</string>
+    <string id="30024">Dodaj HiRes/Atmos do Etykiety</string>
     <string id="30025">Opcje</string>
     <string id="30026">ClientID</string>
     <string id="30027">Ustawienia Dodatku</string>
