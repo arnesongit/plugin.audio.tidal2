@@ -93,8 +93,8 @@ msgid "Device"
 msgstr "Urządzenie"
 
 msgctxt "#30021"
-msgid "Max (MQA Master Audio and Hi Res)"
-msgstr "Maksymalna (MQA Master Audio / Hi Res)"
+msgid ""Max (Hi Res)""
+msgstr "Maksymalna (Hi Res)"
 
 msgctxt "#30022"
 msgid "Access Token expires at"
@@ -105,8 +105,8 @@ msgid "Show Album Year in Labels"
 msgstr "Pokaż Rok Albumu na Etykiecie"
 
 msgctxt "#30024"
-msgid "Add MQA/HiRes/Atmos/360RA to Labels"
-msgstr "Dodaj MQA/HiRes/Atmos/360RA do Etykiet"
+msgid "Add HiRes/Atmos to Labels"
+msgstr "Dodaj HiRes/Atmos do Etykiet"
 
 msgctxt "#30025"
 msgid "Options"
@@ -658,7 +658,7 @@ msgstr "Token logowania wygasł (1 minuta)"
 
 msgctxt "#30295"
 msgid "Feed"
-msgstr "Aktualizacje"
+msgstr "Nowości"
 
 msgctxt "#30296"
 msgid "Codec {codec} not supported"
@@ -766,7 +766,7 @@ msgstr "Polecane"
 
 msgctxt "#30322"
 msgid "Clean Content"
-msgstr "Czysta zawartość"
+msgstr "Ogranicz treści wulgarne"
 
 msgctxt "#30323"
 msgid "My User Profile"
