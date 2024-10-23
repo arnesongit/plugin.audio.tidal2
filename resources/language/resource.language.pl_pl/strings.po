@@ -403,7 +403,7 @@ msgstr "Podsumowanie"
 msgctxt "#30231"
 msgid "Added {what}"
 msgstr "Dodano {what}"
-
+i've updated missing translated polish strings 
 msgctxt "#30232"
 msgid "Removed {what}"
 msgstr "Usunięto {what}"
@@ -658,7 +658,7 @@ msgstr "Token logowania wygasł (1 minuta)"
 
 msgctxt "#30295"
 msgid "Feed"
-msgstr "Nowości"
+msgstr "Nowości i Aktualizacje"
 
 msgctxt "#30296"
 msgid "Codec {codec} not supported"
