@@ -93,7 +93,7 @@ msgid "Device"
 msgstr "Urządzenie"
 
 msgctxt "#30021"
-msgid ""Max (Hi Res)""
+msgid "Max (Hi Res)"
 msgstr "Maksymalna (Hi Res)"
 
 msgctxt "#30022"
