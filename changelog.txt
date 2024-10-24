@@ -1,3 +1,6 @@
+v2.1.5.1 (2024-10-24)
+- Updates for polish translations (thanks forgottennick)
+
 v2.1.5 (2024-10-03)
 - Removed the parameter 'manifest_type' for playback with the inputstream.adaptive addon for Kodi >= 21, 
   because the parameter is obsolete now.
