@@ -42,7 +42,7 @@ msgstr "Niska (96 kBit/s)"
 
 msgctxt "#30008"
 msgid "User ID"
-msgstr "Użytkownik ID"
+msgstr "ID Użytkownika"
 
 msgctxt "#30009"
 msgid "Client-Secret"
@@ -54,7 +54,7 @@ msgstr "Rodzaj Subskrypcji"
 
 msgctxt "#30011"
 msgid "Country for Local Media"
-msgstr "Region"
+msgstr "Region dla mediów lokalnych"
 
 msgctxt "#30012"
 msgid "Hifi"
@@ -78,11 +78,11 @@ msgstr "Zaznacz Ulubione w Etykietach"
 
 msgctxt "#30017"
 msgid "Append User Playlist Names to Labels"
-msgstr "Dodaj nazwy playlist do Etykiety"
+msgstr "Dołącz nazwy playlist do Etykiety"
 
 msgctxt "#30018"
 msgid "Lossless Streaming Option"
-msgstr "Rodzaj Strumieniowania Muzyki"
+msgstr "Opcje strumieniowania bezstratnego"
 
 msgctxt "#30019"
 msgid "Session-ID"
@@ -94,7 +94,7 @@ msgstr "Urządzenie"
 
 msgctxt "#30021"
 msgid "Max (Hi Res)"
-msgstr "Max (Hi Res)"
+msgstr "Maksymalna (Hi Res)"
 
 msgctxt "#30022"
 msgid "Access Token expires at"
@@ -106,7 +106,7 @@ msgstr "Pokaż Rok Albumu na Etykiecie"
 
 msgctxt "#30024"
 msgid "Add HiRes/Atmos to Labels"
-msgstr "Dodaj HiRes/Atmos do Etykiety"
+msgstr "Dodaj HiRes/Atmos do Etykiet"
 
 msgctxt "#30025"
 msgid "Options"
@@ -114,7 +114,7 @@ msgstr "Opcje"
 
 msgctxt "#30026"
 msgid "Client-ID"
-msgstr "ClientID"
+msgstr "Client-ID"
 
 msgctxt "#30027"
 msgid "Addon-Settings"
@@ -130,19 +130,19 @@ msgstr "Włącz teksty"
 
 msgctxt "#30030"
 msgid "Install TIDAL lyrics scraper"
-msgstr "Install TIDAL lyrics scraper"
+msgstr "Instaluj scraper tekstów TIDAL"
 
 msgctxt "#30031"
 msgid "Uninstall TIDAL lyrics scraper"
-msgstr "Uninstall TIDAL lyrics scraper"
+msgstr "Odinstaluj scraper tekstów TIDAL"
 
 msgctxt "#30032"
 msgid "CU LRC Lyrics addon settings"
-msgstr "CU LRC Lyrics addon settings"
+msgstr "Ustawienia dodatku CU LRC Lyrics"
 
 msgctxt "#30033"
 msgid "Install CU LRC Lyrics addon"
-msgstr "Install CU LRC Lyrics addon"
+msgstr "Instaluj dodatek CU LRC Lyrics"
 
 msgctxt "#30034"
 msgid "Country of the user"
@@ -154,7 +154,7 @@ msgstr "Jakość Wideo"
 
 msgctxt "#30041"
 msgid "Max Bandwidth"
-msgstr "Maks. Przepustowość"
+msgstr "Maksymalna Przepustowość"
 
 msgctxt "#30042"
 msgid "Video (1080p)"
@@ -278,7 +278,7 @@ msgstr "Mix"
 
 msgctxt "#30124"
 msgid "Mixes"
-msgstr "Mixe"
+msgstr "Mixy"
 
 msgctxt "#30125"
 msgid "User Profile"
@@ -294,7 +294,7 @@ msgstr "Moja Muzyka"
 
 msgctxt "#30202"
 msgid "Home"
-msgstr "Dom"
+msgstr "Strona Główna"
 
 msgctxt "#30203"
 msgid "What's New"
@@ -326,7 +326,7 @@ msgstr "TIDAL Rising"
 
 msgctxt "#30212"
 msgid "Explore"
-msgstr "Badać"
+msgstr "Eksploruj"
 
 msgctxt "#30213"
 msgid "All my Playlists"
@@ -378,7 +378,7 @@ msgstr "Rekomendowane Wideo"
 
 msgctxt "#30225"
 msgid "Artist Bio"
-msgstr "Biografia"
+msgstr "Biografia Artysty"
 
 msgctxt "#30226"
 msgid "Top Tracks"
@@ -474,7 +474,7 @@ msgstr "Przenieś do {what}"
 
 msgctxt "#30249"
 msgid "Set as default for {what}"
-msgstr "Ustaw domyślnie jako {what}"
+msgstr "Ustaw jako domyślnie dla {what}"
 
 msgctxt "#30250"
 msgid "Reset default for {what}"
@@ -490,7 +490,7 @@ msgstr "Open Playlist (Audio only)'"
 
 msgctxt "#30253"
 msgid "Login failed!"
-msgstr "Logowanie nieudane !"
+msgstr "Logowanie nieudane!"
 
 msgctxt "#30254"
 msgid "Open as Track/Video Playlist"
@@ -502,11 +502,11 @@ msgstr "Otwórz Playlistę jako Album"
 
 msgctxt "#30256"
 msgid "Do you really want to log out?\nThen a new login is necessary!"
-msgstr "Czy na pewno chcesz się wypisać ?\nNastępnie musisz się ponownie zarejestrować !"
+msgstr "Czy na pewno chcesz się wylogować?\nWymagane będzie ponowne zalogowanie!"
 
 msgctxt "#30257"
 msgid "Please set Client-ID and Client-Secret in the addon settings!\nOr log in with URL: {url}"
-msgstr "Zdefiniuj Client-ID i Client-Secret w ustawieniach dodatku!\nNLub zaloguj się za pomocą adresu URL: {url}"
+msgstr "Wpisz Client-ID i Client-Secret w ustawieniach dodatku!\nNLub zaloguj się za pomocą adresu URL: {url}"
 
 msgctxt "#30258"
 msgid "Clear {what}"
@@ -546,7 +546,7 @@ msgstr "Edytuj {what}"
 
 msgctxt "#30267"
 msgid "EPs and Singles"
-msgstr "EPs i single"
+msgstr "EPki i single"
 
 msgctxt "#30268"
 msgid "Release Date: {:%m/%d/%Y}"
@@ -554,11 +554,11 @@ msgstr "Data Wydania: {:%m/%d/%Y}"
 
 msgctxt "#30269"
 msgid "TIDAL API Error"
-msgstr "TIDAL API Error"
+msgstr "błąd TIDAL API"
 
 msgctxt "#30270"
 msgid "Other Albums and Compilations"
-msgstr "Inne albumy i kompilacje"
+msgstr "Inne Albumy i Kompilacje"
 
 msgctxt "#30271"
 msgid "Show Session-Info"
@@ -578,7 +578,7 @@ msgstr "Standardowe {what}"
 
 msgctxt "#30275"
 msgid "Favorite Mixes"
-msgstr "Ulubione Mixe"
+msgstr "Ulubione Mixy"
 
 msgctxt "#30276"
 msgid "The folder '{folder}' contains {count} playlists.\nUser playlists will be deleted!"
@@ -598,11 +598,11 @@ msgstr "{what} jest chronione DRM"
 
 msgctxt "#30280"
 msgid "TIDAL2 - OAuth2 Login"
-msgstr "TIDAL2 - OAuth2 Logowanie do urządzenia"
+msgstr "TIDAL2 - Logowanie do urządzenia OAuth2"
 
 msgctxt "#30281"
 msgid "Login Status"
-msgstr "Status logowania"
+msgstr "Status Logowania"
 
 msgctxt "#30282"
 msgid "Not logged in. Please log in via web browser!"
@@ -658,11 +658,11 @@ msgstr "Token logowania wygasł (1 minuta)"
 
 msgctxt "#30295"
 msgid "Feed"
-msgstr "Feed"
+msgstr "Nowości i Aktualizacje"
 
 msgctxt "#30296"
 msgid "Codec {codec} not supported"
-msgstr "Codec {codec} nie jest obsługiwany"
+msgstr "Kodek {codec} nie jest obsługiwany"
 
 msgctxt "#30297"
 msgid "Step 1: Use following link to log in at TIDAL"
@@ -726,15 +726,15 @@ msgstr "Publiczny"
 
 msgctxt "#30312"
 msgid "General Search"
-msgstr "General Search"
+msgstr "Szukaj"
 
 msgctxt "#30313"
 msgid "I'm following"
-msgstr "Podążam"
+msgstr "Obserwuję"
 
 msgctxt "#30314"
 msgid "Set to public"
-msgstr "Ustawić jako publiczne"
+msgstr "Ustaw jako publiczne"
 
 msgctxt "#30315"
 msgid "Set to private"
@@ -750,7 +750,7 @@ msgstr "Profile, które obserwuje {user}"
 
 msgctxt "#30318"
 msgid "Follow this profile"
-msgstr "Śledź ten profil"
+msgstr "Obserwuj ten profil"
 
 msgctxt "#30319"
 msgid "Unfollow this profile"
@@ -762,11 +762,11 @@ msgstr "Zablokuj {what}"
 
 msgctxt "#30321"
 msgid "Staff Picks"
-msgstr "Polecamy"
+msgstr "Polecane"
 
 msgctxt "#30322"
 msgid "Clean Content"
-msgstr "Treść przyjazna rodzinie"
+msgstr "Ogranicz treści wulgarne"
 
 msgctxt "#30323"
 msgid "My User Profile"
@@ -774,7 +774,7 @@ msgstr "Mój profil użytkownika"
 
 msgctxt "#30324"
 msgid "Followers of {user}"
-msgstr "Zwolennicy {user}"
+msgstr "Obserwujący {user}"
 
 msgctxt "#30325"
 msgid "Add {what}"
@@ -794,11 +794,11 @@ msgstr "Aktywuj Logowanie Debugowania"
 
 msgctxt "#30503"
 msgid "Set playback information for Web-GUI"
-msgstr "Ustaw informacje o umieszczaniu zwrotnym dla internetowego interfejsu GUI"
+msgstr "Ustaw informacje o odtwarzaniu dla interfejsu GUI"
 
 msgctxt "#30504"
 msgid "Not a FLAC Stream!"
-msgstr "To Nie Jest Strumień FLAC !"
+msgstr "To Nie Jest Strumień FLAC!"
 
 msgctxt "#30505"
 msgid "Use inputstream.ffmpegdirect as default player"
@@ -806,7 +806,7 @@ msgstr "Użyj inputstream.ffmpegdirect jako domyślnego odtwarzacza"
 
 msgctxt "#30506"
 msgid "UI"
-msgstr "UI"
+msgstr "Interfejs"
 
 msgctxt "#30507"
 msgid "Delete Album Cache"
@@ -814,7 +814,7 @@ msgstr "Usuń Cache Albumu"
 
 msgctxt "#30508"
 msgid "Are you sure you want to delete the Album Cache Database?"
-msgstr "Na Pewno Usunąć Bazę Cache Albumu ?"
+msgstr "Na pewno usunąć cache Albumu?"
 
 msgctxt "#30509"
 msgid "Add sort methods for item lists"
@@ -842,11 +842,11 @@ msgstr "Tryb odtwarzania dla FLAC MPD"
 
 msgctxt "#30515"
 msgid "inputstream.ffmpegdirect plays MPD"
-msgstr "inputstream.ffmpegdirect gra MPD"
+msgstr "inputstream.ffmpegdirect odtwarza MPD"
 
 msgctxt "#30516"
 msgid "Play as HLS"
-msgstr "Graj jako HLS"
+msgstr "Odtwarzaj jako HLS"
 
 msgctxt "#30517"
 msgid "Use inputstream.adaptive"
@@ -858,7 +858,7 @@ msgstr "Użyj inputstream.ffmpegdirect"
 
 msgctxt "#30519"
 msgid "Folder"
-msgstr "Teczka"
+msgstr "Folder"
 
 msgctxt "#30520"
 msgid "Favorites"
@@ -898,11 +898,11 @@ msgstr "HiRes"
 
 msgctxt "#30900"
 msgid "Without color"
-msgstr "Bezbarwny"
+msgstr "bezbarwny"
 
 msgctxt "#30901"
 msgid "[COLOR maroon]maroon[/COLOR]"
-msgstr "[COLOR maroon]kasztanowaty[/COLOR]"
+msgstr "[COLOR maroon]kasztanowy[/COLOR]"
 
 msgctxt "#30902"
 msgid "[COLOR brown]brown[/COLOR]"
@@ -922,11 +922,11 @@ msgstr "[COLOR pink]różowy[/COLOR]"
 
 msgctxt "#30906"
 msgid "[COLOR orange]orange[/COLOR]"
-msgstr "[COLOR orange]Pomarańczowy[/COLOR]"
+msgstr "[COLOR orange]pomarańczowy[/COLOR]"
 
 msgctxt "#30907"
 msgid "[COLOR gold]gold[/COLOR]"
-msgstr "[COLOR gold]złoto[/COLOR]"
+msgstr "[COLOR gold]złoty[/COLOR]"
 
 msgctxt "#30908"
 msgid "[COLOR yellow]yellow[/COLOR]"
@@ -946,7 +946,7 @@ msgstr "[COLOR limegreen]limonkowy[/COLOR]"
 
 msgctxt "#30912"
 msgid "[COLOR greenyellow]greenyellow[/COLOR]"
-msgstr "[COLOR greenyellow]zielony żółty[/COLOR]"
+msgstr "[COLOR greenyellow]zielono żółty[/COLOR]"
 
 msgctxt "#30913"
 msgid "[COLOR blue]blue[/COLOR]"
@@ -954,7 +954,7 @@ msgstr "[COLOR blue]niebieski[/COLOR]"
 
 msgctxt "#30914"
 msgid "[COLOR lightblue]lightblue[/COLOR]"
-msgstr "[COLOR lightblue]Jasny niebieski[/COLOR]"
+msgstr "[COLOR lightblue]jasny niebieski[/COLOR]"
 
 msgctxt "#30915"
 msgid "[COLOR cyan]cyan[/COLOR]"
