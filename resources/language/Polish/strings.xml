@@ -12,7 +12,7 @@
     <string id="30011">Region dla mediów lokalnych</string>
     <string id="30012">Hifi</string>
     <string id="30013">Premium</string>
-    <string id="30014">Maks. liczba elementów listy na stronie</string>
+    <string id="30014">Maksymalna liczba elementów listy na stronie</string>
     <string id="30015">Client-Unique-Key</string>
     <string id="30016">Zaznacz Ulubione w Etykietach</string>
     <string id="30017">Dołącz nazwy playlist do Etykiety</string>
@@ -81,8 +81,8 @@
     <string id="30207">Wyloguj</string>
     <string id="30208">Zaloguj</string>
     <string id="30209">Zaloguj się przez przeglądarkę internetową z adresem URL:</string>
-    <string id="30210">Problem z Autoryzacją</string>  
-    <string id="30211">TIDAL Rising</string>  
+    <string id="30210">Problem z Autoryzacją</string>
+    <string id="30211">TIDAL Rising</string>
     <string id="30212">Eksploruj</string>
     <string id="30213">Moje Playlisty</string>
     <string id="30214">Ulubieni Artyści</string>
@@ -127,7 +127,7 @@
     <string id="30253">Logowanie nieudane!</string>
     <string id="30254">Otwórz Playlistę jako Utwór/Wideo</string>
     <string id="30255">Otwórz Playlistę jako Album</string>
-    <string id="30256">Czy na pewno chcesz się wylogować?\nWymagane będzie ponowne zalogowanie!</string>
+    <string id="30256">Na pewno chcesz się wylogować?\nWymagane będzie ponowne zalogowanie!</string>
     <string id="30257">Wpisz Client-ID i Client-Secret w ustawieniach dodatku!\nNLub zaloguj się za pomocą adresu URL: {url}</string>
     <string id="30258">Wyczyść {what}</string>
     <string id="30259">Playlista '{name}' zawiera {count} utworów. Na pewno usunąć wszystkie utwory? ?</string>
@@ -151,7 +151,7 @@
     <string id="30277">Czy na pewno chcesz usunąć folder {'{folder} ?</string>
     <string id="30278">Usuń {name} z {what}</string>
     <string id="30279">{what} jest chronione DRM</string>
-    <string id="30280">TIDAL2 - Logowanie do urządzenia OAuth2</string>
+    <string id="30280">TIDAL2 - Login OAuth2</string>
     <string id="30281">Status Logowania</string>
     <string id="30282">Niezalogowany. Zaloguj się przez przeglądarkę internetową!</string>
     <string id="30283">Wybierz plik APK TIDAL</string>
@@ -193,7 +193,7 @@
     <string id="30319">Przestań obserwować ten profil</string>
     <string id="30320">Zablokuj {what}</string>
     <string id="30321">Polecane</string>
-    <string id="30322">Ogranicz treści wulgarne</string>
+    <string id="30322">Bez treści wulgarnych</string>
     <string id="30323">Mój profil użytkownika</string>
     <string id="30324">Obserwujący {user}</string>
     <string id="30325">Dodaj {what}</string>
@@ -201,20 +201,20 @@
 
     <!-- Extended Settings -->
     <string id="30501">Używaj Kolorów w Etykietach</string>
-    <string id="30502">Aktywuj Logowanie Debugowania</string>
-    <string id="30503">Ustaw informacje o odtwarzaniu dla interfejsu GUI</string>
+    <string id="30502">Włącz Logowanie Debugowania</string>
+    <string id="30503">Włącz informacje o odtwarzaniu dla sieciowego GUI</string>
     <string id="30504">To Nie Jest Strumień FLAC!</string>
     <string id="30505">Użyj inputstream.ffmpegdirect jako domyślnego odtwarzacza</string>
     <string id="30506">Interfejs</string>
     <string id="30507">Usuń Cache Albumu</string>
     <string id="30508">Na pewno usunąć cache Albumu?</string>
-    <string id="30509">Dodaj metody sortowania dla list pozycji</string>
+    <string id="30509">Dodaj metody sortowania elementów na listach</string>
     <string id="30510">Log API JSON data</string>
     <string id="30511">Aktywuj Serwer HTTP Fanartów</string>
     <string id="30512">Port IP dla Serwera HTTP</string>
     <string id="30513">Tryb odtwarzania dla AAC MPD</string>
     <string id="30514">Tryb odtwarzania dla FLAC MPD</string>
-    <string id="30515">inputstream.ffmpegdirect odtwarza MPD</string>
+    <string id="30515">MPD odtwarzane przez inputstream.ffmpegdirect</string>
     <string id="30516">Odtwarzaj jako HLS</string>
     <string id="30517">Użyj inputstream.adaptive</string>
     <string id="30518">Użyj inputstream.ffmpegdirect</string>

@@ -1,8 +1,13 @@
+v2.1.6 (2025-09-23)
+- Support for new homepage elements
+- Updates for polish translations (thanks forgottennick)
+- Fixed double context menue items in Kodi >= 21
+
 v2.1.5.1 (2024-10-24)
 - Updates for polish translations (thanks forgottennick)
 
 v2.1.5 (2024-10-03)
-- Removed the parameter 'manifest_type' for playback with the inputstream.adaptive addon for Kodi >= 21, 
+- Removed the parameter 'manifest_type' for playback with the inputstream.adaptive addon for Kodi >= 21,
   because the parameter is obsolete now.
 - Fix in add_playlist_entries and remove_all_playlist_entries to handle more than 500 entries.
 - Show TIDAL2 addon fanart when an artist has no fanart picture to avoid 404 errors in the kodi.log file.
@@ -117,7 +122,7 @@ v2.0.0-beta22 (2021-03-17)
 - Removed RTMP music playback and HTTP video playback
 - Modified the login process to use up to three login session simultaneously
   (for browsing, music playback and video playback)
-- A Bug in Kodi causes a crash if the player tries to resolve the next playback URL 
+- A Bug in Kodi causes a crash if the player tries to resolve the next playback URL
   while playing the current track. And the parameter "succeeded=False" seems not to work properly.
   Example:
      xbmcplugin.setResolvedUrl(plugin.handle, succeeded=False, li)

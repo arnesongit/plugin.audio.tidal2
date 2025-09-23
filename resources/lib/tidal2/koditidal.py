@@ -28,7 +28,7 @@ from .common import KODI_VERSION, plugin
 from .textids import Msg, _T
 from .debug import log
 from .config import settings
-from .tidalapi import Session, PKCE_Authenticator, AuthenticationError, User, Favorites, models as tidal
+from .tidalapi import Session, PKCE_Authenticator, AuthenticationError, User, Favorites, models as tidal, URL_API_V2
 from .items import AlbumItem, ArtistItem, PlaylistItem, TrackItem, VideoItem, MixItem, \
                    FolderItem, CategoryItem, PromotionItem, DirectoryItem, TrackUrlItem, VideoUrlItem, \
                    UserProfileItem, UserPromptItem, BroadcastItem, BroadcastUrlItem
@@ -187,7 +187,7 @@ class TidalSession(Session):
         return items
 
     def get_playlist_tracks(self, playlist_id, offset=0, limit=9999):
-        # keeping 1st parameter as playlist_id for backward compatibility 
+        # keeping 1st parameter as playlist_id for backward compatibility
         if isinstance(playlist_id, tidal.Playlist):
             playlist = playlist_id
             playlist_id = playlist.id

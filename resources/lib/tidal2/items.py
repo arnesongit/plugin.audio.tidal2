@@ -79,7 +79,7 @@ class HasListItem(object):
         if self._is_logged_in and hasattr(self, '_isFavorite') and '/favorites/' in sys.argv[0]:
             self._isFavorite = True
         cm = self._initial_cm_items + self.getContextMenuItems(onlyInfoItems=self._only_info_context_menu)
-        if isinstance(self, (tidal.Track, tidal.Video, tidal.Album)) and KODI_VERSION >= (20, 0):
+        if isinstance(self, (tidal.Track, tidal.Video, tidal.Album)) and KODI_VERSION >= (20, 0) and KODI_VERSION <= (20, 1):
             cm.append((xbmc.getLocalizedString(13347), 'Action(Queue)'))
             cm.append((xbmc.getLocalizedString(10008), 'Action(PlayNext)'))
             # cm.append(('Clear Playlist', 'Playlist.Clear'))
@@ -440,6 +440,13 @@ class MixItem(tidal.Mix, HasListItem):
                 'title': self.title,
                 'album': self.subTitle
             }
+            try:
+                if isinstance(self.dateAdded, datetime.datetime):
+                    infoLabel.update({'date': self.dateAdded.date().strftime('%d.%m.%Y')})
+                elif isinstance(self.updated, datetime.datetime):
+                    infoLabel.update({'date': self.updated.date().strftime('%d.%m.%Y')})
+            except:
+                pass
             if KODI_VERSION >= (17, 0):
                 infoLabel.update({'mediatype': 'music'})
             li.setInfo('music', infoLabel)

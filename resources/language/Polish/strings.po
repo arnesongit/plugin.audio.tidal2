@@ -66,7 +66,7 @@ msgstr "Premium"
 
 msgctxt "#30014"
 msgid "Max. number of list items per page"
-msgstr "Maks. liczba elementów listy na stronie"
+msgstr "Maksymalna liczba elementów listy na stronie"
 
 msgctxt "#30015"
 msgid "Client-Unique-Key"
@@ -502,7 +502,7 @@ msgstr "Otwórz Playlistę jako Album"
 
 msgctxt "#30256"
 msgid "Do you really want to log out?\nThen a new login is necessary!"
-msgstr "Czy na pewno chcesz się wylogować?\nWymagane będzie ponowne zalogowanie!"
+msgstr "Na pewno chcesz się wylogować?\nWymagane będzie ponowne zalogowanie!"
 
 msgctxt "#30257"
 msgid "Please set Client-ID and Client-Secret in the addon settings!\nOr log in with URL: {url}"
@@ -598,7 +598,7 @@ msgstr "{what} jest chronione DRM"
 
 msgctxt "#30280"
 msgid "TIDAL2 - OAuth2 Login"
-msgstr "TIDAL2 - Logowanie do urządzenia OAuth2"
+msgstr "TIDAL2 - Login OAuth2"
 
 msgctxt "#30281"
 msgid "Login Status"
@@ -766,7 +766,7 @@ msgstr "Polecane"
 
 msgctxt "#30322"
 msgid "Clean Content"
-msgstr "Ogranicz treści wulgarne"
+msgstr "Bez treści wulgarnych"
 
 msgctxt "#30323"
 msgid "My User Profile"
@@ -790,11 +790,11 @@ msgstr "Używaj Kolorów w Etykietach"
 
 msgctxt "#30502"
 msgid "Enable Debug-Logging"
-msgstr "Aktywuj Logowanie Debugowania"
+msgstr "Włącz Logowanie Debugowania"
 
 msgctxt "#30503"
 msgid "Set playback information for Web-GUI"
-msgstr "Ustaw informacje o odtwarzaniu dla interfejsu GUI"
+msgstr "Włącz informacje o odtwarzaniu dla sieciowego GUI"
 
 msgctxt "#30504"
 msgid "Not a FLAC Stream!"
@@ -818,7 +818,7 @@ msgstr "Na pewno usunąć cache Albumu?"
 
 msgctxt "#30509"
 msgid "Add sort methods for item lists"
-msgstr "Dodaj metody sortowania dla list pozycji"
+msgstr "Dodaj metody sortowania elementów na listach"
 
 msgctxt "#30510"
 msgid "Log API JSON data"
@@ -842,7 +842,7 @@ msgstr "Tryb odtwarzania dla FLAC MPD"
 
 msgctxt "#30515"
 msgid "inputstream.ffmpegdirect plays MPD"
-msgstr "inputstream.ffmpegdirect odtwarza MPD"
+msgstr "MPD odtwarzane przez inputstream.ffmpegdirect"
 
 msgctxt "#30516"
 msgid "Play as HLS"

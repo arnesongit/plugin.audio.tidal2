@@ -29,7 +29,7 @@ from .textids import Msg, _T, _P
 from .debug import log
 from .tidalapi.models import DeviceCode, Category
 from .config import settings
-from .koditidal import TidalSession
+from .koditidal import TidalSession, URL_API_V2
 from .items import DirectoryItem, TrackUrlItem, VideoUrlItem, HasListItem
 from .devices import DeviceSelectorDialog
 from .lyricsInstaller import LyricsInstaller
@@ -41,7 +41,14 @@ except:
     from urllib import quote_plus, unquote_plus
 
 
-CONTENT_FOR_TYPE = {'artists': 'artists', 'albums': 'albums', 'playlists': 'albums', 'tracks': 'songs', 'videos': 'musicvideos', 'files': 'files', 'mixes': 'albums', 'userprofiles': 'artists'}
+CONTENT_FOR_TYPE = {'artists': 'artists', 'artist': 'artists',
+                    'albums': 'albums', 'album': 'albums',
+                    'playlists': 'albums', 'playlist': 'albums',
+                    'tracks': 'songs', 'track': 'songs',
+                    'videos': 'musicvideos', 'video': 'musicvideos',
+                    'files': 'files', 'file': 'files',
+                    'mixes': 'albums', 'mix': 'albums',
+                    'userprofiles': 'artists', 'userprofile': 'artists'}
 MODULE_TYPES = {'PLAYLIST_LIST': 'playlists', 'ALBUM_LIST': 'albums', 'ARTIST_LIST': 'artists', 'TRACK_LIST': 'tracks', 'VIDEO_LIST': 'videos', 'MIX_LIST': 'mix', 'MIXED_TYPES_LIST': 'playlistitem'}
 SINGLE_ITEM_TYPES = {'ALBUM': 'album', 'PLAYLIST': 'playlist', 'ARTIST': 'artist', 'TRACK': 'track', 'VIDEO': 'video', 'MIX': 'mix'}
 
@@ -140,7 +147,7 @@ def page(page_url):
                     items.append(DirectoryItem(m['type'], plugin.url_for(module_type, page_url, quote_plus(m['type']))))
 
     if page_url == quote_plus('pages/home'):
-        add_directory('Live', plugin.url_for(live))
+        add_static_home_folders()
 
     if page_url == quote_plus('pages/explore'):
         add_directory('Dolby Atmos', plugin.url_for(page, quote_plus('pages/dolby_atmos')))
@@ -150,6 +157,54 @@ def page(page_url):
         add_directory(_T(Msg.i30321), plugin.url_for(page, quote_plus('pages/staff_picks')))
         add_directory(_T(Msg.i30322), plugin.url_for(page, quote_plus('pages/clean_content')))
     session.add_list_items(items, end=True)
+
+
+def add_static_home_folders():
+    try:
+        cursor = ''
+        firstRun = True
+        while firstRun or cursor:
+            firstRun = False
+            params = {'locale': settings.locale, 'deviceType': 'BROWSER', 'platform': 'WEB'}
+            if cursor:
+                params['cursor'] = cursor
+            json = session._map_request(path='home/feed/static', url=URL_API_V2, params=params,
+                                        headers={'x-tidal-client-version': '2025.9.8'},
+                                        ret='json')
+            cursor = json['page']['cursor']
+            for item in json['items']:
+                if 'viewAll' in item:
+                    add_directory(item['title'], plugin.url_for(home_folder_items, quote_plus(item['viewAll']) ))
+    except:
+        pass
+
+
+@plugin.route('/home_folder_items/<folder_url>')
+def home_folder_items(folder_url):
+    folder_url = unquote_plus(folder_url)
+    items = []
+    content = 'ALBUM'
+    try:
+        offset = 0
+        pagelinecount = 0
+        firstRun = True
+        while firstRun or pagelinecount == 50:
+            firstRun = False
+            params = {'locale': settings.locale, 'deviceType': 'BROWSER', 'platform': 'WEB', 'limit': 50, 'offset': offset}
+            json = session._map_request(path=folder_url, url=URL_API_V2, params=params,
+                                        headers={'x-tidal-client-version': '2025.9.8'},
+                                        ret='json')
+            pagelinecount = len(json['items'])
+            offset = offset + pagelinecount
+            for item in json['items']:
+                try:
+                    items.append(session._parse_one_item(item['data'], ret=item['type']))
+                    content = item['type'].lower()
+                except:
+                    pass
+    except:
+        pass
+    session.add_list_items(items, content=CONTENT_FOR_TYPE.get(content.lower(), 'albums'), end=True, withSortModes=True)
 
 
 @plugin.route('/page_data/<page_url>/<item_type>')

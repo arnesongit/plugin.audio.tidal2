@@ -42,9 +42,9 @@ IMG_URL = 'http://resources.tidal.com/images/{picture}/{size}.jpg'
 
 DEFAULT_ARTIST_IMG = '1e01cdb6-f15d-4d8b-8440-a047976c1cac'
 DEFAULT_ALBUM_IMG = '0dfd3368-3aa1-49a3-935f-10ffb39803c0'
-DEFAULT_PLAYLIST_IMG = '443331e2-0421-490c-8918-5a4867949589' 
+DEFAULT_PLAYLIST_IMG = '443331e2-0421-490c-8918-5a4867949589'
 DEFAULT_VIDEO_IMB = 'fa6f0650-76ac-41d1-a4a3-7fe4c89fca90'
-DEFAULT_PROFILE_IMG = '443331e2-0421-490c-8918-5a4867949589' 
+DEFAULT_PROFILE_IMG = '443331e2-0421-490c-8918-5a4867949589'
 
 VARIOUS_ARTIST_ID = '2935'
 TIDAL_ARTIST_ID = '6712922'
@@ -167,7 +167,7 @@ class Config(object):
     @property
     def preview_token(self):
         try:
-            iv, key = base64.b64encode(re.findall(base64.b64decode(b'Ki4nKX05M3tdLlx6LWFaLUE5LTBbKCcqLg==')[::-1].decode('utf-8'), 
+            iv, key = base64.b64encode(re.findall(base64.b64decode(b'Ki4nKX05M3tdLlx6LWFaLUE5LTBbKCcqLg==')[::-1].decode('utf-8'),
                                                   repr(eval('\x5f\x5f\x73\x73\x61\x6c\x63\x5f\x5f\x2e\x66\x6c\x65\x73'[::-1])))[0].encode('utf-8')).split(b'Yi50')
             return pyaes.AESModeOfOperationCBC(key, iv = iv).decrypt(b'\xd2gH\xfdPG\xf5e\xe6J\xb4\xb4$M\x0fL').decode('utf-8')
         except:
@@ -222,6 +222,8 @@ class Model(object):
     name = 'Unknown'
 
     def parse_date(self, datestring, default=None):
+        if isinstance(datestring, int):
+            return datetime.datetime.fromtimestamp(datestring / 1000, tz=datetime.timezone.utc).astimezone()
         return Iso8601.parse_date(datestring, default)
 
     def __eq__(self, other):
@@ -382,20 +384,47 @@ class Mix(BrowsableMedia):
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         super(Mix, self).__init__()
+        if not self.title or self.title == 'Unknown':
+            try:
+                self.title = kwargs['titleTextInfo']['text']
+            except:
+                pass
         self.name = self.title
+        if not self.subTitle:
+            try:
+                self.subTitle = kwargs['subtitleTextInfo']['text']
+            except:
+                pass
+
         self.dateAdded = self.parse_date(self.dateAdded)
         self.updated = self.parse_date(self.updated, default=self.dateAdded)
+        if not self.dateAdded:
+            self.dateAdded = self.updated
+        if not self.updated:
+            self.updated = datetime.datetime.now()
+        if not self.dateAdded:
+            self.dateAdded = datetime.datetime.now()
         try:
             self._image = kwargs['images']['MEDIUM']['url']
         except:
-            self._image = IMG_URL.format(picture=DEFAULT_PLAYLIST_IMG.replace('-', '/'), size='320x214')
+            try:
+                for img in  kwargs['mixImages']:
+                    if img['size'] == 'MEDIUM':
+                        self._image = img['url']
+            except:
+                self._image = IMG_URL.format(picture=DEFAULT_PLAYLIST_IMG.replace('-', '/'), size='320x214')
         try:
             try:
                 self._fanart = kwargs['detailImages']['LARGE']['url']
             except:
-                self._fanart = kwargs['images']['LARGE']['url']
+                try:
+                    self._fanart = kwargs['images']['LARGE']['url']
+                except:
+                    for img in  kwargs['detailMixImages']:
+                        if img['size'] == 'LARGE':
+                            self._fanart = img['url']
         except:
-            self._image = IMG_URL.format(picture=DEFAULT_PLAYLIST_IMG.replace('-', '/'), size='1080x720')
+            self._fanart = IMG_URL.format(picture=DEFAULT_PLAYLIST_IMG.replace('-', '/'), size='1080x720')
         if not self.trn:
             self.trn = 'trn:mix:%s' % self.id
 
@@ -1002,12 +1031,12 @@ class Subscription(Model):
         self.__dict__.update(kwargs)
         super(Subscription, self).__init__()
         if not self.highestSoundQuality:
-            # Determine highest sound quality with subscription type 
+            # Determine highest sound quality with subscription type
             self.highestSoundQuality = {SubscriptionType.premium: Quality.hi_res,
                                         SubscriptionType.premium_mid: Quality.hi_res,
                                         SubscriptionType.premium_plus: Quality.hi_res,
-                                        SubscriptionType.hifi: Quality.lossless, 
-                                        SubscriptionType.intro: Quality.high, 
+                                        SubscriptionType.hifi: Quality.lossless,
+                                        SubscriptionType.intro: Quality.high,
                                         SubscriptionType.free: Quality.low}.get(self.type, Quality.high)
         self.validUntil = self.parse_date(self.validUntil if self.validUntil else '2099-12-31')
 
